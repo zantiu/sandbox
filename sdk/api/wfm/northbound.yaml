@@ -1,0 +1,678 @@
+openapi: 3.1.0
+info:
+  title: Margo WFM Northbound APIs
+  description: APIs for interacting with Margo compliant WFM over its Northbound interface
+  version: 1.0.0
+  contact:
+    name: Margo Team
+    # email: TBD
+    # url: TBD
+  license:
+    # name: TBD
+    # url: TBD
+
+servers:
+  - url: http://localhost:8082/margo/wfm-northbound/v1
+    description: Local development server
+
+paths:
+  /app-pkgs:
+    post:
+      summary: Onboard a new application package
+      description: |
+        Onboard an application package from various sources like Git repositories.
+        The onboarding process is asynchronous and returns immediately with a tracking ID.
+      operationId: onboardAppPkg
+      tags:
+        - Application Packages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppPkgOnboardingReq'
+            examples:
+              git-public:
+                summary: Onboarding from a public Git repository
+                value:
+                  name: "my-web-app-pkg"
+                  sourceType: "GIT_REPO"
+                  source:
+                    url: "https://github.com/user/my-app.git"
+                    branch: "main"
+              git-private:
+                summary: Onboarding from a private Git repository
+                value:
+                  name: "private-app-pkg"
+                  sourceType: "GIT_REPO"
+                  source:
+                    url: "https://github.com/user/private-app.git"
+                    branch: "main"
+                    username: "username"
+                    accessToken: "ghp_xxxxxxxxxxxx"
+      responses:
+        '202':
+          description: Application package onboarding request accepted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppPkgOnboardingResp'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - application package already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable entity - validation errors
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    properties:
+                      validationErrors:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List application packages
+      description: Retrieve a paginated list of application packages with optional filtering and sorting
+      operationId: listAppPkgs
+      tags:
+        - Application Packages
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: List of application packages retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ListAppPkgsResp'
+        '400':
+          description: Bad request - invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /app-pkgs/{id}:
+    get:
+      summary: Get application package details
+      description: Retrieve detailed information about a specific application package
+      operationId: getAppPkg
+      tags:
+        - Application Packages
+      parameters:
+        - name: id
+          in: path
+          description: Application package identifier
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            example: "app-12345"
+      responses:
+        '200':
+          description: Application package details retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppPkgSummary'
+        '404':
+          description: Application package not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete application package
+      description: |
+        Delete an application package from the system. This operation is irreversible.
+        Use the force parameter with caution as it may affect running deployments.
+      operationId: deleteAppPkg
+      tags:
+        - Application Packages
+      parameters:
+        - name: id
+          in: path
+          description: Application package identifier
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            example: "app-12345"
+        - name: force
+          in: query
+          description: Force deletion even if package is in use (may cause service disruption)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '202':
+          description: Application package deletion request accepted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DeleteAppPkgResp'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Application package not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - cannot delete package in current state
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    properties:
+                      conflictReason:
+                        type: string
+                        description: Detailed reason for the conflict
+                        example: "Package is currently deployed to 3 devices"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    APIResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          description: Unique identifier for the request
+          example: "req-pkg-1234567890abcdef"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the response in ISO 8601 format
+          example: "2024-01-15T10:30:00Z"
+      required:
+        - requestId
+        - timestamp
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            errorCode:
+              type: string
+              description: Machine-readable error code
+              example: "VALIDATION_FAILED"
+            details:
+              type: object
+              description: Additional error details
+              additionalProperties: true
+          required:
+            - errorCode
+
+    GitRepo:
+      type: object
+      description: Git repository source configuration
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Git repository URL (only HTTPS is supported)
+          pattern: '^(https?://|git@).*\.git$'
+          example: "https://github.com/user/my-app.git"
+        branch:
+          type: string
+          description: Git branch to use
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          minLength: 1
+          maxLength: 100
+          example: "main"
+        tag:
+          type: string
+          description: Git tag to use (alternative to branch)
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          minLength: 1
+          maxLength: 100
+          example: "v1.0.0"
+        username:
+          type: string
+          description: Git username for authentication
+          minLength: 1
+          maxLength: 100
+          example: "git-user"
+        accessToken:
+          type: string
+          description: Git access token for authentication
+          format: password
+          minLength: 1
+          maxLength: 200
+        subPath:
+          type: string
+          description: Subdirectory within the repository containing the application description yaml (ex margo.yaml)
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          maxLength: 200
+          example: "apps/web-service"
+      required:
+        - url
+      oneOf:
+        - required: [branch]
+        - required: [tag]
+    
+    AppPkg:
+      type: object
+      description: Complete application package information
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the application package
+          example: "some-uuid"
+        name:
+          type: string
+          description: Application package name
+          minLength: 1
+          maxLength: 100
+          example: "my-web-app-pkg"
+        version:
+          type: string
+          description: Application package version (semantic versioning)
+          example: "1.0.0"
+        description:
+          type: string
+          description: Package description
+          maxLength: 500
+          example: "A web application for managing user accounts"
+        operation:
+          $ref: '#/components/schemas/AppPkgOperation'
+        operationState:
+          $ref: '#/components/schemas/AppPkgOperationState'
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - version
+        - operation
+        - operationState
+        - sourceType
+        - source
+        - createdAt
+        - updatedAt
+
+    AppPkgOnboardingReq:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Application package name
+          minLength: 1
+          maxLength: 100
+          example: "my-web-app-pkg"
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+      required:
+        - name
+        - sourceType
+        - source
+
+    AppPkgOnboardingResp:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the application package
+          example: "some-uuid"
+        name:
+          type: string
+          description: Application name
+          example: "my-web-app-pkg"
+        version:
+          type: string
+          description: Application version
+          example: "1.0.0"
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+        operation:
+          $ref: '#/components/schemas/AppPkgOperation'
+        operationState:
+          $ref: '#/components/schemas/AppPkgOperationState'
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - version
+        - operation
+        - operationState
+        - sourceType
+        - source
+        - createdAt
+        - updatedAt
+
+    ListAppPkgsResp:
+      type: object
+      properties:
+        appPkgs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppPkgSummary'
+          description: List of application packages
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+      required:
+        - appPkgs
+        - pagination
+
+    AppPkgSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the application package
+        name:
+          type: string
+          description: Application name
+          minLength: 1
+          maxLength: 100
+        version:
+          type: string
+          description: Application version
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+        operation:
+          $ref: '#/components/schemas/AppPkgOperation'
+        operationState:
+          $ref: '#/components/schemas/AppPkgOperationState'
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - name
+        - version
+        - operation
+        - operationState
+        - sourceType
+        - source
+        - createdAt
+        - updatedAt
+
+    DeleteAppPkgResp:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the deleted application package
+        operation:
+          $ref: '#/components/schemas/AppPkgOperation'
+        operationState:
+          $ref: '#/components/schemas/AppPkgOperationState'
+        message:
+          type: string
+          description: Deletion status message
+          example: "Application package deletion initiated"
+      required:
+        - id
+        - operation
+        - operationState
+
+    AppPkgOperationStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Application package identifier
+        operation:
+          $ref: '#/components/schemas/AppPkgOperation'
+        operationState:
+          $ref: '#/components/schemas/AppPkgOperationState'
+        message:
+          type: string
+          description: Current operation status message
+          example: "Downloading source code from repository"
+        startedAt:
+          type: string
+          format: date-time
+          description: When the operation started
+        completedAt:
+          type: string
+          format: date-time
+          description: When the operation completed (if applicable)
+        error:
+          type: string
+          description: Error message if operation failed
+      required:
+        - id
+        - operation
+        - operationState
+        - progress
+        - startedAt
+
+    PaginationResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          description: Number of items per page
+          example: 20
+        totalItems:
+          type: integer
+          minimum: 0
+          description: Total number of items
+          example: 150
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+          example: 8
+      required:
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+
+    AppPkgOperation:
+      type: string
+      enum:
+        - onboard
+        - deboard
+        - stage
+        - unstage
+      description: Current application package operation
+
+    AppPkgOperationState:
+      type: string
+      enum:
+        - pending
+        - processing
+        - completed
+        - failed
+        - cancelled
+      description: Current state of the application package operation
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field that failed validation
+          example: "name"
+        message:
+          type: string
+          description: Validation error message
+          example: "Name must be between 1 and 100 characters"
+        # code:
+        #   type: string
+        #   description: Error code (optional)
+        #   example: "FIELD_LENGTH_INVALID"
+        # value:
+        #   type: string
+        #   description: The invalid value that was provided
+        #   example: ""
+      required:
+        - field
+        - message
+    
+    ErrorCodes:
+      type: string
+      enum:
+        - INTERNAL_ERROR
+        - GIT_ERROR
+        - DATABASE_ERROR
+        - STORAGE_ERROR
+        - DEVICE_ERROR
+        
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key authentication
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Application Packages
+    description: Operations for managing application packages
+    externalDocs:
+      description: Find more info here
+      # url: "TBD"
