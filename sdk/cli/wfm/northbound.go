@@ -183,7 +183,7 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 
 	// Handle response based on status code
 	switch pkgResp.StatusCode() {
-	case 202:
+	case 200, 202:
 		cli.logger.Printf("Application onboard request accepted for package: %s", params.Name)
 		if pkgResp.JSON202 != nil && pkgResp.JSON202.Data != nil {
 			return pkgResp.JSON202.Data, nil

@@ -1,0 +1,290 @@
+openapi: 3.0.4
+info:
+  title: MARGO Application Desired State - OpenAPI 3.0
+  description: |-
+    This is draft implementation of the MARGO APIs.
+    For the general Lexicon, please refer - [Terminology](https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms) 
+    The public definition is provided in [Here](https://specification.margo.org/margo-api-reference/margo-api-specification/) 
+    
+    Some useful links:
+    - [MARGO Desired State](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/)
+    - [MARGO Authorization](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)
+  termsOfService: https://specification.margo.org/#an-edge-interoperability-user-story
+  contact:
+    email: ajcraig@rockwellautomation.com
+  license:
+    name: MARGO License
+    url: https://github.com/margo/specification?#licenses
+  version: 0.0.1
+externalDocs:
+  description: Find out more about MARGO
+  url: https://margo.org/
+servers:
+  - url: https://margo.swagger.io/api/v0
+tags:
+  - name: device
+    description: A MARGO compliant device
+    externalDocs:
+      description: See Documentation
+      url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
+  - name: wfm
+    description: A MARGO Compliant Workload Fleet Manager
+    externalDocs:
+      description: See Documentation
+      url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
+  - name: repo
+    description: A OCI registry or data-store as defined under MARGO
+    externalDocs:
+      description: See Documentation
+      url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
+paths:
+  /device/poke:
+    post:
+      tags:
+        - device
+      summary: WFM sends this API to the Device to initiate a state request or a rmote procedure.
+      description: WFM sends this API to the Device to initiate a state request or a rmote procedure.
+      operationId: poke
+      parameters:
+        - name: deviceId
+          in: query
+          description: Device Identifier
+          required: true
+          explode: true
+          schema:
+            type: string
+            example: Marseilles-Press-ProdCell-15
+        - name: rpcId
+          in: query
+          description: In case the WFM wanted to initiate a Remote Procedure
+          required: false
+          explode: true
+          schema:
+            type: string
+            example: 
+              - proc-112
+              - somePrivateProcedure
+              - 12345
+      responses:
+        '200':
+          description: Successful operation, Device will send a Current State update
+        '400':
+          description: Invalid Device ID supplied
+        '404':
+          description: Device not found
+        '422':
+          description: Validation exception
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+      security:
+        - margo_auth:
+            - write:state
+            - read:state                
+  /wfm/state:
+    post:
+      tags:
+        - wfm
+      summary: Device sends this API to the WFM to update the current-state of the device and applications.
+      description: Device sends this API to the WFM to update the current-state of the device and applications.
+      operationId: state
+      requestBody:
+        description: The current-state of the device as well as the state of each deployed app
+        content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/currentAppStates'
+      parameters:
+        - name: deviceId
+          in: query
+          description: Device Identifier
+          required: false
+          explode: true
+          schema:
+            type: string
+            example: Marseilles-Press-ProdCell-15
+        - name: deviceState
+          in: query
+          description: Statusof the device
+          required: true
+          explode: true
+          schema:
+            type: string
+            default: STOPPED
+            enum:
+              - INITIALIZING
+              - RUNNING
+              - UPDATING
+              - REBOOTING
+              - STOPPED
+        - name: rpcId
+          in: query
+          description: An RPC call to the WFM, initiated by the Device
+          required: false
+          explode: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful operation, WFM returns desired state of Applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/desiredAppStates'
+        '400':
+          description: Invalid Device ID supplied
+        '404':
+          description: Device not found
+        '422':
+          description: Validation exception
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - margo_auth:
+            - write:state
+            - read:state
+  /wfm/process:
+    post:
+      tags:
+        - wfm
+      summary: Device sends this API to the WFM after it's poked with a private RPC Id.
+      description: Device sends this API to the WFM after it's poked with a private RPC Id.
+      operationId: process
+      requestBody:
+        description: Send a private payload, not defined by MARGO
+        content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/privatePayload'
+      parameters:
+        - name: deviceId
+          in: query
+          description: Device Identifier
+          required: false
+          explode: true
+          schema:
+            type: string
+            example: Marseilles-Press-ProdCell-15
+        - name: rpcId
+          in: query
+          description: An RPC call to the WFM, initiated by the Device
+          required: false
+          explode: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful operation, WFM returns a private payload not defined by MARGO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/privatePayload'
+        '400':
+          description: Invalid Device ID supplied
+        '404':
+          description: Device not found
+        '422':
+          description: Validation exception
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - margo_auth:
+            - write:state
+            - read:state            
+components:
+  schemas:
+    currentAppStates:
+      type: array
+      items:
+        $ref: '#/components/schemas/appState'
+      xml:
+        name: currentAppStates
+    desiredAppStates:
+      type: array
+      items:
+        $ref: '#/components/schemas/appState'
+      xml:
+        name: desiredAppStates        
+    appState:
+      type: object
+      properties:
+        appId:
+          type: string
+          example: a12nub7ub
+        appVersion:
+          type: string
+          description: Version String
+          example: v1.2.0
+        appDeploymentYAML:
+          type: string
+          description: Base64 encoded MARGO ApplicationDescription YAML content
+          example: a2V5MTogdmFsdWUxCmtleTI6IHZhbHVlMgo=
+        appDeploymentYAMLHash:
+          type: string
+          description: App Hash encoding used for versioning the MARGO ApplicationDescription
+          example: c6779ec2960296ed9a04f08d67f64422
+        appState:
+          type: string
+          default: STOPPED
+          enum:
+            - RUNNING
+            - UPDATING
+            - CRASHLOOP
+            - STOPPED
+            - REMOVE
+      required:
+        - appId
+        - appVersion
+        - appDeploymentYAMLHash
+        - appState
+      xml:
+        name: appCurrentState
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
+    privatePayload:
+      type: object
+      properties:
+        code:
+          type: string
+  requestBodies:
+    UserArray:
+      description: List of user object
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+  securitySchemes:
+    margo_auth:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: 'https://margo.swagger.io/oauth/authorize'
+          scopes:
+            "write:state": modify app state in your device
+            "read:state": read your app states
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header

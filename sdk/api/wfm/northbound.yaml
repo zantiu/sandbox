@@ -365,6 +365,9 @@ components:
           $ref: '#/components/schemas/AppPkgOperation'
         operationState:
           $ref: '#/components/schemas/AppPkgOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
         sourceType:
           type: string
           enum:
@@ -444,6 +447,9 @@ components:
           $ref: '#/components/schemas/AppPkgOperation'
         operationState:
           $ref: '#/components/schemas/AppPkgOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
         createdAt:
           type: string
           format: date-time
@@ -504,6 +510,9 @@ components:
           $ref: '#/components/schemas/AppPkgOperation'
         operationState:
           $ref: '#/components/schemas/AppPkgOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
         createdAt:
           type: string
           format: date-time
@@ -645,14 +654,14 @@ components:
         - field
         - message
     
-    ErrorCodes:
-      type: string
-      enum:
-        - INTERNAL_ERROR
-        - GIT_ERROR
-        - DATABASE_ERROR
-        - STORAGE_ERROR
-        - DEVICE_ERROR
+    # ErrorCodes:
+    #   type: string
+    #   enum:
+    #     - INTERNAL_ERROR
+    #     - GIT_ERROR
+    #     - DATABASE_ERROR
+    #     - STORAGE_ERROR
+    #     - DEVICE_ERROR
         
   securitySchemes:
     BearerAuth:

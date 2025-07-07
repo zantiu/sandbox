@@ -79,6 +79,9 @@ type AppPkg struct {
 	// Operation Current application package operation
 	Operation AppPkgOperation `json:"operation"`
 
+	// OperationContextualInfo Any contextual information related to operation, if available, is part of this variable
+	OperationContextualInfo *string `json:"operationContextualInfo,omitempty"`
+
 	// OperationState Current state of the application package operation
 	OperationState AppPkgOperationState `json:"operationState"`
 
@@ -136,6 +139,9 @@ type AppPkgOnboardingResp struct {
 
 	// Operation Current application package operation
 	Operation AppPkgOperation `json:"operation"`
+
+	// OperationContextualInfo Any contextual information related to operation, if available, is part of this variable
+	OperationContextualInfo *string `json:"operationContextualInfo,omitempty"`
 
 	// OperationState Current state of the application package operation
 	OperationState AppPkgOperationState `json:"operationState"`
@@ -204,6 +210,9 @@ type AppPkgSummary struct {
 
 	// Operation Current application package operation
 	Operation AppPkgOperation `json:"operation"`
+
+	// OperationContextualInfo Any contextual information related to operation, if available, is part of this variable
+	OperationContextualInfo *string `json:"operationContextualInfo,omitempty"`
 
 	// OperationState Current state of the application package operation
 	OperationState AppPkgOperationState `json:"operationState"`
