@@ -1,0 +1,3 @@
+[submodule "reference-implementations/wfm/symphony"]
+	path = reference-implementations/wfm/symphony
+	url = https://github.com/eclipse-symphony/symphony.git

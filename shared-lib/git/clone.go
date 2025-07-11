@@ -1,4 +1,4 @@
-package utils
+package git
 
 import (
 	"fmt"
@@ -7,55 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-git/go-git/v5"
+	goGit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-// GitAuth holds authentication credentials for Git repository access.
-//
-// Note: For GitHub and similar services, use personal access tokens instead of passwords
-// for enhanced security and to comply with authentication best practices.
-type GitAuth struct {
-	Username   string // Username for Git authentication
-	Token      string // Personal access token or password for authentication
-	CABundle   []byte // CA bundle (PEM encoded) for self-signed certificates
-	ClientCert []byte // Client certificate (PEM encoded)
-	ClientKey  []byte // Private key (PEM encoded) for client certificate
-}
-
-// ReadFromGit clones a Git repository to a temporary directory without authentication.
-//
-// Parameters:
-//   - url: The HTTPS Git repository URL to clone (required, cannot be empty)
-//   - branchOrTagName: The name of the branch to clone (required, cannot be empty)
-//   - cloneToDir: Path to clone directory (optional, if not given a random path will be used inside /tmp directory)
-//
-// Returns:
-//   - outputDirPath: The absolute path to the cloned repository directory
-//   - err: An error if the clone operation fails
-//
-// Important Notes:
-//   - The caller is responsible for cleaning up the returned directory path
-//   - Only works with public repositories or repositories that allow anonymous access
-//   - For private repositories, use ReadFromGitWithAuth with proper authentication
-//   - Only HTTPS-based Git URLs are supported; SSH URLs are not supported
-//
-// Example:
-//
-//	outputDirPath, err := ReadFromGit("https://github.com/user/public-repo.git", "main")
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
-//	defer os.RemoveAll(outputDirPath) // Clean up when done
-//
-// See also: ReadFromGitWithAuth for repositories requiring authentication.
-func ReadFromGit(url, branchOrTagName string, outputPath *string) (outputDirPath string, err error) {
-	return ReadFromGitWithAuth(url, branchOrTagName, nil, outputPath)
-}
-
-// ReadFromGitWithAuth clones a Git repository to a temporary directory with optional authentication.
+// Clone clones a Git repository to a temporary directory with optional authentication.
 //
 // This function clones the specified Git repository branch to a temporary directory and returns
 // the path to the cloned repository. It supports HTTPS-based Git URLs with optional authentication
@@ -80,23 +38,14 @@ func ReadFromGit(url, branchOrTagName string, outputPath *string) (outputDirPath
 //
 // Example:
 //
-//	outputDirPath, err := ReadFromGitWithAuth("https://github.com/user/repo.git", "main", nil, nil)
+//	outputDirPath, err := Clone("https://github.com/user/repo.git", "main", nil, nil)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	defer os.RemoveAll(outputDirPath) // Clean up when done
-func ReadFromGitWithAuth(url, branchOrTagName string, auth *GitAuth, outputPath *string) (string, error) {
-	// Validate URL
-	if url == "" {
-		return "", fmt.Errorf("git URL cannot be empty")
-	}
-	// Validate branch name
-	if branchOrTagName == "" {
-		return "", fmt.Errorf("git branchOrTagName cannot be empty")
-	}
-
+func (client *Client) Clone(outputPath *string) (string, error) {
 	// Extract repository name from URL for directory naming
-	repoName := extractRepoName(url)
+	repoName := extractRepoName(client.url)
 	if repoName == "" {
 		return "", fmt.Errorf("invalid git URL format")
 	}
@@ -116,25 +65,25 @@ func ReadFromGitWithAuth(url, branchOrTagName string, auth *GitAuth, outputPath 
 	cloneDir := filepath.Join(tempDir, repoName)
 
 	// Prepare clone options
-	cloneOptions := &git.CloneOptions{
-		URL:           url,
+	cloneOptions := &goGit.CloneOptions{
+		URL:           client.url,
 		Progress:      os.Stdout,
-		ReferenceName: plumbing.ReferenceName(branchOrTagName),
+		ReferenceName: plumbing.ReferenceName(client.branchOrTag),
 		SingleBranch:  true,
 	}
 
 	// Set authentication if provided
-	if auth != nil {
-		if auth.CABundle != nil {
-			cloneOptions.CABundle = auth.CABundle
+	if client.auth != nil {
+		if client.auth.CABundle != nil {
+			cloneOptions.CABundle = client.auth.CABundle
 		}
 
-		if auth.ClientCert != nil && auth.ClientKey != nil {
-			cloneOptions.ClientCert = auth.ClientCert
-			cloneOptions.ClientKey = auth.ClientKey
+		if client.auth.ClientCert != nil && client.auth.ClientKey != nil {
+			cloneOptions.ClientCert = client.auth.ClientCert
+			cloneOptions.ClientKey = client.auth.ClientKey
 		}
 
-		authMethod, err := getAuthMethod(url, auth)
+		authMethod, err := getAuthMethod(client.url, client.auth)
 		if err != nil {
 			return "", fmt.Errorf("failed to setup authentication: %w", err)
 		}
@@ -142,9 +91,9 @@ func ReadFromGitWithAuth(url, branchOrTagName string, auth *GitAuth, outputPath 
 	}
 
 	// Clone the repository
-	repo, err := git.PlainClone(cloneDir, false, cloneOptions)
+	repo, err := goGit.PlainClone(cloneDir, false, cloneOptions)
 	if err != nil {
-		return "", fmt.Errorf("failed to clone repository from %s: %w", url, err)
+		return "", fmt.Errorf("failed to clone repository from %s: %w", client.url, err)
 	}
 
 	// Verify the clone was successful
@@ -168,7 +117,7 @@ func ReadFromGitWithAuth(url, branchOrTagName string, auth *GitAuth, outputPath 
 // Supported URL formats:
 //   - HTTPS: https://github.com/user/repo.git
 //   - HTTP: http://github.com/user/repo.git
-func getAuthMethod(url string, auth *GitAuth) (transport.AuthMethod, error) {
+func getAuthMethod(url string, auth *Auth) (transport.AuthMethod, error) {
 	// SSH authentication
 	if strings.HasPrefix(url, "git@") || strings.Contains(url, "ssh://") {
 		return nil, fmt.Errorf("only https based git is supported")

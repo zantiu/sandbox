@@ -1,10 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Margo WFM Northbound APIs
-  description: APIs for interacting with Margo compliant WFM over its Northbound interface
+  title: WFM App Package Northbound APIs
+  description: |
+    APIs for interacting with App Packages via Northbound interface. This is not defined by margo, hence we
+    created a draft interface for PoC purpose. 
   version: 1.0.0
   contact:
-    name: Margo Team
+    # name: TBD
     # email: TBD
     # url: TBD
   license:
@@ -12,7 +14,7 @@ info:
     # url: TBD
 
 servers:
-  - url: http://localhost:8082/margo/wfm-northbound/v1
+  - url: http://localhost:8082/wfm-northbound/v1
     description: Local development server
 
 paths:
