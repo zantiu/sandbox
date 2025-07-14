@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/margo/dev-repo/sdk/utils"
+	"github.com/margo/dev-repo/non-standard/pkg/utils"
 )
 
 type Application struct {

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/margo/dev-repo/sdk/pkg/models"
-	"github.com/margo/dev-repo/sdk/utils"
+	"github.com/margo/dev-repo/non-standard/pkg/models"
+	"github.com/margo/dev-repo/shared-lib/git"
 	"gopkg.in/yaml.v3"
 )
 
@@ -88,7 +88,7 @@ func NewPackageManager() *PackageManager {
 // Example:
 //
 //	pm := NewPackageManager()
-//	auth := &utils.GitAuth{Username: "user", Token: "token"}
+//	auth := &git.Auth{Username: "user", Token: "token"}
 //	pkgPath, pkg, err := pm.LoadPackageFromGit("https://github.com/user/app.git", "main", auth)
 //	if err != nil {
 //	    log.Fatal(err)
@@ -99,9 +99,14 @@ func NewPackageManager() *PackageManager {
 //   - Returns error if Git clone operation fails
 //   - Returns error if package loading from directory fails
 //   - Returns error if margo.yaml file is missing or invalid
-func (pm *PackageManager) LoadPackageFromGit(url, branchName, subPath string, auth *utils.GitAuth) (pkgPath string, pkg *models.AppPkg, err error) {
+func (pm *PackageManager) LoadPackageFromGit(url, branchName, subPath string, auth *git.Auth) (pkgPath string, pkg *models.AppPkg, err error) {
 	// Clone repository to temporary directory
-	dirPath, err := utils.ReadFromGitWithAuth(url, branchName, auth, nil)
+	gitClient, err := git.NewClient(auth, url, branchName, nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to initialize git client: %w", err)
+	}
+
+	dirPath, err := gitClient.Clone(nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to clone repository: %w", err)
 	}

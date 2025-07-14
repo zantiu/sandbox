@@ -3,9 +3,9 @@
 set -e
 
 # Configuration
-SPEC_FILE="northbound.yaml"
-OUTPUT_DIR="./northbound"
-PACKAGE_NAME="github.com/margo/dev-repo/sdk/api/wfm/northbound"
+SPEC_FILE=("spec/API-DesiredState.yaml")
+OUTPUT_DIR="./generatedCode"
+PACKAGE_NAME="github.com/margo/dev-repo/margo/generatedCode"
 
 # Colors
 RED='\033[0;31m'
@@ -54,11 +54,11 @@ generate_code() {
     
     # Generate models first
     log_info "Generating models..."
-    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/models.go"
+    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/desiredState.go"
     
     # Generate client
     log_info "Generating client..."
-    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/client.go"
+    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/desiredState.go"
     
     # Generate server (optional)
     # log_info "Generating server..."
@@ -78,11 +78,11 @@ fix_imports_simple() {
     log_info "Fixing imports (simple approach)..."
     
     # For client
-    if [ -f "$OUTPUT_DIR/client/client.go" ]; then
+    if [ -f "$OUTPUT_DIR/client/desiredState.go" ]; then
         # Check if import is missing
-        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/client.go"; then
+        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/desiredState.go"; then
             # Add import after package line
-            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/client.go"
+            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/desiredState.go"
             log_success "Added import to client"
         fi
     fi

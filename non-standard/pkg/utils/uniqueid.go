@@ -1,6 +1,6 @@
 // Package pkg provides utility functions for generating unique identifiers
 // and other common operations used throughout the application.
-package pkg
+package utils
 
 import "github.com/google/uuid"
 

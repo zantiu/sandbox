@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: WFM App Package Northbound APIs
+  title: Non-standardized WFM App Package Northbound APIs
   description: |
     APIs for interacting with App Packages via Northbound interface. This is not defined by margo, hence we
     created a draft interface for PoC purpose. 
