@@ -13,7 +13,8 @@ import (
 	"log"
 	"time"
 
-	northboundAPIModelClient "github.com/margo/dev-repo/non-standard/generatedCode"
+	northboundAPIClient "github.com/margo/dev-repo/non-standard/generatedCode/client"
+	northboundAPIModels "github.com/margo/dev-repo/non-standard/generatedCode/models"
 )
 
 const (
@@ -26,11 +27,11 @@ const (
 
 // Type aliases for better API ergonomics
 type (
-	AppPkgOnboardingReq  = northboundAPIModelClient.AppPkgOnboardingReq
-	AppPkgOnboardingResp = northboundAPIModelClient.AppPkgOnboardingResp
-	AppPkgSummary        = northboundAPIModelClient.AppPkgSummary
-	ListAppPkgsParams    = northboundAPIModelClient.ListAppPkgsParams
-	ListAppPkgsResp      = northboundAPIModelClient.ListAppPkgsResp
+	AppPkgOnboardingReq  = northboundAPIModels.AppPkgOnboardingReq
+	AppPkgOnboardingResp = northboundAPIModels.AppPkgOnboardingResp
+	AppPkgSummary        = northboundAPIModels.AppPkgSummary
+	ListAppPkgsParams    = northboundAPIModels.ListAppPkgsParams
+	ListAppPkgsResp      = northboundAPIModels.ListAppPkgsResp
 )
 
 // NorthboundCli provides a client interface for the Margo Northbound API.
@@ -99,8 +100,8 @@ func NewNorthboundCli(host string, port uint16, basePath *string, opts ...Northb
 }
 
 // createClient creates a new API client with proper error handling
-func (cli *NorthboundCli) createClient() (*northboundAPIModelClient.Client, error) {
-	client, err := northboundAPIModelClient.NewClient(cli.serverAddress, northboundAPIModelClient.WithBaseURL(cli.baseURL))
+func (cli *NorthboundCli) createClient() (*northboundAPIClient.Client, error) {
+	client, err := northboundAPIClient.NewClient(cli.serverAddress, northboundAPIClient.WithBaseURL(cli.baseURL))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API client: %w", err)
 	}
@@ -164,7 +165,7 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	defer cancel()
 
 	// Make API request
-	resp, err := client.OnboardAppPkg(ctx, northboundAPIModelClient.OnboardAppPkgJSONRequestBody{
+	resp, err := client.OnboardAppPkg(ctx, northboundAPIModels.OnboardAppPkgJSONRequestBody{
 		Name:       params.Name,
 		SourceType: params.SourceType,
 		Source:     params.Source,
@@ -175,7 +176,7 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	defer resp.Body.Close()
 
 	// Parse response
-	pkgResp, err := northboundAPIModelClient.ParseOnboardAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseOnboardAppPkgResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse onboard app package response: %s", err.Error())
 	}
@@ -220,7 +221,7 @@ func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIModelClient.ParseGetAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseGetAppPkgResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse get app package response: %w", err)
 	}
@@ -257,7 +258,7 @@ func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsRes
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIModelClient.ParseListAppPkgsResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseListAppPkgsResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse list app packages response: %w", err)
 	}
@@ -295,13 +296,13 @@ func (cli *NorthboundCli) DeleteAppPkg(pkgId string) error {
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.DeleteAppPkg(ctx, pkgId, &northboundAPIModelClient.DeleteAppPkgParams{})
+	resp, err := client.DeleteAppPkg(ctx, pkgId, &northboundAPIModels.DeleteAppPkgParams{})
 	if err != nil {
 		return fmt.Errorf("delete app package request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIModelClient.ParseDeleteAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseDeleteAppPkgResponse(resp)
 	if err != nil {
 		return fmt.Errorf("failed to parse delete app package response: %w", err)
 	}
