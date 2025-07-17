@@ -5,7 +5,7 @@ set -e
 # Configuration
 SPEC_FILE=("spec/API-DesiredState.yaml")
 OUTPUT_DIR="./generatedCode"
-PACKAGE_NAME="github.com/margo/dev-repo/margo/generatedCode"
+PACKAGE_NAME="github.com/margo/dev-repo/standard/generatedCode"
 
 # Colors
 RED='\033[0;31m'

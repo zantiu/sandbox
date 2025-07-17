@@ -3,7 +3,7 @@
 set -e
 
 # Configuration
-SPEC_FILE=("spec/app-package-spec.yaml")
+SPEC_FILE=("spec/wfm-nbi.yaml")
 OUTPUT_DIR="./generatedCode"
 PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode"
 
@@ -54,11 +54,11 @@ generate_code() {
     
     # Generate models first
     log_info "Generating models..."
-    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/appPkg.go"
+    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/wfmNbiModels.go"
     
     # Generate client
     log_info "Generating client..."
-    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/appPkg.go"
+    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/wfmNbiClient.go"
     
     # Generate server (optional)
     # log_info "Generating server..."
@@ -78,11 +78,11 @@ fix_imports_simple() {
     log_info "Fixing imports (simple approach)..."
     
     # For client
-    if [ -f "$OUTPUT_DIR/client/appPkg.go" ]; then
+    if [ -f "$OUTPUT_DIR/client/wfmNbiClient.go" ]; then
         # Check if import is missing
-        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/appPkg.go"; then
+        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/wfmNbiClient.go"; then
             # Add import after package line
-            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/appPkg.go"
+            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/wfmNbiClient.go"
             log_success "Added import to client"
         fi
     fi

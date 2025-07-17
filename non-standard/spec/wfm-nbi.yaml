@@ -1,0 +1,650 @@
+openapi: 3.1.0
+info:
+  title: Non-standardized Workload Supplier to WFM APIs (Kubernetes Manifest Style)
+  version: 1.0.0
+  description: |
+    NOTE: This is not defined by margo, hence we created a draft interface for PoC purpose.
+    APIs for managing application workloads. Deployments are instantiated from cataloged app packages, with user-provided parameter overrides.
+  contact:
+    # name: TBD
+    # email: TBD
+    # url: TBD
+  license:
+    # name: TBD
+    # url: TBD
+
+servers:
+  - url: http://localhost:8082/wfm-northbound/v1
+
+paths:
+  /app-packages:
+    post:
+      summary: Onboard a new ApplicationPackage
+      description: |
+        Onboard an application package in manifest style (Kubernetes-like).
+        The onboarding process is asynchronous and returns immediately with a tracking ID.
+      operationId: onboardAppPackage
+      tags: [Application Packages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationPackage'
+            examples:
+              basic:
+                summary: Onboarding a manifest-style ApplicationPackage
+                value:
+                  apiVersion: margo.org/v1alpha1
+                  kind: ApplicationPackage
+                  metadata:
+                    name: my-web-app-pkg
+                    labels:
+                      env: dev
+                    annotations:
+                      description: "A web application for managing user accounts"
+                  spec:
+                    sourceType: GIT_REPO
+                    source:
+                      url: "https://github.com/user/my-app.git"
+                      branch: "main"
+      responses:
+        '202':
+          description: ApplicationPackage onboarding request accepted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ApplicationPackage'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - application package already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable entity - validation errors
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    properties:
+                      validationErrors:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List ApplicationPackages
+      description: Retrieve a paginated list of ApplicationPackages in manifest style.
+      operationId: listAppPackages
+      tags: [Application Packages]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 20 }
+        - name: continue
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of ApplicationPackages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationPackageList'
+        '400':
+          description: Bad request - invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /app-packages/{name}:
+    get:
+      summary: Get ApplicationPackage details
+      description: Retrieve manifest-style details about a specific ApplicationPackage.
+      operationId: getAppPackage
+      tags: [Application Packages]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: ApplicationPackage manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationPackage'
+        '404':
+          description: ApplicationPackage not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete ApplicationPackage
+      description: |
+        Delete an ApplicationPackage from the system. This operation is irreversible.
+      operationId: deleteAppPackage
+      tags: [Application Packages]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+        - name: force
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '202':
+          description: ApplicationPackage deletion request accepted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationPackage'
+        '404':
+          description: ApplicationPackage not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - cannot delete package in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /app-deployments:
+    post:
+      summary: Create an ApplicationDeployment
+      description: |
+        Instantiate an ApplicationDeployment from a cataloged ApplicationPackage, with parameter overrides.
+      operationId: createApplicationDeployment
+      tags: [Application Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationDeployment'
+            examples:
+              basic:
+                summary: Create a manifest-style ApplicationDeployment
+                value:
+                  apiVersion: margo.org/v1alpha1
+                  kind: ApplicationDeployment
+                  metadata:
+                    name: digitron-orchestrator-deployment
+                  spec:
+                    appPackageRef:
+                      id: my-web-app-pkg
+                    deploymentProfile:
+                      type: helm.v3
+                      components:
+                        - name: digitron-orchestrator
+                          properties:
+                            repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
+                            revision: 1.0.9
+                            wait: true
+                    parameters:
+                      pollFrequency:
+                        value: "60"
+                        targets:
+                          - pointer: settings.pollFrequency
+                            components: [digitron-orchestrator]
+      responses:
+        '202':
+          description: ApplicationDeployment creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDeployment'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - deployment already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List ApplicationDeployments
+      description: List all ApplicationDeployments in manifest style.
+      operationId: listApplicationDeployments
+      tags: [Application Deployments]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 20 }
+        - name: continue
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of ApplicationDeployments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDeploymentList'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /app-deployments/{name}:
+    get:
+      summary: Get ApplicationDeployment details
+      description: Retrieve manifest-style details about a specific ApplicationDeployment.
+      operationId: getApplicationDeployment
+      tags: [Application Deployments]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: ApplicationDeployment manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDeployment'
+        '404':
+          description: ApplicationDeployment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete ApplicationDeployment
+      description: |
+        Delete an ApplicationDeployment from the system. This operation is irreversible.
+      operationId: deleteApplicationDeployment
+      tags: [Application Deployments]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: ApplicationDeployment deletion request accepted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDeployment'
+        '404':
+          description: ApplicationDeployment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - cannot delete deployment in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    APIResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [requestId, timestamp]
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            errorCode:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          required: [errorCode]
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required: [field, message]
+
+    GitRepo:
+      type: object
+      description: Git repository source configuration
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Git repository URL (only HTTPS is supported)
+          pattern: '^(https?://|git@).*\.git$'
+          example: "https://github.com/user/my-app.git"
+        branch:
+          type: string
+          description: Git branch to use
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          minLength: 1
+          maxLength: 100
+          example: "main"
+        tag:
+          type: string
+          description: Git tag to use (alternative to branch)
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          minLength: 1
+          maxLength: 100
+          example: "v1.0.0"
+        username:
+          type: string
+          description: Git username for authentication
+          minLength: 1
+          maxLength: 100
+          example: "git-user"
+        accessToken:
+          type: string
+          description: Git access token for authentication
+          format: password
+          minLength: 1
+          maxLength: 200
+        subPath:
+          type: string
+          description: Subdirectory within the repository containing the application description yaml (ex margo.yaml)
+          pattern: '^[a-zA-Z0-9/_\-\.]+$'
+          maxLength: 200
+          example: "apps/web-service"
+      required:
+        - url
+      oneOf:
+        - required: [branch]
+        - required: [tag]
+
+    Metadata:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        annotations:
+          type: object
+          additionalProperties: { type: string }
+        creationTimestamp:
+          type: string
+          format: date-time
+
+    ApplicationPackageStatus:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: ["ONBOARD_PENDING", "ONBOARDED", "STAGE_PENDING", "STAGED", "DELETE_PENDING", "DELETED"]
+          example: ONBOARDED
+        contextualInfo:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+      
+    ApplicationPackage:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          example: margo.org/v1alpha1
+        kind:
+          type: string
+          example: ApplicationPackage
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        spec:
+          type: object
+          properties:
+            sourceType:
+              type: string
+              enum:
+                - GIT_REPO
+              description: Type of source for the application package
+            source:
+              oneOf:
+                - $ref: '#/components/schemas/GitRepo'
+              description: Source configuration based on sourceType
+        status:
+          $ref: '#/components/schemas/ApplicationPackageStatus'
+
+    ApplicationPackageList:
+      type: object
+      required: [apiVersion, kind, items]
+      properties:
+        apiVersion:
+          type: string
+          example: margo.org/v1alpha1
+        kind:
+          type: string
+          example: ApplicationPackageList
+        metadata:
+          type: object
+          properties:
+            continue:
+              type: string
+            remainingItemCount:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationPackage'
+
+
+    ApplicationDeploymentProfileComponent:
+      type: object
+      properties:
+        name:
+          type: string
+        properties:
+          type: object
+          properties:
+            repository:
+              type: string
+            revision:
+              type: string
+            timeout:
+              type: string
+            wait:
+              type: boolean
+
+    ApplicationDeploymentProfile:
+      properties:
+        type:
+          type: string
+          enum: ["helm.v3"]
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationDeploymentProfileComponent'
+
+    ApplicationParameterTarget:
+      type: object
+      properties:
+        pointer:
+          type: string
+        components:
+          type: array
+          items:
+            type: string
+
+    ApplicationParameterValue:
+      type: object
+      properties:
+        value:
+          type: string
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationParameterTarget'
+
+    ApplicationParameters:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/ApplicationParameterValue'
+
+    AppPackageStatus:
+      type: object
+      properties:
+        phase:
+          type: string
+          example: Running
+        message:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+
+    ApplicationDeployment:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: "margo.org/v1alpha1"
+        kind:
+          type: string
+          default: "ApplicationDeployment"
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        spec:
+          type: object
+          properties:
+            appPackageRef:
+              type: object
+              properties:
+                id:
+                  type: string
+            deploymentProfile:
+              $ref: '#/components/schemas/ApplicationDeploymentProfile'
+            parameters:
+              $ref: '#/components/schemas/ApplicationParameters'
+        status:
+          $ref: '#/components/schemas/AppPackageStatus'
+
+    ApplicationDeploymentList:
+      type: object
+      required: [apiVersion, kind, items]
+      properties:
+        apiVersion:
+          type: string
+          example: margo.org/v1alpha1
+        kind:
+          type: string
+          example: ApplicationDeploymentList
+        metadata:
+          type: object
+          properties:
+            continue:
+              type: string
+            remainingItemCount:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationDeployment'
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Application Packages
+    description: Operations for managing application packages
+  - name: Application Deployments
+    description: Operations for managing application deployments

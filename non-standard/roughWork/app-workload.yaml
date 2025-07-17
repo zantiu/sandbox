@@ -1,17 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Non-standardized WFM App Package Northbound APIs
+  title: Non-standardized WFM App Deployment Northbound APIs
   description: |
-    APIs for interacting with App Packages via Northbound interface. This is not defined by margo, hence we
-    created a draft interface for PoC purpose. 
+    APIs for managing application Deployments. Deployments are instantiated from cataloged app packages, with user-provided parameter overrides.
+    This is not defined by margo, hence we created a draft interface for PoC purpose.
   version: 1.0.0
-  contact:
-    # name: TBD
-    # email: TBD
-    # url: TBD
-  license:
-    # name: TBD
-    # url: TBD
 
 servers:
   - url: http://localhost:8082/wfm-northbound/v1
@@ -258,6 +251,165 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+
+  /app-Deployments:
+    post:
+      summary: Create an application Deployment
+      description: |
+        Instantiate a Deployment from a cataloged app package, with parameter overrides.
+      operationId: createApplicationDeployment
+      tags: [Application Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationDeploymentReq'
+      responses:
+        '202':
+          description: Deployment creation accepted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ApplicationDeploymentResp'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Deployment already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List application Deployments
+      description: List all Deployments with pagination
+      operationId: listApplicationDeployments
+      tags: [Application Deployments]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: List of Deployments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ApplicationDeploymentSummary'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /app-Deployments/{id}:
+    get:
+      summary: Get Deployment details
+      operationId: getApplicationDeployment
+      tags: [Application Deployments]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Deployment details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ApplicationDeploymentResp'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete Deployment
+      operationId: deleteApplicationDeployment
+      tags: [Application Deployments]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Deletion accepted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/APIResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ApplicationDeploymentResp'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     APIResponse:
@@ -339,7 +491,7 @@ components:
       oneOf:
         - required: [branch]
         - required: [tag]
-    
+
     AppPkg:
       type: object
       description: Complete application package information
@@ -378,6 +530,7 @@ components:
         source:
           oneOf:
             - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
           description: Source configuration based on sourceType
         createdAt:
           type: string
@@ -664,18 +817,230 @@ components:
     #     - DATABASE_ERROR
     #     - STORAGE_ERROR
     #     - DEVICE_ERROR
-        
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT token authentication
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key authentication
+
+    ApplicationDeploymentReq:
+      type: object
+      description: Request to instantiate a Deployment from an app package
+      properties:
+        appPkgId:
+          type: string
+          description: ID of the app package to deploy
+        parameters:
+          type: object
+          description: Parameter overrides for the Deployment
+          additionalProperties:
+            type: object
+            properties:
+              value:
+                type: string
+              targets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pointer:
+                      type: string
+                    components:
+                      type: array
+                      items:
+                        type: string
+      required: [appPkgId]
+
+    ApplicationDeployment:
+      type: object
+      description: Application Deployment resource for Margo orchestrator
+      properties:
+        id:
+          type: string
+          description: Unique Deployment identifier
+        appPkgId:
+          type: string
+          description: App package ID used for this Deployment
+        appPkgDeploymentProfiles:
+          type: array
+          properties:
+            "type":
+              type: string
+            components:
+              properties:
+                name:
+                  type: string
+                version:
+                  type: string
+                status:
+                  $ref: '#/components/schemas/AppComponentStatus'
+                updatedAt:
+                  type: string
+                  format: date-time
+        status:
+          $ref: '#/components/schemas/AppDeploymentStatus'
+        operation:
+          $ref: '#/components/schemas/AppDeploymentOperation'
+        operationState:
+          $ref: '#/components/schemas/AppDeploymentOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        parameters:
+          type: object
+          description: Effective parameters for this Deployment
+          additionalProperties:
+            type: object
+            properties:
+              value:
+                type: string
+              targets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pointer:
+                      type: string
+                    components:
+                      type: array
+                      items:
+                        type: string
+
+
+    ApplicationDeploymentResp:
+      type: object
+      description: Application Deployment resource for Margo orchestrator
+      properties:
+        id:
+          type: string
+          description: Unique Deployment identifier
+        appPkgId:
+          type: string
+          description: App package ID used for this Deployment
+        appPkgDeploymentProfiles:
+          type: array
+          properties:
+            "type":
+              type: string
+            components:
+              properties:
+                name:
+                  type: string
+                version:
+                  type: string
+                status:
+                  $ref: '#/components/schemas/AppComponentStatus'
+                updatedAt:
+                  type: string
+                  format: date-time
+        status:
+          $ref: '#/components/schemas/AppDeploymentStatus'
+        operation:
+          $ref: '#/components/schemas/AppDeploymentOperation'
+        operationState:
+          $ref: '#/components/schemas/AppDeploymentOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        parameters:
+          type: object
+          description: Effective parameters for this Deployment
+          additionalProperties:
+            type: object
+            properties:
+              value:
+                type: string
+              targets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pointer:
+                      type: string
+                    components:
+                      type: array
+                      items:
+                        type: string
+
+    ApplicationDeploymentSummary:
+      type: object
+      description: Summary of an application Deployment
+      properties:
+        id:
+          type: string
+        appPkgId:
+          type: string
+        status:
+          $ref: '#/components/schemas/AppDeploymentStatus'
+        operation:
+          $ref: '#/components/schemas/AppDeploymentOperation'
+        operationState:
+          $ref: '#/components/schemas/AppDeploymentOperationState'
+        operationContextualInfo:
+          type: string
+          description: Any contextual information related to operation, if available, is part of this variable
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AppComponentStatus:
+      type: string
+      default: STOPPED
+      enum:
+        - RUNNING
+        - UPDATING
+        - CRASHLOOP
+        - STOPPED
+        - REMOVE
+      description: Current application Deployment status
+
+    AppDeploymentStatus:
+      type: string
+      enum:
+        - deployed
+        - updating
+        - failed
+      description: Current application Deployment status
+    
+    AppDeploymentOperation:
+      type: string
+      enum:
+        - deploy
+        - remove
+      description: Current application Deployment operation
+
+    AppDeploymentOperationState:
+      type: string
+      enum:
+        - pending
+        - processing
+        - completed
+        - failed
+        - cancelled
+      description: Current state of the application Deployment operation
+
+
+    securitySchemes:
+        BearerAuth:
+          type: http
+          scheme: bearer
+          bearerFormat: JWT
+          description: JWT token authentication
+        ApiKeyAuth:
+          type: apiKey
+          in: header
+          name: X-API-Key
+          description: API key authentication
 
 security:
   - BearerAuth: []
