@@ -101,10 +101,10 @@ type ClientInterface interface {
 	CreateApplicationDeployment(ctx context.Context, body CreateApplicationDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteApplicationDeployment request
-	DeleteApplicationDeployment(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteApplicationDeployment(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApplicationDeployment request
-	GetApplicationDeployment(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetApplicationDeployment(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAppPackages request
 	ListAppPackages(ctx context.Context, params *ListAppPackagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -115,10 +115,10 @@ type ClientInterface interface {
 	OnboardAppPackage(ctx context.Context, body OnboardAppPackageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteAppPackage request
-	DeleteAppPackage(ctx context.Context, name string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteAppPackage(ctx context.Context, id string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetAppPackage request
-	GetAppPackage(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetAppPackage(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListApplicationDeployments(ctx context.Context, params *ListApplicationDeploymentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -157,8 +157,8 @@ func (c *Client) CreateApplicationDeployment(ctx context.Context, body CreateApp
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteApplicationDeployment(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteApplicationDeploymentRequest(c.Server, name)
+func (c *Client) DeleteApplicationDeployment(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteApplicationDeploymentRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +169,8 @@ func (c *Client) DeleteApplicationDeployment(ctx context.Context, name string, r
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetApplicationDeployment(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApplicationDeploymentRequest(c.Server, name)
+func (c *Client) GetApplicationDeployment(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApplicationDeploymentRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +217,8 @@ func (c *Client) OnboardAppPackage(ctx context.Context, body OnboardAppPackageJS
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteAppPackage(ctx context.Context, name string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteAppPackageRequest(c.Server, name, params)
+func (c *Client) DeleteAppPackage(ctx context.Context, id string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAppPackageRequest(c.Server, id, params)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +229,8 @@ func (c *Client) DeleteAppPackage(ctx context.Context, name string, params *Dele
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetAppPackage(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetAppPackageRequest(c.Server, name)
+func (c *Client) GetAppPackage(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAppPackageRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -347,12 +347,12 @@ func NewCreateApplicationDeploymentRequestWithBody(server string, contentType st
 }
 
 // NewDeleteApplicationDeploymentRequest generates requests for DeleteApplicationDeployment
-func NewDeleteApplicationDeploymentRequest(server string, name string) (*http.Request, error) {
+func NewDeleteApplicationDeploymentRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -381,12 +381,12 @@ func NewDeleteApplicationDeploymentRequest(server string, name string) (*http.Re
 }
 
 // NewGetApplicationDeploymentRequest generates requests for GetApplicationDeployment
-func NewGetApplicationDeploymentRequest(server string, name string) (*http.Request, error) {
+func NewGetApplicationDeploymentRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -520,12 +520,12 @@ func NewOnboardAppPackageRequestWithBody(server string, contentType string, body
 }
 
 // NewDeleteAppPackageRequest generates requests for DeleteAppPackage
-func NewDeleteAppPackageRequest(server string, name string, params *DeleteAppPackageParams) (*http.Request, error) {
+func NewDeleteAppPackageRequest(server string, id string, params *DeleteAppPackageParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -576,12 +576,12 @@ func NewDeleteAppPackageRequest(server string, name string, params *DeleteAppPac
 }
 
 // NewGetAppPackageRequest generates requests for GetAppPackage
-func NewGetAppPackageRequest(server string, name string) (*http.Request, error) {
+func NewGetAppPackageRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "name", runtime.ParamLocationPath, name)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -661,10 +661,10 @@ type ClientWithResponsesInterface interface {
 	CreateApplicationDeploymentWithResponse(ctx context.Context, body CreateApplicationDeploymentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateApplicationDeploymentResponse, error)
 
 	// DeleteApplicationDeploymentWithResponse request
-	DeleteApplicationDeploymentWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteApplicationDeploymentResponse, error)
+	DeleteApplicationDeploymentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteApplicationDeploymentResponse, error)
 
 	// GetApplicationDeploymentWithResponse request
-	GetApplicationDeploymentWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetApplicationDeploymentResponse, error)
+	GetApplicationDeploymentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetApplicationDeploymentResponse, error)
 
 	// ListAppPackagesWithResponse request
 	ListAppPackagesWithResponse(ctx context.Context, params *ListAppPackagesParams, reqEditors ...RequestEditorFn) (*ListAppPackagesResponse, error)
@@ -675,10 +675,10 @@ type ClientWithResponsesInterface interface {
 	OnboardAppPackageWithResponse(ctx context.Context, body OnboardAppPackageJSONRequestBody, reqEditors ...RequestEditorFn) (*OnboardAppPackageResponse, error)
 
 	// DeleteAppPackageWithResponse request
-	DeleteAppPackageWithResponse(ctx context.Context, name string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*DeleteAppPackageResponse, error)
+	DeleteAppPackageWithResponse(ctx context.Context, id string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*DeleteAppPackageResponse, error)
 
 	// GetAppPackageWithResponse request
-	GetAppPackageWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetAppPackageResponse, error)
+	GetAppPackageWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetAppPackageResponse, error)
 }
 
 type ListApplicationDeploymentsResponse struct {
@@ -806,14 +806,10 @@ func (r ListAppPackagesResponse) StatusCode() int {
 type OnboardAppPackageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *struct {
-		Data      *ApplicationPackage `json:"data,omitempty"`
-		RequestId string              `json:"requestId"`
-		Timestamp time.Time           `json:"timestamp"`
-	}
-	JSON400 *ErrorResponse
-	JSON409 *ErrorResponse
-	JSON422 *struct {
+	JSON202      *ApplicationPackage
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
+	JSON422      *struct {
 		Details          *map[string]interface{} `json:"details,omitempty"`
 		ErrorCode        string                  `json:"errorCode"`
 		RequestId        string                  `json:"requestId"`
@@ -915,8 +911,8 @@ func (c *ClientWithResponses) CreateApplicationDeploymentWithResponse(ctx contex
 }
 
 // DeleteApplicationDeploymentWithResponse request returning *DeleteApplicationDeploymentResponse
-func (c *ClientWithResponses) DeleteApplicationDeploymentWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteApplicationDeploymentResponse, error) {
-	rsp, err := c.DeleteApplicationDeployment(ctx, name, reqEditors...)
+func (c *ClientWithResponses) DeleteApplicationDeploymentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteApplicationDeploymentResponse, error) {
+	rsp, err := c.DeleteApplicationDeployment(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -924,8 +920,8 @@ func (c *ClientWithResponses) DeleteApplicationDeploymentWithResponse(ctx contex
 }
 
 // GetApplicationDeploymentWithResponse request returning *GetApplicationDeploymentResponse
-func (c *ClientWithResponses) GetApplicationDeploymentWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetApplicationDeploymentResponse, error) {
-	rsp, err := c.GetApplicationDeployment(ctx, name, reqEditors...)
+func (c *ClientWithResponses) GetApplicationDeploymentWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetApplicationDeploymentResponse, error) {
+	rsp, err := c.GetApplicationDeployment(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -959,8 +955,8 @@ func (c *ClientWithResponses) OnboardAppPackageWithResponse(ctx context.Context,
 }
 
 // DeleteAppPackageWithResponse request returning *DeleteAppPackageResponse
-func (c *ClientWithResponses) DeleteAppPackageWithResponse(ctx context.Context, name string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*DeleteAppPackageResponse, error) {
-	rsp, err := c.DeleteAppPackage(ctx, name, params, reqEditors...)
+func (c *ClientWithResponses) DeleteAppPackageWithResponse(ctx context.Context, id string, params *DeleteAppPackageParams, reqEditors ...RequestEditorFn) (*DeleteAppPackageResponse, error) {
+	rsp, err := c.DeleteAppPackage(ctx, id, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -968,8 +964,8 @@ func (c *ClientWithResponses) DeleteAppPackageWithResponse(ctx context.Context, 
 }
 
 // GetAppPackageWithResponse request returning *GetAppPackageResponse
-func (c *ClientWithResponses) GetAppPackageWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetAppPackageResponse, error) {
-	rsp, err := c.GetAppPackage(ctx, name, reqEditors...)
+func (c *ClientWithResponses) GetAppPackageWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetAppPackageResponse, error) {
+	rsp, err := c.GetAppPackage(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1205,11 +1201,7 @@ func ParseOnboardAppPackageResponse(rsp *http.Response) (*OnboardAppPackageRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest struct {
-			Data      *ApplicationPackage `json:"data,omitempty"`
-			RequestId string              `json:"requestId"`
-			Timestamp time.Time           `json:"timestamp"`
-		}
+		var dest ApplicationPackage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

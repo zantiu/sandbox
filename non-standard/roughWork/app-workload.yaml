@@ -531,7 +531,6 @@ components:
           oneOf:
             - $ref: '#/components/schemas/GitRepo'
           description: Source configuration based on sourceType
-          description: Source configuration based on sourceType
         createdAt:
           type: string
           format: date-time

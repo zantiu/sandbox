@@ -27,11 +27,11 @@ const (
 
 // Type aliases for better API ergonomics
 type (
-	AppPkgOnboardingReq  = northboundAPIModels.AppPkgOnboardingReq
-	AppPkgOnboardingResp = northboundAPIModels.AppPkgOnboardingResp
-	AppPkgSummary        = northboundAPIModels.AppPkgSummary
-	ListAppPkgsParams    = northboundAPIModels.ListAppPkgsParams
-	ListAppPkgsResp      = northboundAPIModels.ListAppPkgsResp
+	AppPkgOnboardingReq  = northboundAPIModels.ApplicationPackage
+	AppPkgOnboardingResp = northboundAPIModels.ApplicationPackage
+	AppPkgSummary        = northboundAPIModels.ApplicationPackage
+	ListAppPkgsParams    = northboundAPIModels.ListAppPackagesParams
+	ListAppPkgsResp      = northboundAPIModels.ApplicationPackageList
 )
 
 // NorthboundCli provides a client interface for the Margo Northbound API.
@@ -148,10 +148,10 @@ func (cli *NorthboundCli) handleErrorResponse(errBody []byte, statusCode int, op
 //	resp, err := cli.OnboardAppPkg(req)
 func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnboardingResp, error) {
 	// Validate required parameters
-	if params.Name == "" {
+	if params.Metadata.Name == "" {
 		return nil, fmt.Errorf("package name cannot be empty")
 	}
-	if params.SourceType == "" {
+	if params.Spec.SourceType == "" {
 		return nil, fmt.Errorf("source type cannot be empty")
 	}
 
@@ -165,18 +165,14 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	defer cancel()
 
 	// Make API request
-	resp, err := client.OnboardAppPkg(ctx, northboundAPIModels.OnboardAppPkgJSONRequestBody{
-		Name:       params.Name,
-		SourceType: params.SourceType,
-		Source:     params.Source,
-	})
+	resp, err := client.OnboardAppPackage(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("onboard app package request failed: %s", err.Error())
 	}
 	defer resp.Body.Close()
 
 	// Parse response
-	pkgResp, err := northboundAPIClient.ParseOnboardAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseOnboardAppPackageResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse onboard app package response: %s", err.Error())
 	}
@@ -184,9 +180,9 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	// Handle response based on status code
 	switch pkgResp.StatusCode() {
 	case 200, 202:
-		cli.logger.Printf("Application onboard request accepted for package: %s", params.Name)
-		if pkgResp.JSON202 != nil && pkgResp.JSON202.Data != nil {
-			return pkgResp.JSON202.Data, nil
+		cli.logger.Printf("Application onboard request accepted for package: %s", params.Metadata.Name)
+		if pkgResp.JSON202 != nil {
+			return pkgResp.JSON202, nil
 		}
 		return nil, nil
 	default:
@@ -215,13 +211,13 @@ func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.GetAppPkg(ctx, pkgId)
+	resp, err := client.GetAppPackage(ctx, pkgId)
 	if err != nil {
 		return nil, fmt.Errorf("get app package request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseGetAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseGetAppPackageResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse get app package response: %w", err)
 	}
@@ -229,7 +225,7 @@ func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 	switch pkgResp.StatusCode() {
 	case 200:
 		cli.logger.Printf("Successfully retrieved package: %s", pkgId)
-		return pkgResp.JSON200.Data, nil
+		return pkgResp.JSON200, nil
 	default:
 		return nil, cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "get app package")
 	}
@@ -252,13 +248,13 @@ func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsRes
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.ListAppPkgs(ctx, &params)
+	resp, err := client.ListAppPackages(ctx, &params)
 	if err != nil {
 		return nil, fmt.Errorf("list app packages request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseListAppPkgsResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseListAppPackagesResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse list app packages response: %w", err)
 	}
@@ -266,11 +262,11 @@ func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsRes
 	switch pkgResp.StatusCode() {
 	case 200:
 		packageCount := 0
-		if pkgResp.JSON200.Data != nil && pkgResp.JSON200.Data.AppPkgs != nil {
-			packageCount = len(pkgResp.JSON200.Data.AppPkgs)
+		if pkgResp.JSON200 != nil {
+			packageCount = len(pkgResp.JSON200.Items)
 		}
 		cli.logger.Printf("Successfully listed %d packages", packageCount)
-		return pkgResp.JSON200.Data, nil
+		return pkgResp.JSON200, nil
 	default:
 		return nil, cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "list app packages")
 	}
@@ -296,13 +292,13 @@ func (cli *NorthboundCli) DeleteAppPkg(pkgId string) error {
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.DeleteAppPkg(ctx, pkgId, &northboundAPIModels.DeleteAppPkgParams{})
+	resp, err := client.DeleteAppPackage(ctx, pkgId, &northboundAPIModels.DeleteAppPackageParams{})
 	if err != nil {
 		return fmt.Errorf("delete app package request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseDeleteAppPkgResponse(resp)
+	pkgResp, err := northboundAPIClient.ParseDeleteAppPackageResponse(resp)
 	if err != nil {
 		return fmt.Errorf("failed to parse delete app package response: %w", err)
 	}

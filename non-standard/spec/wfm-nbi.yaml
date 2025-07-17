@@ -1,6 +1,6 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
-  title: Non-standardized Workload Supplier to WFM APIs (Kubernetes Manifest Style)
+  title: Non-standardized Workload Supplier and Human Operator to WFM APIs (Kubernetes Manifest Style)
   version: 1.0.0
   description: |
     NOTE: This is not defined by margo, hence we created a draft interface for PoC purpose.
@@ -14,7 +14,9 @@ info:
     # url: TBD
 
 servers:
-  - url: http://localhost:8082/wfm-northbound/v1
+  - url: http://localhost:8082/wfmop/api/v0
+  - url: http://localhost:8082/wfmappsup/api/v0
+
 
 paths:
   /app-packages:
@@ -35,7 +37,7 @@ paths:
               basic:
                 summary: Onboarding a manifest-style ApplicationPackage
                 value:
-                  apiVersion: margo.org/v1alpha1
+                  apiVersion: non-margo.org
                   kind: ApplicationPackage
                   metadata:
                     name: my-web-app-pkg
@@ -54,12 +56,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/APIResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/ApplicationPackage'
+                $ref: '#/components/schemas/ApplicationPackage'
         '400':
           description: Bad request - validation failed
           content:
@@ -124,14 +121,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /app-packages/{name}:
+  /app-packages/{id}:
     get:
       summary: Get ApplicationPackage details
       description: Retrieve manifest-style details about a specific ApplicationPackage.
       operationId: getAppPackage
       tags: [Application Packages]
       parameters:
-        - name: name
+        - name: id
           in: path
           required: true
           schema: { type: string }
@@ -162,7 +159,7 @@ paths:
       operationId: deleteAppPackage
       tags: [Application Packages]
       parameters:
-        - name: name
+        - name: id
           in: path
           required: true
           schema: { type: string }
@@ -212,7 +209,7 @@ paths:
               basic:
                 summary: Create a manifest-style ApplicationDeployment
                 value:
-                  apiVersion: margo.org/v1alpha1
+                  apiVersion: non-margo.org
                   kind: ApplicationDeployment
                   metadata:
                     name: digitron-orchestrator-deployment
@@ -291,14 +288,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /app-deployments/{name}:
+  /app-deployments/{id}:
     get:
       summary: Get ApplicationDeployment details
       description: Retrieve manifest-style details about a specific ApplicationDeployment.
       operationId: getApplicationDeployment
       tags: [Application Deployments]
       parameters:
-        - name: name
+        - name: id
           in: path
           required: true
           schema: { type: string }
@@ -329,7 +326,7 @@ paths:
       operationId: deleteApplicationDeployment
       tags: [Application Deployments]
       parameters:
-        - name: name
+        - name: id
           in: path
           required: true
           schema: { type: string }
@@ -434,8 +431,7 @@ components:
           pattern: '^[a-zA-Z0-9/_\-\.]+$'
           maxLength: 200
           example: "apps/web-service"
-      required:
-        - url
+      required: [url]
       oneOf:
         - required: [branch]
         - required: [tag]
@@ -458,12 +454,23 @@ components:
           type: string
           format: date-time
 
+    ApplicationPackageOperation:
+      type: string
+      enum: [ONBOARD ,DEBOARD ,STAGE ,UNSTAGE]
+      description: Current application package operation
+
+    ApplicationPackageOperationStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED]
+      description: Current state of the application package operation
+
     ApplicationPackageStatus:
       type: object
+      required: [state]
       properties:
         state:
           type: string
-          enum: ["ONBOARD_PENDING", "ONBOARDED", "STAGE_PENDING", "STAGED", "DELETE_PENDING", "DELETED"]
+          enum: ["ONBOARDED", "FAILED", "STAGED"]
           example: ONBOARDED
         contextualInfo:
           type: object
@@ -475,31 +482,46 @@ components:
         lastUpdateTime:
           type: string
           format: date-time
-      
+
+    ApplicationPackageSpec:
+      type: object
+      required: [sourceType, source]
+      properties:
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+
+    ApplicationPackageRecentOperation:
+      type: object
+      required: [op, status]
+      properties:
+        op:
+          $ref: '#/components/schemas/ApplicationPackageOperation'
+        status:
+          $ref: '#/components/schemas/ApplicationPackageOperationStatus'
+
     ApplicationPackage:
       type: object
       required: [apiVersion, kind, metadata, spec]
       properties:
         apiVersion:
           type: string
-          example: margo.org/v1alpha1
+          default: non-margo.org
         kind:
           type: string
-          example: ApplicationPackage
+          default: ApplicationPackage
         metadata:
           $ref: '#/components/schemas/Metadata'
         spec:
-          type: object
-          properties:
-            sourceType:
-              type: string
-              enum:
-                - GIT_REPO
-              description: Type of source for the application package
-            source:
-              oneOf:
-                - $ref: '#/components/schemas/GitRepo'
-              description: Source configuration based on sourceType
+          $ref: '#/components/schemas/ApplicationPackageSpec'
+        recentOperation:
+          $ref: '#/components/schemas/ApplicationPackageRecentOperation'
         status:
           $ref: '#/components/schemas/ApplicationPackageStatus'
 
@@ -509,7 +531,7 @@ components:
       properties:
         apiVersion:
           type: string
-          example: margo.org/v1alpha1
+          example: non-margo.org
         kind:
           type: string
           example: ApplicationPackageList
@@ -526,13 +548,15 @@ components:
             $ref: '#/components/schemas/ApplicationPackage'
 
 
-    ApplicationDeploymentProfileComponent:
+    HelmApplicationDeploymentProfileComponent:
       type: object
+      required: [name, properties]
       properties:
         name:
           type: string
         properties:
           type: object
+          required: [repository]
           properties:
             repository:
               type: string
@@ -542,19 +566,44 @@ components:
               type: string
             wait:
               type: boolean
+    
+    ComposeApplicationDeploymentProfileComponent:
+      type: object
+      required: [name, properties]
+      properties:
+        name:
+          type: string
+        properties:
+          type: object
+          required: [packageLocation]
+          properties:
+            packageLocation:
+              type: string
+            keyLocation:
+              type: string
+            timeout:
+              type: string
+            wait:
+              type: boolean
 
     ApplicationDeploymentProfile:
+      type: object
+      required: [type, components]
       properties:
         type:
           type: string
-          enum: ["helm.v3"]
+          enum: ["helm.v3", "compose"]
         components:
           type: array
           items:
-            $ref: '#/components/schemas/ApplicationDeploymentProfileComponent'
+            oneOf:
+                - $ref: '#/components/schemas/HelmApplicationDeploymentProfileComponent'
+                - $ref: '#/components/schemas/ComposeApplicationDeploymentProfileComponent'
+            # $ref: '#/components/schemas/ApplicationDeploymentProfileComponent'
 
     ApplicationParameterTarget:
       type: object
+      required: [pointer, components]
       properties:
         pointer:
           type: string
@@ -565,6 +614,7 @@ components:
 
     ApplicationParameterValue:
       type: object
+      required: [value, targets]
       properties:
         value:
           type: string
@@ -596,7 +646,7 @@ components:
       properties:
         apiVersion:
           type: string
-          default: "margo.org/v1alpha1"
+          default: non-margo.org
         kind:
           type: string
           default: "ApplicationDeployment"
@@ -604,9 +654,11 @@ components:
           $ref: '#/components/schemas/Metadata'
         spec:
           type: object
+          required: [appPackageRef, deploymentProfile]
           properties:
             appPackageRef:
               type: object
+              required: [id]
               properties:
                 id:
                   type: string
@@ -619,11 +671,11 @@ components:
 
     ApplicationDeploymentList:
       type: object
-      required: [apiVersion, kind, items]
+      required: [apiVersion, kind, metadata, items]
       properties:
         apiVersion:
           type: string
-          example: margo.org/v1alpha1
+          example: non-margo.org
         kind:
           type: string
           example: ApplicationDeploymentList

@@ -18,7 +18,25 @@ const (
 
 // Defines values for ApplicationDeploymentProfileType.
 const (
-	HelmV3 ApplicationDeploymentProfileType = "helm.v3"
+	Compose ApplicationDeploymentProfileType = "compose"
+	HelmV3  ApplicationDeploymentProfileType = "helm.v3"
+)
+
+// Defines values for ApplicationPackageOperation.
+const (
+	DEBOARD ApplicationPackageOperation = "DEBOARD"
+	ONBOARD ApplicationPackageOperation = "ONBOARD"
+	STAGE   ApplicationPackageOperation = "STAGE"
+	UNSTAGE ApplicationPackageOperation = "UNSTAGE"
+)
+
+// Defines values for ApplicationPackageOperationStatus.
+const (
+	ApplicationPackageOperationStatusCANCELLED  ApplicationPackageOperationStatus = "CANCELLED"
+	ApplicationPackageOperationStatusCOMPLETED  ApplicationPackageOperationStatus = "COMPLETED"
+	ApplicationPackageOperationStatusFAILED     ApplicationPackageOperationStatus = "FAILED"
+	ApplicationPackageOperationStatusPENDING    ApplicationPackageOperationStatus = "PENDING"
+	ApplicationPackageOperationStatusPROCESSING ApplicationPackageOperationStatus = "PROCESSING"
 )
 
 // Defines values for ApplicationPackageSpecSourceType.
@@ -28,12 +46,9 @@ const (
 
 // Defines values for ApplicationPackageStatusState.
 const (
-	DELETED        ApplicationPackageStatusState = "DELETED"
-	DELETEPENDING  ApplicationPackageStatusState = "DELETE_PENDING"
-	ONBOARDED      ApplicationPackageStatusState = "ONBOARDED"
-	ONBOARDPENDING ApplicationPackageStatusState = "ONBOARD_PENDING"
-	STAGED         ApplicationPackageStatusState = "STAGED"
-	STAGEPENDING   ApplicationPackageStatusState = "STAGE_PENDING"
+	ApplicationPackageStatusStateFAILED    ApplicationPackageStatusState = "FAILED"
+	ApplicationPackageStatusStateONBOARDED ApplicationPackageStatusState = "ONBOARDED"
+	ApplicationPackageStatusStateSTAGED    ApplicationPackageStatusState = "STAGED"
 )
 
 // APIResponse defines model for APIResponse.
@@ -55,11 +70,11 @@ type ApplicationDeployment struct {
 	Kind       string   `json:"kind"`
 	Metadata   Metadata `json:"metadata"`
 	Spec       struct {
-		AppPackageRef *struct {
-			Id *string `json:"id,omitempty"`
-		} `json:"appPackageRef,omitempty"`
-		DeploymentProfile *ApplicationDeploymentProfile `json:"deploymentProfile,omitempty"`
-		Parameters        *ApplicationParameters        `json:"parameters,omitempty"`
+		AppPackageRef struct {
+			Id string `json:"id"`
+		} `json:"appPackageRef"`
+		DeploymentProfile ApplicationDeploymentProfile `json:"deploymentProfile"`
+		Parameters        *ApplicationParameters       `json:"parameters,omitempty"`
 	} `json:"spec"`
 	Status *AppPackageStatus `json:"status,omitempty"`
 }
@@ -69,54 +84,35 @@ type ApplicationDeploymentList struct {
 	ApiVersion string                  `json:"apiVersion"`
 	Items      []ApplicationDeployment `json:"items"`
 	Kind       string                  `json:"kind"`
-	Metadata   *struct {
+	Metadata   struct {
 		Continue           *string `json:"continue,omitempty"`
 		RemainingItemCount *int    `json:"remainingItemCount,omitempty"`
-	} `json:"metadata,omitempty"`
+	} `json:"metadata"`
 }
 
 // ApplicationDeploymentProfile defines model for ApplicationDeploymentProfile.
 type ApplicationDeploymentProfile struct {
-	Components *[]ApplicationDeploymentProfileComponent `json:"components,omitempty"`
-	Type       *ApplicationDeploymentProfileType        `json:"type,omitempty"`
+	Components []ApplicationDeploymentProfile_Components_Item `json:"components"`
+	Type       ApplicationDeploymentProfileType               `json:"type"`
+}
+
+// ApplicationDeploymentProfile_Components_Item defines model for ApplicationDeploymentProfile.components.Item.
+type ApplicationDeploymentProfile_Components_Item struct {
+	union json.RawMessage
 }
 
 // ApplicationDeploymentProfileType defines model for ApplicationDeploymentProfile.Type.
 type ApplicationDeploymentProfileType string
 
-// ApplicationDeploymentProfileComponent defines model for ApplicationDeploymentProfileComponent.
-type ApplicationDeploymentProfileComponent struct {
-	Name       *string `json:"name,omitempty"`
-	Properties *struct {
-		Repository *string `json:"repository,omitempty"`
-		Revision   *string `json:"revision,omitempty"`
-		Timeout    *string `json:"timeout,omitempty"`
-		Wait       *bool   `json:"wait,omitempty"`
-	} `json:"properties,omitempty"`
-}
-
 // ApplicationPackage defines model for ApplicationPackage.
 type ApplicationPackage struct {
-	ApiVersion string   `json:"apiVersion"`
-	Kind       string   `json:"kind"`
-	Metadata   Metadata `json:"metadata"`
-	Spec       struct {
-		// Source Source configuration based on sourceType
-		Source *ApplicationPackage_Spec_Source `json:"source,omitempty"`
-
-		// SourceType Type of source for the application package
-		SourceType *ApplicationPackageSpecSourceType `json:"sourceType,omitempty"`
-	} `json:"spec"`
-	Status *ApplicationPackageStatus `json:"status,omitempty"`
+	ApiVersion      string                             `json:"apiVersion"`
+	Kind            string                             `json:"kind"`
+	Metadata        Metadata                           `json:"metadata"`
+	RecentOperation *ApplicationPackageRecentOperation `json:"recentOperation,omitempty"`
+	Spec            ApplicationPackageSpec             `json:"spec"`
+	Status          *ApplicationPackageStatus          `json:"status,omitempty"`
 }
-
-// ApplicationPackage_Spec_Source Source configuration based on sourceType
-type ApplicationPackage_Spec_Source struct {
-	union json.RawMessage
-}
-
-// ApplicationPackageSpecSourceType Type of source for the application package
-type ApplicationPackageSpecSourceType string
 
 // ApplicationPackageList defines model for ApplicationPackageList.
 type ApplicationPackageList struct {
@@ -129,14 +125,46 @@ type ApplicationPackageList struct {
 	} `json:"metadata,omitempty"`
 }
 
+// ApplicationPackageOperation Current application package operation
+type ApplicationPackageOperation string
+
+// ApplicationPackageOperationStatus Current state of the application package operation
+type ApplicationPackageOperationStatus string
+
+// ApplicationPackageRecentOperation defines model for ApplicationPackageRecentOperation.
+type ApplicationPackageRecentOperation struct {
+	// Op Current application package operation
+	Op ApplicationPackageOperation `json:"op"`
+
+	// Status Current state of the application package operation
+	Status ApplicationPackageOperationStatus `json:"status"`
+}
+
+// ApplicationPackageSpec defines model for ApplicationPackageSpec.
+type ApplicationPackageSpec struct {
+	// Source Source configuration based on sourceType
+	Source ApplicationPackageSpec_Source `json:"source"`
+
+	// SourceType Type of source for the application package
+	SourceType ApplicationPackageSpecSourceType `json:"sourceType"`
+}
+
+// ApplicationPackageSpec_Source Source configuration based on sourceType
+type ApplicationPackageSpec_Source struct {
+	union json.RawMessage
+}
+
+// ApplicationPackageSpecSourceType Type of source for the application package
+type ApplicationPackageSpecSourceType string
+
 // ApplicationPackageStatus defines model for ApplicationPackageStatus.
 type ApplicationPackageStatus struct {
 	ContextualInfo *struct {
 		Code    *string `json:"code,omitempty"`
 		Message *string `json:"message,omitempty"`
 	} `json:"contextualInfo,omitempty"`
-	LastUpdateTime *time.Time                     `json:"lastUpdateTime,omitempty"`
-	State          *ApplicationPackageStatusState `json:"state,omitempty"`
+	LastUpdateTime *time.Time                    `json:"lastUpdateTime,omitempty"`
+	State          ApplicationPackageStatusState `json:"state"`
 }
 
 // ApplicationPackageStatusState defines model for ApplicationPackageStatus.State.
@@ -144,18 +172,29 @@ type ApplicationPackageStatusState string
 
 // ApplicationParameterTarget defines model for ApplicationParameterTarget.
 type ApplicationParameterTarget struct {
-	Components *[]string `json:"components,omitempty"`
-	Pointer    *string   `json:"pointer,omitempty"`
+	Components []string `json:"components"`
+	Pointer    string   `json:"pointer"`
 }
 
 // ApplicationParameterValue defines model for ApplicationParameterValue.
 type ApplicationParameterValue struct {
-	Targets *[]ApplicationParameterTarget `json:"targets,omitempty"`
-	Value   *string                       `json:"value,omitempty"`
+	Targets []ApplicationParameterTarget `json:"targets"`
+	Value   string                       `json:"value"`
 }
 
 // ApplicationParameters defines model for ApplicationParameters.
 type ApplicationParameters map[string]ApplicationParameterValue
+
+// ComposeApplicationDeploymentProfileComponent defines model for ComposeApplicationDeploymentProfileComponent.
+type ComposeApplicationDeploymentProfileComponent struct {
+	Name       string `json:"name"`
+	Properties struct {
+		KeyLocation     *string `json:"keyLocation,omitempty"`
+		PackageLocation string  `json:"packageLocation"`
+		Timeout         *string `json:"timeout,omitempty"`
+		Wait            *bool   `json:"wait,omitempty"`
+	} `json:"properties"`
+}
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
@@ -192,6 +231,17 @@ type GitRepo0 = interface{}
 
 // GitRepo1 defines model for .
 type GitRepo1 = interface{}
+
+// HelmApplicationDeploymentProfileComponent defines model for HelmApplicationDeploymentProfileComponent.
+type HelmApplicationDeploymentProfileComponent struct {
+	Name       string `json:"name"`
+	Properties struct {
+		Repository string  `json:"repository"`
+		Revision   *string `json:"revision,omitempty"`
+		Timeout    *string `json:"timeout,omitempty"`
+		Wait       *bool   `json:"wait,omitempty"`
+	} `json:"properties"`
+}
 
 // Metadata defines model for Metadata.
 type Metadata struct {
@@ -231,22 +281,22 @@ type CreateApplicationDeploymentJSONRequestBody = ApplicationDeployment
 // OnboardAppPackageJSONRequestBody defines body for OnboardAppPackage for application/json ContentType.
 type OnboardAppPackageJSONRequestBody = ApplicationPackage
 
-// AsGitRepo returns the union data inside the ApplicationPackage_Spec_Source as a GitRepo
-func (t ApplicationPackage_Spec_Source) AsGitRepo() (GitRepo, error) {
-	var body GitRepo
+// AsHelmApplicationDeploymentProfileComponent returns the union data inside the ApplicationDeploymentProfile_Components_Item as a HelmApplicationDeploymentProfileComponent
+func (t ApplicationDeploymentProfile_Components_Item) AsHelmApplicationDeploymentProfileComponent() (HelmApplicationDeploymentProfileComponent, error) {
+	var body HelmApplicationDeploymentProfileComponent
 	err := json.Unmarshal(t.union, &body)
 	return body, err
 }
 
-// FromGitRepo overwrites any union data inside the ApplicationPackage_Spec_Source as the provided GitRepo
-func (t *ApplicationPackage_Spec_Source) FromGitRepo(v GitRepo) error {
+// FromHelmApplicationDeploymentProfileComponent overwrites any union data inside the ApplicationDeploymentProfile_Components_Item as the provided HelmApplicationDeploymentProfileComponent
+func (t *ApplicationDeploymentProfile_Components_Item) FromHelmApplicationDeploymentProfileComponent(v HelmApplicationDeploymentProfileComponent) error {
 	b, err := json.Marshal(v)
 	t.union = b
 	return err
 }
 
-// MergeGitRepo performs a merge with any union data inside the ApplicationPackage_Spec_Source, using the provided GitRepo
-func (t *ApplicationPackage_Spec_Source) MergeGitRepo(v GitRepo) error {
+// MergeHelmApplicationDeploymentProfileComponent performs a merge with any union data inside the ApplicationDeploymentProfile_Components_Item, using the provided HelmApplicationDeploymentProfileComponent
+func (t *ApplicationDeploymentProfile_Components_Item) MergeHelmApplicationDeploymentProfileComponent(v HelmApplicationDeploymentProfileComponent) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -257,12 +307,74 @@ func (t *ApplicationPackage_Spec_Source) MergeGitRepo(v GitRepo) error {
 	return err
 }
 
-func (t ApplicationPackage_Spec_Source) MarshalJSON() ([]byte, error) {
+// AsComposeApplicationDeploymentProfileComponent returns the union data inside the ApplicationDeploymentProfile_Components_Item as a ComposeApplicationDeploymentProfileComponent
+func (t ApplicationDeploymentProfile_Components_Item) AsComposeApplicationDeploymentProfileComponent() (ComposeApplicationDeploymentProfileComponent, error) {
+	var body ComposeApplicationDeploymentProfileComponent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromComposeApplicationDeploymentProfileComponent overwrites any union data inside the ApplicationDeploymentProfile_Components_Item as the provided ComposeApplicationDeploymentProfileComponent
+func (t *ApplicationDeploymentProfile_Components_Item) FromComposeApplicationDeploymentProfileComponent(v ComposeApplicationDeploymentProfileComponent) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeComposeApplicationDeploymentProfileComponent performs a merge with any union data inside the ApplicationDeploymentProfile_Components_Item, using the provided ComposeApplicationDeploymentProfileComponent
+func (t *ApplicationDeploymentProfile_Components_Item) MergeComposeApplicationDeploymentProfileComponent(v ComposeApplicationDeploymentProfileComponent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ApplicationDeploymentProfile_Components_Item) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
 }
 
-func (t *ApplicationPackage_Spec_Source) UnmarshalJSON(b []byte) error {
+func (t *ApplicationDeploymentProfile_Components_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGitRepo returns the union data inside the ApplicationPackageSpec_Source as a GitRepo
+func (t ApplicationPackageSpec_Source) AsGitRepo() (GitRepo, error) {
+	var body GitRepo
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGitRepo overwrites any union data inside the ApplicationPackageSpec_Source as the provided GitRepo
+func (t *ApplicationPackageSpec_Source) FromGitRepo(v GitRepo) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGitRepo performs a merge with any union data inside the ApplicationPackageSpec_Source, using the provided GitRepo
+func (t *ApplicationPackageSpec_Source) MergeGitRepo(v GitRepo) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ApplicationPackageSpec_Source) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ApplicationPackageSpec_Source) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
