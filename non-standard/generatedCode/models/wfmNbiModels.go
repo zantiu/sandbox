@@ -46,6 +46,7 @@ const (
 
 // Defines values for ApplicationPackageStatusState.
 const (
+	ApplicationPackageStatusStateDELETED   ApplicationPackageStatusState = "DELETED"
 	ApplicationPackageStatusStateFAILED    ApplicationPackageStatusState = "FAILED"
 	ApplicationPackageStatusStateONBOARDED ApplicationPackageStatusState = "ONBOARDED"
 	ApplicationPackageStatusStateSTAGED    ApplicationPackageStatusState = "STAGED"
@@ -85,8 +86,8 @@ type ApplicationDeploymentList struct {
 	Items      []ApplicationDeployment `json:"items"`
 	Kind       string                  `json:"kind"`
 	Metadata   struct {
-		Continue           *string `json:"continue,omitempty"`
-		RemainingItemCount *int    `json:"remainingItemCount,omitempty"`
+		Continue           *bool `json:"continue,omitempty"`
+		RemainingItemCount *int  `json:"remainingItemCount,omitempty"`
 	} `json:"metadata"`
 }
 

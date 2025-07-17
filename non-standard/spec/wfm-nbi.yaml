@@ -456,7 +456,7 @@ components:
 
     ApplicationPackageOperation:
       type: string
-      enum: [ONBOARD ,DEBOARD ,STAGE ,UNSTAGE]
+      enum: [ONBOARD, DEBOARD, STAGE, UNSTAGE]
       description: Current application package operation
 
     ApplicationPackageOperationStatus:
@@ -470,7 +470,7 @@ components:
       properties:
         state:
           type: string
-          enum: ["ONBOARDED", "FAILED", "STAGED"]
+          enum: [ONBOARDED, FAILED, STAGED, DELETED]
           example: ONBOARDED
         contextualInfo:
           type: object
@@ -649,7 +649,7 @@ components:
           default: non-margo.org
         kind:
           type: string
-          default: "ApplicationDeployment"
+          default: ApplicationDeployment
         metadata:
           $ref: '#/components/schemas/Metadata'
         spec:
@@ -675,15 +675,15 @@ components:
       properties:
         apiVersion:
           type: string
-          example: non-margo.org
+          default: non-margo.org
         kind:
           type: string
-          example: ApplicationDeploymentList
+          default: ApplicationDeploymentList
         metadata:
           type: object
           properties:
             continue:
-              type: string
+              type: boolean
             remainingItemCount:
               type: integer
         items:
