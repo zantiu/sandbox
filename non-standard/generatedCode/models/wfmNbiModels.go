@@ -247,6 +247,7 @@ type HelmApplicationDeploymentProfileComponent struct {
 type Metadata struct {
 	Annotations       *map[string]string `json:"annotations,omitempty"`
 	CreationTimestamp *time.Time         `json:"creationTimestamp,omitempty"`
+	Id                *string            `json:"id,omitempty"`
 	Labels            *map[string]string `json:"labels,omitempty"`
 	Name              string             `json:"name"`
 	Namespace         *string            `json:"namespace,omitempty"`

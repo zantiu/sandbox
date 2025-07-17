@@ -14,9 +14,7 @@ info:
     # url: TBD
 
 servers:
-  - url: http://localhost:8082/wfmop/api/v0
-  - url: http://localhost:8082/wfmappsup/api/v0
-
+  - url: http://localhost:8082/wfm/api/v0
 
 paths:
   /app-packages:
@@ -440,6 +438,8 @@ components:
       type: object
       required: [name]
       properties:
+        id:
+          type: string
         name:
           type: string
         namespace:
