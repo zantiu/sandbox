@@ -3,8 +3,10 @@ info:
   title: Non-standardized Workload Supplier and Human Operator to WFM APIs (Kubernetes Manifest Style)
   version: 1.0.0
   description: |
-    NOTE: This is not defined by margo, hence we created a draft interface for PoC purpose.
-    APIs for managing application workloads. Deployments are instantiated from cataloged app packages, with user-provided parameter overrides.
+    NOTE: This is not defined by margo. We defined the interfaces to complete the end-to-end story of Margo PoC.
+    These APIs are used to manage application workloads.
+    1. App package management
+    2. Deployments management
   contact:
     # name: TBD
     # email: TBD
@@ -14,7 +16,7 @@ info:
     # url: TBD
 
 servers:
-  - url: http://localhost:8082/wfm/api/v0
+  - url: http://localhost:8082/non-margo/wfm/api/v0
 
 paths:
   /app-packages:
@@ -483,11 +485,12 @@ components:
       properties:
         state:
           type: string
-          enum: [PENDING, ONBOARDED, FAILED, STAGED, DELETED]
+          enum: [PENDING, ONBOARDED, DEBOARDED, FAILED, STAGED, UNSTAGED]
           example: ONBOARDED
           readOnly: true
         contextualInfo:
           $ref: '#/components/schemas/ContextualInfo'
+          readOnly: true
         lastUpdateTime:
           type: string
           format: date-time
@@ -517,26 +520,6 @@ components:
         status:
           $ref: '#/components/schemas/ApplicationPackageOperationStatus'
 
-    ApplicationPackageReq:
-      type: object
-      required: [apiVersion, kind, metadata, spec]
-      properties:
-        apiVersion:
-          type: string
-          const: non-margo.org
-          default: non-margo.org
-        kind:
-          type: string
-          const: ApplicationPackage
-          # default: ApplicationPackage
-        metadata:
-          $ref: '#/components/schemas/Metadata'
-        spec:
-          $ref: '#/components/schemas/ApplicationPackageSpec'
-
-    ApplicationPackageResp:
-      allOf:
-        - $ref: '#/components/schemas/ApplicationPackage'
 
     ApplicationPackage:
       type: object
