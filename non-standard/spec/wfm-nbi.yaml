@@ -199,6 +199,8 @@ paths:
       summary: Create an ApplicationDeployment
       description: |
         Instantiate an ApplicationDeployment from a cataloged ApplicationPackage, with parameter overrides.
+        A human(or some operator) will be responsible of instantiate an application on the onboarded devices.
+        Hence this suite of APIs are introduced here.
       operationId: createApplicationDeployment
       tags: [Application Deployments]
       requestBody:
@@ -218,6 +220,10 @@ paths:
                   spec:
                     appPackageRef:
                       id: my-web-app-pkg
+                    deviceRef:
+                      lable:
+                        key: arch
+                        value: x86
                     deploymentProfile:
                       type: helm.v3
                       components:
