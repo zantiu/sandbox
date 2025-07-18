@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Non-standardized Workload Supplier and Human Operator to WFM APIs (Kubernetes Manifest Style)
+  title: Non-standardized interface. From Workload Supplier/Human Operator to WFM APIs (Kubernetes Manifest Style)
   version: 1.0.0
   description: |
     NOTE: This is not defined by margo. We defined the interfaces to complete the end-to-end story of Margo PoC.
