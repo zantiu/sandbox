@@ -24,7 +24,9 @@ paths:
       summary: Onboard a new ApplicationPackage
       description: |
         Onboard an application package in manifest style (Kubernetes manifest like).
-        The onboarding process is asynchronous and returns immediately with a tracking ID.
+        The onboarding process is asynchronous and returns immediately with the application package object with a unique identifier in it.
+        The workload-supplier uses this API to give info about its Application Registry(Git Repo).
+        Note: There is no separate story for Application Registry management, hence we created this suite of APIs to let the WFM know where the app descriptions are hosted. 
       operationId: onboardAppPackage
       tags: [Application Packages]
       requestBody:
