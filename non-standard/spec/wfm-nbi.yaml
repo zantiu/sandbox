@@ -16,7 +16,7 @@ info:
     # url: TBD
 
 servers:
-  - url: http://localhost:8082/non-margo/wfm/api/v0
+  - url: http://localhost:8082/non-margo/wfm-nbi/api/v0
 
 paths:
   /app-packages:
@@ -705,7 +705,7 @@ components:
           type: integer
       required:
         - continue
-        - remainingCount
+        - remainingCount  
 
 security:
   - BearerAuth: []

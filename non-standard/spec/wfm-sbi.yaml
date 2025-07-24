@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: Device Management API
+  version: 1.0.0
+  description: API to manage devices using various authentication protocols including FIDO, PKI
+
+servers:
+  - url: http://localhost:8082/non-margo/wfm-sbi/api/v0
+
+paths:
+  /devices/onboard:
+    post:
+      summary: Initiate device onboarding
+      description: Start the onboarding process for a new device
+      operationId: onboardDevice
+      tags: [Device Onboarding]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceOnboardingRequest'
+            examples:
+              basic:
+                summary: Onboard a device using PKI
+                value:
+                  apiVersion: non-margo.org
+                  kind: Device
+                  metadata:
+                    annotations:
+                      "margo.org/device/manufacturer": "manufacturer-abcd"
+                      "margo.org/device/serialNumber": "1234567890"
+                    labels:
+                      "region": "us-east"
+                      "arch": "amd64"
+                      "deviceType": "mobile"
+                  spec:
+                    # manufacturer: "manufacturer-abcd" # is this a good idea?
+                    # serialNumber: "1234567890"
+                    protocol:
+                      type: PKI
+                      version: "1.0"
+                      parameters:
+                        certificateAuthority: "TestCA"
+                        keySize: 2048
+                        algorithm: RSA
+                        csr: "<base64-csr-with-the-public-key>"
+      responses:
+        '202':
+          description: Device onboarding request accepted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceOnboardingResponse'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - device already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /devices/{deviceId}/onboard/challenge:
+    post:
+      summary: Handle authentication challenge
+      description: Process authentication challenge for device onboarding
+      operationId: deviceChallenge
+      tags: [Device Onboarding]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthChallengeRequest'
+      responses:
+        '200':
+          description: Challenge processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthChallengeResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /devices/{deviceId}/onboard/complete:
+    post:
+      summary: Complete device onboarding
+      description: Finalize the onboarding process
+      operationId: completeDeviceOnboarding
+      tags: [Device Onboarding]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceOnboardingCompletionRequest'
+      responses:
+        '200':
+          description: Device onboarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceProfile'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /devices/{deviceId}/status:
+    get:
+      summary: Get device onboarding status
+      operationId: getDeviceStatus
+      tags: [Device Onboarding]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Device status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStatus'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ContextualInfo:
+      type: object
+      readOnly: true
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    DeviceOnboardingRequest:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          example: non-margo.org
+        kind:
+          type: string
+          example: DeviceOnboarding
+        metadata:
+          type: object
+          additionalProperties: true
+          properties:
+            name:
+              type: string
+            namespace:
+              type: string
+            labels:
+              type: object
+              additionalProperties: { type: string }
+            annotations:
+              type: object
+              additionalProperties: { type: string }
+        spec:
+          type: object
+          properties:
+            protocol:
+              $ref: '#/components/schemas/AuthProtocol'
+
+    Device:
+      type: object
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          example: non-margo.org
+        kind:
+          type: string
+          example: DeviceOnboarding
+        metadata:
+          type: object
+          additionalProperties: true
+          properties:
+            id:
+              type: string
+              readOnly: true
+              description: This field is generated by the server.
+            name:
+              type: string
+            namespace:
+              type: string
+            labels:
+              type: object
+              additionalProperties: { type: string }
+            annotations:
+              type: object
+              additionalProperties: { type: string }
+            creationTimestamp:
+              type: string
+              format: date-time
+              readOnly: true
+        spec:
+          type: object
+          properties:
+            protocol:
+              $ref: '#/components/schemas/AuthProtocol'
+        recentOperation:
+          $ref: '#/components/schemas/DeviceRecentOperation'
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+
+    DeviceStatus:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [ONBOARDED, DEBOARDED, BOOTING, ONLINE, OFFLINE, ERROR, UNDER_MAINTENANCE]
+          example: ONBOARDED
+          readOnly: true
+        contextualInfo:
+          $ref: '#/components/schemas/ContextualInfo'
+          readOnly: true
+        lastUpdateTime:
+          type: string
+          format: date-time
+          readOnly: true      
+
+    DeviceOperation:
+      type: string
+      enum: [ONBOARD, DEBOARD, START, SHUTDOWN, RESTART, UPDATE_FIRMWARE, RESET]
+    
+    DeviceOperationStatus:
+      type: string
+      enum: [PENDING, COMPLETED, FAILED, CANCELLED, REJECTED, TIMEOUT, SCHEDULED]
+
+    DeviceRecentOperation:
+      type: object
+      required: [op, status]
+      readOnly: true
+      properties:
+        op:
+          $ref: '#/components/schemas/DeviceOperation'
+        status:
+          $ref: '#/components/schemas/DeviceOperationStatus'
+        
+    AuthProtocol:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [FIDO, PKI] #[FIDO, FIDO2, PKI, OAUTH2, JWT]
+        version:
+          type: string
+          example: "2.1"
+        parameters:
+          oneOf:
+            - $ref: '#/components/schemas/PKIParameters'
+            - $ref: '#/components/schemas/FIDOParameters'
+            # - $ref: '#/components/schemas/FIDO2Parameters'
+            # - $ref: '#/components/schemas/OAuth2Parameters'
+            # - $ref: '#/components/schemas/JWTParameters'
+
+    PKIParameters:
+      type: object
+      properties:
+        certificateAuthority:
+          type: string
+        keySize:
+          type: integer
+          enum: [2048, 4096]
+        algorithm:
+          type: string
+          enum: [RSA, ECDSA]
+        csr:
+          type: string
+          format: byte
+
+    FIDOParameters:
+      type: object
+      properties:
+        appId:
+          type: string
+          format: uri
+        challenge:
+          type: string
+          format: byte
+        keyHandle:
+          type: string
+          format: byte
+
+    FIDO2Parameters:
+      type: object
+      properties:
+        rpId:
+          type: string
+        challenge:
+          type: string
+          format: byte
+        userVerification:
+          type: string
+          enum: [required, preferred, discouraged]
+        authenticatorSelection:
+          type: object
+          properties:
+            authenticatorAttachment:
+              type: string
+              enum: [platform, cross-platform]
+            userVerification:
+              type: string
+              enum: [required, preferred, discouraged]
+
+    OAuth2Parameters:
+      type: object
+      properties:
+        clientId:
+          type: string
+        scope:
+          type: string
+        redirectUri:
+          type: string
+          format: uri
+
+    JWTParameters:
+      type: object
+      properties:
+        token:
+          type: string
+        issuer:
+          type: string
+        audience:
+          type: string
+
+    DeviceOnboardingResponse:
+      type: object
+      required: [sessionId, deviceId, status]
+      properties:
+        sessionId:
+          type: string
+        deviceId:
+          type: string
+        status:
+          type: string
+          enum: [initiated, challenge_required, onboarded]
+        nextStep:
+          $ref: '#/components/schemas/OnboardingNextStep'
+        expiresAt:
+          type: string
+          format: date-time
+
+    OnboardingNextStep:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [authenticate, complete, wait]
+        endpoint:
+          type: string
+          format: uri
+        parameters:
+          type: object
+          additionalProperties: true
+
+    AuthChallengeRequest:
+      type: object
+      required: [sessionId, response]
+      properties:
+        sessionId:
+          type: string
+        response:
+          oneOf:
+            - $ref: '#/components/schemas/PKIResponse'
+            - $ref: '#/components/schemas/FIDOResponse'
+            # - $ref: '#/components/schemas/FIDO2Response'
+
+    PKIResponse:
+      type: object
+      properties:
+        certificate:
+          type: string
+          format: byte
+        privateKeyProof:
+          type: string
+          format: byte
+
+    FIDOResponse:
+      type: object
+      properties:
+        signature:
+          type: string
+          format: byte
+        clientData:
+          type: string
+          format: byte
+        applicationParameter:
+          type: string
+          format: byte
+
+    FIDO2Response:
+      type: object
+      properties:
+        authenticatorData:
+          type: string
+          format: byte
+        clientDataJSON:
+          type: string
+          format: byte
+        signature:
+          type: string
+          format: byte
+        userHandle:
+          type: string
+          format: byte
+
+    AuthChallengeResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        status:
+          type: string
+          enum: [passed, failed, retry_required]
+        nextStep:
+          $ref: '#/components/schemas/OnboardingNextStep'
+
+    DeviceOnboardingCompletionRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+        deviceName:
+          type: string
+        policies:
+          type: array
+          items:
+            type: string
+
+    DeviceProfile:
+      type: object
+      properties:
+        deviceId:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        onboardedAt:
+          type: string
+          format: date-time
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/Credential'
+        policies:
+          type: array
+          items:
+            type: string
+
+    Credential:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [FIDO, PKI] #[FIDO, FIDO2, PKI, OAUTH2]
+        status:
+          type: string
+          enum: [active, revoked, expired]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    APIResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [requestId, timestamp]
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            errorCode:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          required: [errorCode]
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Device Onboarding
+    description: Operations for onboarding and managing devices

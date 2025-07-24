@@ -3,7 +3,7 @@
 // This package offers a high-level interface for managing application packages through
 // the Margo Northbound service, including operations for onboarding, listing, retrieving,
 // and deleting application packages.
-package client
+package wfm
 
 import (
 	"bytes"
@@ -13,13 +13,17 @@ import (
 	"log"
 	"time"
 
-	northboundAPIClient "github.com/margo/dev-repo/non-standard/generatedCode/client"
-	northboundAPIModels "github.com/margo/dev-repo/non-standard/generatedCode/models"
+	nonStdWfmNbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
+	nonStdWfmSbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
+	"github.com/margo/dev-repo/non-standard/pkg/validator"
 )
 
 const (
 	// northboundBaseURL is the default base URL path for the Northbound API
-	northboundBaseURL = "margo/northbound/v1"
+	northboundBaseURL = "margo/nbi/v1"
+
+	// southboundBaseURL is the default base URL path for the Northbound API
+	southboundBaseURL = "margo/sbi/v1"
 
 	// Default timeout for API requests
 	defaultTimeout = 30 * time.Second
@@ -27,42 +31,43 @@ const (
 
 // Type aliases for better API ergonomics
 type (
-	AppPkgOnboardingReq  = northboundAPIModels.ApplicationPackage
-	AppPkgOnboardingResp = northboundAPIModels.ApplicationPackage
-	AppPkgSummary        = northboundAPIModels.ApplicationPackage
-	ListAppPkgsParams    = northboundAPIModels.ListAppPackagesParams
-	ListAppPkgsResp      = northboundAPIModels.ApplicationPackageList
+	AppPkgOnboardingReq  = nonStdWfmNbi.ApplicationPackage
+	AppPkgOnboardingResp = nonStdWfmNbi.ApplicationPackage
+	AppPkgSummary        = nonStdWfmNbi.ApplicationPackage
+	ListAppPkgsParams    = nonStdWfmNbi.ListAppPackagesParams
+	ListAppPkgsResp      = nonStdWfmNbi.ApplicationPackageList
 )
 
-// NorthboundCli provides a client interface for the Margo Northbound API.
+// WFMCli provides a client interface for the Margo Northbound API.
 //
 // This client handles HTTP communication with the Northbound service and provides
 // high-level methods for application package management operations.
-type NorthboundCli struct {
+type WFMCli struct {
 	serverAddress string
-	baseURL       string
+	nbiBaseURL    string
+	sbiBaseURL    string
 	timeout       time.Duration
 	logger        *log.Logger
 }
 
-// NorthboundCliOption defines functional options for configuring the client
-type NorthboundCliOption func(*NorthboundCli)
+// WFMCliOption defines functional options for configuring the client
+type WFMCliOption func(*WFMCli)
 
 // WithTimeout sets a custom timeout for API requests
-func WithTimeout(timeout time.Duration) NorthboundCliOption {
-	return func(cli *NorthboundCli) {
+func WithTimeout(timeout time.Duration) WFMCliOption {
+	return func(cli *WFMCli) {
 		cli.timeout = timeout
 	}
 }
 
 // WithLogger sets a custom logger for the client
-func WithLogger(logger *log.Logger) NorthboundCliOption {
-	return func(cli *NorthboundCli) {
+func WithLogger(logger *log.Logger) WFMCliOption {
+	return func(cli *WFMCli) {
 		cli.logger = logger
 	}
 }
 
-// NewNorthboundCli creates a new Northbound API client.
+// NewWFMCli creates a new Northbound API client.
 //
 // Parameters:
 //   - host: The hostname or IP address of the Northbound service
@@ -71,22 +76,28 @@ func WithLogger(logger *log.Logger) NorthboundCliOption {
 //   - opts: Optional configuration functions
 //
 // Returns:
-//   - *NorthboundCli: A configured client instance
+//   - *WFMCli: A configured client instance
 //
 // Example:
 //
-//	cli := NewNorthboundCli("localhost", 8080, nil,
+//	cli := NewWFMCli("localhost", 8080, nil,
 //	    WithTimeout(60*time.Second),
 //	    WithLogger(customLogger))
-func NewNorthboundCli(host string, port uint16, basePath *string, opts ...NorthboundCliOption) *NorthboundCli {
-	baseURLPath := northboundBaseURL
-	if basePath != nil {
-		baseURLPath = *basePath
+func NewWFMCli(host string, port uint16, nbiBasePath, sbiBasePath *string, opts ...WFMCliOption) *WFMCli {
+	nbiBaseURLPath := northboundBaseURL
+	if nbiBasePath != nil {
+		nbiBaseURLPath = *nbiBasePath
 	}
 
-	cli := &NorthboundCli{
+	sbiBaseURLPath := southboundBaseURL
+	if sbiBasePath != nil {
+		sbiBaseURLPath = *nbiBasePath
+	}
+
+	cli := &WFMCli{
 		serverAddress: fmt.Sprintf("%s:%d", host, port),
-		baseURL:       fmt.Sprintf("http://%s:%d/%s", host, port, baseURLPath),
+		nbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, nbiBaseURLPath),
+		sbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, sbiBaseURLPath),
 		timeout:       defaultTimeout,
 		logger:        log.Default(),
 	}
@@ -100,8 +111,17 @@ func NewNorthboundCli(host string, port uint16, basePath *string, opts ...Northb
 }
 
 // createClient creates a new API client with proper error handling
-func (cli *NorthboundCli) createClient() (*northboundAPIClient.Client, error) {
-	client, err := northboundAPIClient.NewClient(cli.serverAddress, northboundAPIClient.WithBaseURL(cli.baseURL))
+func (cli *WFMCli) createNonStdNbiClient() (*nonStdWfmNbi.Client, error) {
+	client, err := nonStdWfmNbi.NewClient(cli.serverAddress, nonStdWfmNbi.WithBaseURL(cli.nbiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+	return client, nil
+}
+
+// createClient creates a new API client with proper error handling
+func (cli *WFMCli) createNonStdSbiClient() (*nonStdWfmSbi.Client, error) {
+	client, err := nonStdWfmSbi.NewClient(cli.serverAddress, nonStdWfmSbi.WithBaseURL(cli.sbiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API client: %w", err)
 	}
@@ -109,12 +129,12 @@ func (cli *NorthboundCli) createClient() (*northboundAPIClient.Client, error) {
 }
 
 // createContext creates a context with timeout
-func (cli *NorthboundCli) createContext() (context.Context, context.CancelFunc) {
+func (cli *WFMCli) createContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), cli.timeout)
 }
 
 // handleErrorResponse processes error responses consistently
-func (cli *NorthboundCli) handleErrorResponse(errBody []byte, statusCode int, operation string) error {
+func (cli *WFMCli) handleErrorResponse(errBody []byte, statusCode int, operation string) error {
 	// Read response body safely
 	body, err := io.ReadAll(bytes.NewReader(errBody))
 	if err != nil {
@@ -146,7 +166,7 @@ func (cli *NorthboundCli) handleErrorResponse(errBody []byte, statusCode int, op
 //	    Source: map[string]interface{}{"url": "https://github.com/user/app.git"},
 //	}
 //	resp, err := cli.OnboardAppPkg(req)
-func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnboardingResp, error) {
+func (cli *WFMCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnboardingResp, error) {
 	// Validate required parameters
 	if params.Metadata.Name == "" {
 		return nil, fmt.Errorf("package name cannot be empty")
@@ -156,7 +176,7 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	}
 
 	// Create client and context
-	client, err := cli.createClient()
+	client, err := cli.createNonStdNbiClient()
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +192,7 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 	defer resp.Body.Close()
 
 	// Parse response
-	pkgResp, err := northboundAPIClient.ParseOnboardAppPackageResponse(resp)
+	pkgResp, err := nonStdWfmNbi.ParseOnboardAppPackageResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse onboard app package response: %s", err.Error())
 	}
@@ -198,12 +218,12 @@ func (cli *NorthboundCli) OnboardAppPkg(params AppPkgOnboardingReq) (*AppPkgOnbo
 // Returns:
 //   - *AppPkgSummary: The package summary with details
 //   - error: An error if the package is not found or cannot be retrieved
-func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
+func (cli *WFMCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 	if pkgId == "" {
 		return nil, fmt.Errorf("package ID cannot be empty")
 	}
 
-	client, err := cli.createClient()
+	client, err := cli.createNonStdNbiClient()
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +237,7 @@ func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseGetAppPackageResponse(resp)
+	pkgResp, err := nonStdWfmNbi.ParseGetAppPackageResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse get app package response: %w", err)
 	}
@@ -239,8 +259,8 @@ func (cli *NorthboundCli) GetAppPkg(pkgId string) (*AppPkgSummary, error) {
 // Returns:
 //   - *ListAppPkgsResp: The list response containing packages and metadata
 //   - error: An error if the request cannot be processed
-func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsResp, error) {
-	client, err := cli.createClient()
+func (cli *WFMCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsResp, error) {
+	client, err := cli.createNonStdNbiClient()
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +274,7 @@ func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsRes
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseListAppPackagesResponse(resp)
+	pkgResp, err := nonStdWfmNbi.ParseListAppPackagesResponse(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse list app packages response: %w", err)
 	}
@@ -279,12 +299,12 @@ func (cli *NorthboundCli) ListAppPkgs(params ListAppPkgsParams) (*ListAppPkgsRes
 //
 // Returns:
 //   - error: An error if the package cannot be deleted
-func (cli *NorthboundCli) DeleteAppPkg(pkgId string) error {
+func (cli *WFMCli) DeleteAppPkg(pkgId string) error {
 	if pkgId == "" {
 		return fmt.Errorf("package ID cannot be empty")
 	}
 
-	client, err := cli.createClient()
+	client, err := cli.createNonStdNbiClient()
 	if err != nil {
 		return err
 	}
@@ -292,13 +312,13 @@ func (cli *NorthboundCli) DeleteAppPkg(pkgId string) error {
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.DeleteAppPackage(ctx, pkgId, &northboundAPIModels.DeleteAppPackageParams{})
+	resp, err := client.DeleteAppPackage(ctx, pkgId, &nonStdWfmNbi.DeleteAppPackageParams{})
 	if err != nil {
 		return fmt.Errorf("delete app package request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	pkgResp, err := northboundAPIClient.ParseDeleteAppPackageResponse(resp)
+	pkgResp, err := nonStdWfmNbi.ParseDeleteAppPackageResponse(resp)
 	if err != nil {
 		return fmt.Errorf("failed to parse delete app package response: %w", err)
 	}
@@ -309,5 +329,113 @@ func (cli *NorthboundCli) DeleteAppPkg(pkgId string) error {
 		return nil
 	default:
 		return cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "delete app package")
+	}
+}
+
+// DeviceOnboard sends a request to onboard a device.
+//
+// Parameters:
+//   - deviceId: The unique identifier of the device
+//   - error: any error that occured during this process
+//
+// Returns:
+//   - error: An error if the package cannot be deleted
+func (cli *WFMCli) DeviceOnboard(req *nonStdWfmSbi.DeviceOnboardingRequest) (string, error) {
+	if err := validator.ValidateDeviceOnboardingRequest(req); err != nil {
+		return "", err
+	}
+
+	client, err := cli.createNonStdSbiClient()
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	resp, err := client.OnboardDevice(ctx, *req, nil)
+	if err != nil {
+		return "", fmt.Errorf("onboard device error occured: %w", err)
+	}
+	defer resp.Body.Close()
+
+	onboardDeviceResp, err := nonStdWfmSbi.ParseOnboardDeviceResponse(resp)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse delete onboard device response: %w", err)
+	}
+
+	switch onboardDeviceResp.StatusCode() {
+	case 200, 202:
+		cli.logger.Printf("Successfully sent the request to onboard the device: %s", onboardDeviceResp.JSON202.DeviceId)
+
+		if onboardDeviceResp.JSON202.NextStep != nil {
+			switch *onboardDeviceResp.JSON202.NextStep.Action {
+			case nonStdWfmSbi.Authenticate:
+				// onAuthenticate()
+			case nonStdWfmSbi.Complete:
+				// onCompletion()
+			case nonStdWfmSbi.Wait:
+				// wait for some time
+				// onWait()
+			}
+		}
+
+		return onboardDeviceResp.JSON202.DeviceId, nil
+	default:
+		return "", cli.handleErrorResponse(onboardDeviceResp.Body, onboardDeviceResp.StatusCode(), "onboard device")
+	}
+}
+
+// DeviceDeboard sends a request to device a device.
+//
+// Parameters:
+//   - deviceId: The unique identifier of the device
+//   - error: any error that occured during this process
+//
+// Returns:
+//   - error: An error if the package cannot be deleted
+func (cli *WFMCli) DeviceDeboard(req *nonStdWfmSbi.DeviceDeboardingRequest) (string, error) {
+	if err := validator.ValidateDeviceDeboardingRequest(req); err != nil {
+		return "", err
+	}
+
+	client, err := cli.createNonStdSbiClient()
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	resp, err := client.OnboardDevice(ctx, *req, nil)
+	if err != nil {
+		return "", fmt.Errorf("onboard device error occured: %w", err)
+	}
+	defer resp.Body.Close()
+
+	onboardDeviceResp, err := nonStdWfmSbi.ParseOnboardDeviceResponse(resp)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse delete onboard device response: %w", err)
+	}
+
+	switch onboardDeviceResp.StatusCode() {
+	case 200, 202:
+		cli.logger.Printf("Successfully sent the request to onboard the device: %s", onboardDeviceResp.JSON202.DeviceId)
+
+		if onboardDeviceResp.JSON202.NextStep != nil {
+			switch *onboardDeviceResp.JSON202.NextStep.Action {
+			case nonStdWfmSbi.Authenticate:
+				// onAuthenticate()
+			case nonStdWfmSbi.Complete:
+				// onCompletion()
+			case nonStdWfmSbi.Wait:
+				// wait for some time
+				// onWait()
+			}
+		}
+
+		return onboardDeviceResp.JSON202.DeviceId, nil
+	default:
+		return "", cli.handleErrorResponse(onboardDeviceResp.Body, onboardDeviceResp.StatusCode(), "onboard device")
 	}
 }

@@ -3,9 +3,11 @@
 set -e
 
 # Configuration
-SPEC_FILE=("spec/API-DesiredState.yaml")
+SEEK_STATE_SPEC_FILE=("spec/seek-state.yaml")
+POKE_DEVICE_SPEC_FILE=("spec/poke-device.yaml")
 OUTPUT_DIR="./generatedCode"
-PACKAGE_NAME="github.com/margo/dev-repo/standard/generatedCode"
+SEEK_STATE_PACKAGE_NAME="github.com/margo/dev-repo/standard/generatedCode/wfm"
+POKE_DEVICE_PACKAGE_NAME="github.com/margo/dev-repo/standard/generatedCode/device"
 
 # Colors
 RED='\033[0;31m'
@@ -29,12 +31,19 @@ check_prerequisites() {
     
     log_success "Go is available: $(go version)"
     
-    if [ ! -f "$SPEC_FILE" ]; then
-        log_error "OpenAPI spec file '$SPEC_FILE' not found!"
+    if [ ! -f "$SEEK_STATE_SPEC_FILE" ]; then
+        log_error "OpenAPI spec file '$SEEK_STATE_SPEC_FILE' not found!"
         exit 1
     fi
     
-    log_success "OpenAPI spec file found: $SPEC_FILE"
+    log_success "OpenAPI spec file found: $SEEK_STATE_SPEC_FILE"
+
+    if [ ! -f "$POKE_DEVICE_SPEC_FILE" ]; then
+        log_error "OpenAPI spec file '$POKE_DEVICE_SPEC_FILE' not found!"
+        exit 1
+    fi
+
+    log_success "OpenAPI spec file found: $POKE_DEVICE_SPEC_FILE"
 }
 
 install_tools() {
@@ -49,26 +58,35 @@ generate_code() {
     log_info "Generating Go code..."
     
     # Clean and create output directory
-    rm -rf "$OUTPUT_DIR"/{models,client,go.mod,go.sum}
-    mkdir -p "$OUTPUT_DIR"/{models,client}
-    
+    rm -rf "$OUTPUT_DIR"/{device,wfm}
+    mkdir -p "$OUTPUT_DIR"/{device,wfm}/{nbi,sbi}
+
     # Generate models first
     log_info "Generating models..."
-    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/desiredState.go"
+    oapi-codegen -generate types,skip-prune -package sbi "$SEEK_STATE_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/models.go"
     
     # Generate client
     log_info "Generating client..."
-    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/desiredState.go"
+    oapi-codegen -generate client -package sbi "$SEEK_STATE_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/client.go"
+
+
+    # Generate models first
+    log_info "Generating models..."
+    oapi-codegen -generate types,skip-prune -package nbi "$POKE_DEVICE_SPEC_FILE" > "$OUTPUT_DIR/device/nbi/models.go"
+    
+    # Generate client
+    log_info "Generating client..."
+    oapi-codegen -generate client -package nbi "$POKE_DEVICE_SPEC_FILE" > "$OUTPUT_DIR/device/nbi/client.go"
     
     # Generate server (optional)
     # log_info "Generating server..."
-    # oapi-codegen -generate server -package server "$SPEC_FILE" > "$OUTPUT_DIR/server/server.go"
+    # oapi-codegen -generate server -package server "$SEEK_STATE_SPEC_FILE" > "$OUTPUT_DIR/server/server.go"
     
     # Fix imports after generation
-    fix_imports_simple
+    # fix_imports_simple
     
     # Initialize modules
-    # (cd "$OUTPUT_DIR" && go mod init "$PACKAGE_NAME" && go mod tidy)
+    # (cd "$OUTPUT_DIR" && go mod init "$SEEK_STATE_PACKAGE_NAME" && go mod tidy)
     
     log_success "Code generation completed!"
 }
@@ -78,19 +96,29 @@ fix_imports_simple() {
     log_info "Fixing imports (simple approach)..."
     
     # For client
-    if [ -f "$OUTPUT_DIR/client/desiredState.go" ]; then
+    if [ -f "$OUTPUT_DIR/sbi/seekState.go" ]; then
         # Check if import is missing
-        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/desiredState.go"; then
+        if ! grep -q "\"$SEEK_STATE_PACKAGE_NAME/models\"" "$OUTPUT_DIR/sbi/seekState.go"; then
             # Add import after package line
-            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/desiredState.go"
+            sed -i '/^package client$/a\\nimport . "'"$SEEK_STATE_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/sbi/seekState.go"
+            log_success "Added import to client"
+        fi
+    fi
+
+    # For client
+    if [ -f "$OUTPUT_DIR/nbi/pokeDevice.go" ]; then
+        # Check if import is missing
+        if ! grep -q "\"$POKE_DEVICE_PACKAGE_NAME/models\"" "$OUTPUT_DIR/nbi/pokeDevice.go"; then
+            # Add import after package line
+            sed -i '/^package client$/a\\nimport . "'"$POKE_DEVICE_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/nbi/pokeDevice.go"
             log_success "Added import to client"
         fi
     fi
     
     # For server  
     # if [ -f "$OUTPUT_DIR/server/server.go" ]; then
-    #     if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/server/server.go"; then
-    #         sed -i '/^package server$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/server/server.go"
+    #     if ! grep -q "\"$SEEK_STATE_PACKAGE_NAME/models\"" "$OUTPUT_DIR/server/server.go"; then
+    #         sed -i '/^package server$/a\\nimport . "'"$SEEK_STATE_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/server/server.go"
     #         log_success "Added import to server"
     #     fi
     # fi

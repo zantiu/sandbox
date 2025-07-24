@@ -22,69 +22,12 @@ externalDocs:
 servers:
   - url: https://margo.swagger.io/api/v0
 tags:
-  - name: device
-    description: A MARGO compliant device
-    externalDocs:
-      description: See Documentation
-      url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
   - name: wfm
     description: A MARGO Compliant Workload Fleet Manager
     externalDocs:
       description: See Documentation
       url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
-  - name: repo
-    description: A OCI registry or data-store as defined under MARGO
-    externalDocs:
-      description: See Documentation
-      url: https://specification.margo.org/margo-overview/technical-lexicon/#technical-terms
 paths:
-  /device/poke:
-    post:
-      tags:
-        - device
-      summary: WFM sends this API to the Device to initiate a state request or a rmote procedure.
-      description: WFM sends this API to the Device to initiate a state request or a rmote procedure.
-      operationId: poke
-      parameters:
-        - name: deviceId
-          in: query
-          description: Device Identifier
-          required: true
-          explode: true
-          schema:
-            type: string
-            example: Marseilles-Press-ProdCell-15
-        - name: rpcId
-          in: query
-          description: In case the WFM wanted to initiate a Remote Procedure
-          required: false
-          explode: true
-          schema:
-            type: string
-            example: 
-              - proc-112
-              - somePrivateProcedure
-              - 12345
-      responses:
-        '200':
-          description: Successful operation, Device will send a Current State update
-        '400':
-          description: Invalid Device ID supplied
-        '404':
-          description: Device not found
-        '422':
-          description: Validation exception
-        default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-      security:
-        - margo_auth:
-            - write:state
-            - read:state                
   /wfm/state:
     post:
       tags:

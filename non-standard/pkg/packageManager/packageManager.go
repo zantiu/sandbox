@@ -615,3 +615,7 @@ func (pm *PackageManager) PackageToTarball(pkg *models.AppPkg, outputPath string
 
 	return nil
 }
+
+func (pm *PackageManager) checkPkgUpdates(pkg *models.AppPkg) error {
+	return nil
+}

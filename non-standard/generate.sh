@@ -3,9 +3,11 @@
 set -e
 
 # Configuration
-SPEC_FILE=("spec/wfm-nbi.yaml")
+WFM_NBI_SPEC_FILE=("spec/wfm-nbi.yaml")
+WFM_SBI_SPEC_FILE=("spec/wfm-sbi.yaml")
 OUTPUT_DIR="./generatedCode"
-PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode"
+WFM_NBI_PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
+WFM_SBI_PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
 
 # Colors
 RED='\033[0;31m'
@@ -29,12 +31,19 @@ check_prerequisites() {
     
     log_success "Go is available: $(go version)"
     
-    if [ ! -f "$SPEC_FILE" ]; then
-        log_error "OpenAPI spec file '$SPEC_FILE' not found!"
+    if [ ! -f "$WFM_NBI_SPEC_FILE" ]; then
+        log_error "OpenAPI spec file '$WFM_NBI_SPEC_FILE' not found!"
         exit 1
     fi
     
-    log_success "OpenAPI spec file found: $SPEC_FILE"
+    log_success "OpenAPI spec file found: $WFM_NBI_SPEC_FILE"
+
+    if [ ! -f "$WFM_SBI_SPEC_FILE" ]; then
+        log_error "OpenAPI spec file '$WFM_SBI_SPEC_FILE' not found!"
+        exit 1
+    fi
+    
+    log_success "OpenAPI spec file found: $WFM_SBI_SPEC_FILE"
 }
 
 install_tools() {
@@ -49,52 +58,80 @@ generate_code() {
     log_info "Generating Go code..."
     
     # Clean and create output directory
-    rm -rf "$OUTPUT_DIR"/{models,client,go.mod,go.sum}
-    mkdir -p "$OUTPUT_DIR"/{models,client}
+    rm -rf "$OUTPUT_DIR"/{wfm,device}
+    mkdir -p "$OUTPUT_DIR"/{wfm,device}/{sbi,nbi}
     
     # Generate models first
     log_info "Generating models..."
-    oapi-codegen -generate types,skip-prune -package models "$SPEC_FILE" > "$OUTPUT_DIR/models/wfmNbiModels.go"
+    oapi-codegen -generate types,skip-prune -package nbi "$WFM_NBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/nbi/models.go"
     
     # Generate client
     log_info "Generating client..."
-    oapi-codegen -generate client -package client "$SPEC_FILE" > "$OUTPUT_DIR/client/wfmNbiClient.go"
+    oapi-codegen -generate client -package nbi "$WFM_NBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/nbi/client.go"
+
+    # Generate models first
+    log_info "Generating models..."
+    oapi-codegen -generate types,skip-prune -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/models.go"
+    
+    # Generate client
+    log_info "Generating client..."
+    oapi-codegen -generate client -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/client.go"
     
     # Generate server (optional)
     # log_info "Generating server..."
-    # oapi-codegen -generate server -package server "$SPEC_FILE" > "$OUTPUT_DIR/server/server.go"
+    # oapi-codegen -generate server -package server "$WFM_NBI_SPEC_FILE" > "$OUTPUT_DIR/server/server.go"
     
     # Fix imports after generation
-    fix_imports_simple
+    # fix_imports_simple
     
     # Initialize modules
-    # (cd "$OUTPUT_DIR" && go mod init "$PACKAGE_NAME" && go mod tidy)
+    # (cd "$OUTPUT_DIR" && go mod init "$WFM_NBI_PACKAGE_NAME" && go mod tidy)
     
     log_success "Code generation completed!"
 }
 
 # Alternative simpler approach for fixing imports
-fix_imports_simple() {
-    log_info "Fixing imports (simple approach)..."
+# fix_imports_simple() {
+#     log_info "Fixing imports (simple approach)..."
     
-    # For client
-    if [ -f "$OUTPUT_DIR/client/wfmNbiClient.go" ]; then
-        # Check if import is missing
-        if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/wfmNbiClient.go"; then
-            # Add import after package line
-            sed -i '/^package client$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/wfmNbiClient.go"
-            log_success "Added import to client"
-        fi
-    fi
+#     # For client
+#     if [ -f "$OUTPUT_DIR/wfm/sbi/wfmNbiClient.go" ]; then
+#         # Check if import is missing
+#         if ! grep -q "\"$WFM_NBI_PACKAGE_NAME/models\"" "$OUTPUT_DIR/wfm/sbi/wfmNbiClient.go"; then
+#             # Add import after package line
+#             sed -i '/^package client$/a\\nimport . "'"$WFM_NBI_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/wfm/sbi/wfmNbiClient.go"
+#             log_success "Added import to client"
+#         fi
+#     fi
+
+#     # For client
+#     if [ -f "$OUTPUT_DIR/client/wfmNbiClient.go" ]; then
+#         # Check if import is missing
+#         if ! grep -q "\"$WFM_NBI_PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/wfmNbiClient.go"; then
+#             # Add import after package line
+#             sed -i '/^package client$/a\\nimport . "'"$WFM_NBI_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/wfmNbiClient.go"
+#             log_success "Added import to client"
+#         fi
+#     fi
+
+#     # For client
+#     if [ -f "$OUTPUT_DIR/client/wfmNbiClient.go" ]; then
+#         # Check if import is missing
+#         if ! grep -q "\"$WFM_NBI_PACKAGE_NAME/models\"" "$OUTPUT_DIR/client/wfmNbiClient.go"; then
+#             # Add import after package line
+#             sed -i '/^package client$/a\\nimport . "'"$WFM_NBI_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/client/wfmNbiClient.go"
+#             log_success "Added import to client"
+#         fi
+#     fi
     
-    # For server  
-    # if [ -f "$OUTPUT_DIR/server/server.go" ]; then
-    #     if ! grep -q "\"$PACKAGE_NAME/models\"" "$OUTPUT_DIR/server/server.go"; then
-    #         sed -i '/^package server$/a\\nimport . "'"$PACKAGE_NAME"'/models"' "$OUTPUT_DIR/server/server.go"
-    #         log_success "Added import to server"
-    #     fi
-    # fi
-}
+#     # For server  
+#     # if [ -f "$OUTPUT_DIR/server/server.go" ]; then
+#     #     if ! grep -q "\"$WFM_NBI_PACKAGE_NAME/models\"" "$OUTPUT_DIR/server/server.go"; then
+#     #         sed -i '/^package server$/a\\nimport . "'"$WFM_NBI_PACKAGE_NAME"'/models"' "$OUTPUT_DIR/server/server.go"
+#     #         log_success "Added import to server"
+#     #     fi
+#     # fi
+# }
 
 main() {
     check_prerequisites
