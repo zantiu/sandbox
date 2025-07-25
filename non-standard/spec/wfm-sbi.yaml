@@ -8,12 +8,12 @@ servers:
   - url: http://localhost:8082/non-margo/wfm-sbi/api/v0
 
 paths:
-  /devices/onboard:
+  /devices:
     post:
       summary: Initiate device onboarding
       description: Start the onboarding process for a new device
       operationId: onboardDevice
-      tags: [Device Onboarding]
+      tags: [Device Management]
       requestBody:
         required: true
         content:
@@ -71,12 +71,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /devices/{deviceId}:
+    delete:
+      summary: Initiate device deboarding
+      description: Start the deboarding process for the device
+      operationId: deboardDevice
+      tags: [Device Management]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Device deboarding request accepted successfully, please poll the status api to know if it has been removed.
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - device is in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /devices/{deviceId}/onboard/challenge:
     post:
       summary: Handle authentication challenge
       description: Process authentication challenge for device onboarding
       operationId: deviceChallenge
-      tags: [Device Onboarding]
+      tags: [Device Management]
       parameters:
         - name: deviceId
           in: path
@@ -113,7 +146,7 @@ paths:
       summary: Complete device onboarding
       description: Finalize the onboarding process
       operationId: completeDeviceOnboarding
-      tags: [Device Onboarding]
+      tags: [Device Management]
       parameters:
         - name: deviceId
           in: path
@@ -149,7 +182,7 @@ paths:
     get:
       summary: Get device onboarding status
       operationId: getDeviceStatus
-      tags: [Device Onboarding]
+      tags: [Device Management]
       parameters:
         - name: deviceId
           in: path
@@ -216,6 +249,19 @@ components:
             protocol:
               $ref: '#/components/schemas/AuthProtocol'
 
+    DeviceCapability:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    DeviceCapabilities:
+      type: array
+      items:
+        $ref: '#/components/schemas/DeviceCapability'
+
     Device:
       type: object
       required: [apiVersion, kind, metadata, spec]
@@ -251,8 +297,10 @@ components:
         spec:
           type: object
           properties:
-            protocol:
-              $ref: '#/components/schemas/AuthProtocol'
+            capabilities:
+              type: object
+              additionalProperties: {type: object}
+            # challenge:
         recentOperation:
           $ref: '#/components/schemas/DeviceRecentOperation'
         status:

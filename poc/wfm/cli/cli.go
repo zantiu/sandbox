@@ -13,9 +13,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/kr/pretty"
 	nonStdWfmNbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
 	nonStdWfmSbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
 	"github.com/margo/dev-repo/non-standard/pkg/validator"
+	stdWfmSbi "github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
 )
 
 const (
@@ -24,6 +26,9 @@ const (
 
 	// southboundBaseURL is the default base URL path for the Northbound API
 	southboundBaseURL = "margo/sbi/v1"
+
+	// desiredStateBaseURL is the default base URL path for the DesiredState API
+	desiredStateBaseURL = "margo/sbi/v1"
 
 	// Default timeout for API requests
 	defaultTimeout = 30 * time.Second
@@ -394,48 +399,94 @@ func (cli *WFMCli) DeviceOnboard(req *nonStdWfmSbi.DeviceOnboardingRequest) (str
 //
 // Returns:
 //   - error: An error if the package cannot be deleted
-func (cli *WFMCli) DeviceDeboard(req *nonStdWfmSbi.DeviceDeboardingRequest) (string, error) {
-	if err := validator.ValidateDeviceDeboardingRequest(req); err != nil {
-		return "", err
-	}
+func (cli *WFMCli) DeviceDeboard(deviceId string, certPem []byte) error {
+	// check status of the device
 
 	client, err := cli.createNonStdSbiClient()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.OnboardDevice(ctx, *req, nil)
+	resp, err := client.DeboardDevice(ctx, deviceId, nil)
 	if err != nil {
-		return "", fmt.Errorf("onboard device error occured: %w", err)
+		return fmt.Errorf("deboard device error occured: %w", err)
 	}
 	defer resp.Body.Close()
 
-	onboardDeviceResp, err := nonStdWfmSbi.ParseOnboardDeviceResponse(resp)
+	deboardDeviceResp, err := nonStdWfmSbi.ParseDeboardDeviceResponse(resp)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse delete onboard device response: %w", err)
+		return fmt.Errorf("failed to parse delete deboard device response: %w", err)
 	}
 
-	switch onboardDeviceResp.StatusCode() {
+	switch deboardDeviceResp.StatusCode() {
 	case 200, 202:
-		cli.logger.Printf("Successfully sent the request to onboard the device: %s", onboardDeviceResp.JSON202.DeviceId)
-
-		if onboardDeviceResp.JSON202.NextStep != nil {
-			switch *onboardDeviceResp.JSON202.NextStep.Action {
-			case nonStdWfmSbi.Authenticate:
-				// onAuthenticate()
-			case nonStdWfmSbi.Complete:
-				// onCompletion()
-			case nonStdWfmSbi.Wait:
-				// wait for some time
-				// onWait()
-			}
-		}
-
-		return onboardDeviceResp.JSON202.DeviceId, nil
+		cli.logger.Printf("Successfully sent the request to deboard the device")
+		return nil
 	default:
-		return "", cli.handleErrorResponse(onboardDeviceResp.Body, onboardDeviceResp.StatusCode(), "onboard device")
+		return cli.handleErrorResponse(deboardDeviceResp.Body, deboardDeviceResp.StatusCode(), "deboard device")
+	}
+}
+
+// Package client provides a CLI client for interacting with the Margo DesiredState API.
+//
+// This package offers a high-level interface for managing application packages through
+// the Margo DesiredState service, including operations for onboarding, listing, retrieving,
+// and deleting application packages.
+
+// Type aliases for better API ergonomics
+type (
+	SyncAppStateReq  = stdWfmSbi.StateJSONRequestBody
+	SyncAppStateResp = stdWfmSbi.DesiredAppStates
+)
+
+// createStdSBIClient creates a new API client with proper error handling
+func (cli *WFMCli) createStdSBIClient() (*stdWfmSbi.Client, error) {
+	client, err := stdWfmSbi.NewClient(cli.serverAddress, stdWfmSbi.WithBaseURL(cli.sbiBaseURL))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+	return client, nil
+}
+
+func (cli *WFMCli) PollAppState(deviceId string, params SyncAppStateReq) (*SyncAppStateResp, error) {
+	// Create client and context
+	client, err := cli.createStdSBIClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	// Make API request
+	resp, err := client.State(ctx,
+		&stdWfmSbi.StateParams{
+			DeviceId: &deviceId,
+		}, params, nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("poll app state request failed: %s", err.Error())
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	desiredStateResp, err := stdWfmSbi.ParseStateResponse(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse app state response: %s", err.Error())
+	}
+
+	// Handle response based on status code
+	switch desiredStateResp.StatusCode() {
+	case 200, 202:
+		cli.logger.Printf("Received desired state api response: %s", pretty.Sprint(desiredStateResp))
+		if desiredStateResp.JSON200 != nil {
+			return desiredStateResp.JSON200, nil
+		}
+		return nil, nil
+	default:
+		return nil, cli.handleErrorResponse(desiredStateResp.Body, desiredStateResp.StatusCode(), "sync app state")
 	}
 }

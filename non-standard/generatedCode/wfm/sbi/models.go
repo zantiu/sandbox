@@ -198,7 +198,7 @@ type Device struct {
 	Metadata        Device_Metadata        `json:"metadata"`
 	RecentOperation *DeviceRecentOperation `json:"recentOperation,omitempty"`
 	Spec            struct {
-		Protocol *AuthProtocol `json:"protocol,omitempty"`
+		Capabilities *map[string]map[string]interface{} `json:"capabilities,omitempty"`
 	} `json:"spec"`
 	Status *DeviceStatus `json:"status,omitempty"`
 }
@@ -214,6 +214,15 @@ type Device_Metadata struct {
 	Name                 *string                `json:"name,omitempty"`
 	Namespace            *string                `json:"namespace,omitempty"`
 	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
+// DeviceCapabilities defines model for DeviceCapabilities.
+type DeviceCapabilities = []DeviceCapability
+
+// DeviceCapability defines model for DeviceCapability.
+type DeviceCapability struct {
+	Key   *string `json:"key,omitempty"`
+	Value *string `json:"value,omitempty"`
 }
 
 // DeviceOnboardingCompletionRequest defines model for DeviceOnboardingCompletionRequest.

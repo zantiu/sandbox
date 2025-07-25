@@ -94,6 +94,9 @@ type ClientInterface interface {
 
 	OnboardDevice(ctx context.Context, body OnboardDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeboardDevice request
+	DeboardDevice(ctx context.Context, deviceId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeviceChallengeWithBody request with any body
 	DeviceChallengeWithBody(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -122,6 +125,18 @@ func (c *Client) OnboardDeviceWithBody(ctx context.Context, contentType string, 
 
 func (c *Client) OnboardDevice(ctx context.Context, body OnboardDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewOnboardDeviceRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeboardDevice(ctx context.Context, deviceId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeboardDeviceRequest(c.Server, deviceId)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +227,7 @@ func NewOnboardDeviceRequestWithBody(server string, contentType string, body io.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/devices/onboard")
+	operationPath := fmt.Sprintf("/devices")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -228,6 +243,40 @@ func NewOnboardDeviceRequestWithBody(server string, contentType string, body io.
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeboardDeviceRequest generates requests for DeboardDevice
+func NewDeboardDeviceRequest(server string, deviceId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deviceId", runtime.ParamLocationPath, deviceId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/devices/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -408,6 +457,9 @@ type ClientWithResponsesInterface interface {
 
 	OnboardDeviceWithResponse(ctx context.Context, body OnboardDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*OnboardDeviceResponse, error)
 
+	// DeboardDeviceWithResponse request
+	DeboardDeviceWithResponse(ctx context.Context, deviceId string, reqEditors ...RequestEditorFn) (*DeboardDeviceResponse, error)
+
 	// DeviceChallengeWithBodyWithResponse request with any body
 	DeviceChallengeWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeviceChallengeResponse, error)
 
@@ -441,6 +493,30 @@ func (r OnboardDeviceResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r OnboardDeviceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DeboardDeviceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+	JSON409      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r DeboardDeviceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeboardDeviceResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -536,6 +612,15 @@ func (c *ClientWithResponses) OnboardDeviceWithResponse(ctx context.Context, bod
 	return ParseOnboardDeviceResponse(rsp)
 }
 
+// DeboardDeviceWithResponse request returning *DeboardDeviceResponse
+func (c *ClientWithResponses) DeboardDeviceWithResponse(ctx context.Context, deviceId string, reqEditors ...RequestEditorFn) (*DeboardDeviceResponse, error) {
+	rsp, err := c.DeboardDevice(ctx, deviceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeboardDeviceResponse(rsp)
+}
+
 // DeviceChallengeWithBodyWithResponse request with arbitrary body returning *DeviceChallengeResponse
 func (c *ClientWithResponses) DeviceChallengeWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeviceChallengeResponse, error) {
 	rsp, err := c.DeviceChallengeWithBody(ctx, deviceId, contentType, body, reqEditors...)
@@ -600,6 +685,46 @@ func ParseOnboardDeviceResponse(rsp *http.Response) (*OnboardDeviceResponse, err
 		}
 		response.JSON202 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeboardDeviceResponse parses an HTTP response from a DeboardDeviceWithResponse call
+func ParseDeboardDeviceResponse(rsp *http.Response) (*DeboardDeviceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeboardDeviceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

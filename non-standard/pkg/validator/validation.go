@@ -180,13 +180,13 @@ func ValidateDevice(device *Device) ValidationErrors {
 	}
 
 	// Validate spec
-	if device.Spec.Protocol != nil {
-		protocolErrors := validateAuthProtocol(device.Spec.Protocol)
-		for _, err := range protocolErrors {
-			err.Field = "spec.protocol." + err.Field
-			errors = append(errors, err)
-		}
-	}
+	// if device.Spec.Protocol != nil {
+	// 	protocolErrors := validateAuthProtocol(device.Spec.Protocol)
+	// 	for _, err := range protocolErrors {
+	// 		err.Field = "spec.protocol." + err.Field
+	// 		errors = append(errors, err)
+	// 	}
+	// }
 
 	// Validate status
 	if device.Status != nil {
