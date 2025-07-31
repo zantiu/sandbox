@@ -19,33 +19,18 @@ func GenerateAppPkgId() string {
 	return generateUUID()
 }
 
-// GenerateAppId generates a unique identifier for applications.
+// GenerateAppDeploymentId generates a unique identifier for application instances.
 //
 // Returns:
 //   - string: A UUID v4 string in the format "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
 //
 // Example:
 //
-//	appId := GenerateAppId()
-//	// Output: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-//
-// Note: Each call generates a new, cryptographically random UUID.
-func GenerateAppId() string {
-	return generateUUID()
-}
-
-// GenerateInstanceId generates a unique identifier for application instances.
-//
-// Returns:
-//   - string: A UUID v4 string in the format "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-//
-// Example:
-//
-//	instanceId := GenerateInstanceId()
+//	instanceId := GenerateAppDeploymentId()
 //	// Output: "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
 //
 // Note: Each call generates a new, cryptographically random UUID.
-func GenerateInstanceId() string {
+func GenerateAppDeploymentId() string {
 	return generateUUID()
 }
 
