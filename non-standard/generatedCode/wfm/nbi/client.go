@@ -682,7 +682,7 @@ type ClientWithResponsesInterface interface {
 type ListApplicationDeploymentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ApplicationDeploymentList
+	JSON200      *ApplicationDeploymentListResp
 	JSON400      *ErrorResponse
 	JSON500      *ErrorResponse
 }
@@ -706,7 +706,7 @@ func (r ListApplicationDeploymentsResponse) StatusCode() int {
 type CreateApplicationDeploymentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *ApplicationDeployment
+	JSON202      *ApplicationDeploymentResp
 	JSON400      *ErrorResponse
 	JSON409      *ErrorResponse
 	JSON500      *ErrorResponse
@@ -731,7 +731,7 @@ func (r CreateApplicationDeploymentResponse) StatusCode() int {
 type DeleteApplicationDeploymentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *ApplicationDeployment
+	JSON202      *ApplicationDeploymentResp
 	JSON404      *ErrorResponse
 	JSON409      *ErrorResponse
 	JSON500      *ErrorResponse
@@ -756,7 +756,7 @@ func (r DeleteApplicationDeploymentResponse) StatusCode() int {
 type GetApplicationDeploymentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ApplicationDeployment
+	JSON200      *ApplicationDeploymentResp
 	JSON404      *ErrorResponse
 	JSON500      *ErrorResponse
 }
@@ -780,7 +780,7 @@ func (r GetApplicationDeploymentResponse) StatusCode() int {
 type ListAppPackagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ApplicationPackageList
+	JSON200      *ApplicationPackageListResp
 	JSON400      *ErrorResponse
 	JSON500      *ErrorResponse
 }
@@ -804,15 +804,22 @@ func (r ListAppPackagesResponse) StatusCode() int {
 type OnboardAppPackageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *ApplicationPackage
+	JSON202      *ApplicationPackageResp
 	JSON400      *ErrorResponse
 	JSON409      *ErrorResponse
 	JSON422      *struct {
-		Details          *map[string]interface{} `json:"details,omitempty"`
-		ErrorCode        string                  `json:"errorCode"`
-		RequestId        string                  `json:"requestId"`
-		Timestamp        time.Time               `json:"timestamp"`
-		ValidationErrors *[]ValidationError      `json:"validationErrors,omitempty"`
+		// Details Additional details about the error
+		Details *map[string]interface{} `json:"details,omitempty"`
+
+		// ErrorCode Error code
+		ErrorCode string `json:"errorCode"`
+
+		// RequestId Request identifier
+		RequestId string `json:"requestId"`
+
+		// Timestamp Timestamp of the request
+		Timestamp        time.Time          `json:"timestamp"`
+		ValidationErrors *[]ValidationError `json:"validationErrors,omitempty"`
 	}
 	JSON500 *ErrorResponse
 }
@@ -836,7 +843,7 @@ func (r OnboardAppPackageResponse) StatusCode() int {
 type DeleteAppPackageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON202      *ApplicationPackage
+	JSON202      *ApplicationPackageResp
 	JSON404      *ErrorResponse
 	JSON409      *ErrorResponse
 	JSON500      *ErrorResponse
@@ -861,7 +868,7 @@ func (r DeleteAppPackageResponse) StatusCode() int {
 type GetAppPackageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ApplicationPackage
+	JSON200      *ApplicationPackageResp
 	JSON404      *ErrorResponse
 	JSON500      *ErrorResponse
 }
@@ -985,7 +992,7 @@ func ParseListApplicationDeploymentsResponse(rsp *http.Response) (*ListApplicati
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ApplicationDeploymentList
+		var dest ApplicationDeploymentListResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1025,7 +1032,7 @@ func ParseCreateApplicationDeploymentResponse(rsp *http.Response) (*CreateApplic
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest ApplicationDeployment
+		var dest ApplicationDeploymentResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1072,7 +1079,7 @@ func ParseDeleteApplicationDeploymentResponse(rsp *http.Response) (*DeleteApplic
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest ApplicationDeployment
+		var dest ApplicationDeploymentResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1119,7 +1126,7 @@ func ParseGetApplicationDeploymentResponse(rsp *http.Response) (*GetApplicationD
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ApplicationDeployment
+		var dest ApplicationDeploymentResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1159,7 +1166,7 @@ func ParseListAppPackagesResponse(rsp *http.Response) (*ListAppPackagesResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ApplicationPackageList
+		var dest ApplicationPackageListResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1199,7 +1206,7 @@ func ParseOnboardAppPackageResponse(rsp *http.Response) (*OnboardAppPackageRespo
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest ApplicationPackage
+		var dest ApplicationPackageResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1221,11 +1228,18 @@ func ParseOnboardAppPackageResponse(rsp *http.Response) (*OnboardAppPackageRespo
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest struct {
-			Details          *map[string]interface{} `json:"details,omitempty"`
-			ErrorCode        string                  `json:"errorCode"`
-			RequestId        string                  `json:"requestId"`
-			Timestamp        time.Time               `json:"timestamp"`
-			ValidationErrors *[]ValidationError      `json:"validationErrors,omitempty"`
+			// Details Additional details about the error
+			Details *map[string]interface{} `json:"details,omitempty"`
+
+			// ErrorCode Error code
+			ErrorCode string `json:"errorCode"`
+
+			// RequestId Request identifier
+			RequestId string `json:"requestId"`
+
+			// Timestamp Timestamp of the request
+			Timestamp        time.Time          `json:"timestamp"`
+			ValidationErrors *[]ValidationError `json:"validationErrors,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -1259,7 +1273,7 @@ func ParseDeleteAppPackageResponse(rsp *http.Response) (*DeleteAppPackageRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest ApplicationPackage
+		var dest ApplicationPackageResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1306,7 +1320,7 @@ func ParseGetAppPackageResponse(rsp *http.Response) (*GetAppPackageResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ApplicationPackage
+		var dest ApplicationPackageResp
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

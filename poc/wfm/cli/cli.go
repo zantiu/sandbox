@@ -15,8 +15,6 @@ import (
 
 	"github.com/kr/pretty"
 	nonStdWfmNbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
-	nonStdWfmSbi "github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
-	"github.com/margo/dev-repo/non-standard/pkg/validator"
 	stdWfmSbi "github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
 )
 
@@ -33,11 +31,11 @@ const (
 
 // Type aliases for better API ergonomics, and can be used later on to change the structs if needed
 type (
-	AppPkgOnboardingReq  = nonStdWfmNbi.ApplicationPackage
-	AppPkgOnboardingResp = nonStdWfmNbi.ApplicationPackage
-	AppPkgSummary        = nonStdWfmNbi.ApplicationPackage
+	AppPkgOnboardingReq  = nonStdWfmNbi.ApplicationPackageRequest
+	AppPkgOnboardingResp = nonStdWfmNbi.ApplicationPackageResp
+	AppPkgSummary        = nonStdWfmNbi.ApplicationPackageResp
 	ListAppPkgsParams    = nonStdWfmNbi.ListAppPackagesParams
-	ListAppPkgsResp      = nonStdWfmNbi.ApplicationPackageList
+	ListAppPkgsResp      = nonStdWfmNbi.ApplicationPackageListResp
 )
 
 // WFMCli provides a client interface for the Margo Northbound API.
@@ -115,15 +113,6 @@ func NewWFMCli(host string, port uint16, nbiBasePath, sbiBasePath *string, opts 
 // createClient creates a new API client with proper error handling
 func (cli *WFMCli) createNonStdNbiClient() (*nonStdWfmNbi.Client, error) {
 	client, err := nonStdWfmNbi.NewClient(cli.serverAddress, nonStdWfmNbi.WithBaseURL(cli.nbiBaseURL))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create API client: %w", err)
-	}
-	return client, nil
-}
-
-// createClient creates a new API client with proper error handling
-func (cli *WFMCli) createNonStdSbiClient() (*nonStdWfmSbi.Client, error) {
-	client, err := nonStdWfmSbi.NewClient(cli.serverAddress, nonStdWfmSbi.WithBaseURL(cli.sbiBaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API client: %w", err)
 	}
@@ -331,99 +320,6 @@ func (cli *WFMCli) DeleteAppPkg(pkgId string) error {
 		return nil
 	default:
 		return cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "delete app package")
-	}
-}
-
-// DeviceOnboard sends a request to onboard a device.
-//
-// Parameters:
-//   - deviceId: The unique identifier of the device
-//   - error: any error that occured during this process
-//
-// Returns:
-//   - error: An error if the package cannot be deleted
-func (cli *WFMCli) DeviceOnboard(req *nonStdWfmSbi.DeviceOnboardingRequest) (string, error) {
-	if err := validator.ValidateDeviceOnboardingRequest(req); err != nil {
-		return "", err
-	}
-
-	client, err := cli.createNonStdSbiClient()
-	if err != nil {
-		return "", err
-	}
-
-	ctx, cancel := cli.createContext()
-	defer cancel()
-
-	resp, err := client.OnboardDevice(ctx, *req, nil)
-	if err != nil {
-		return "", fmt.Errorf("onboard device error occured: %w", err)
-	}
-	defer resp.Body.Close()
-
-	onboardDeviceResp, err := nonStdWfmSbi.ParseOnboardDeviceResponse(resp)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse delete onboard device response: %w", err)
-	}
-
-	switch onboardDeviceResp.StatusCode() {
-	case 200, 202:
-		cli.logger.Printf("Successfully sent the request to onboard the device: %s", onboardDeviceResp.JSON202.DeviceId)
-
-		if onboardDeviceResp.JSON202.NextStep != nil {
-			switch *onboardDeviceResp.JSON202.NextStep.Action {
-			case nonStdWfmSbi.Authenticate:
-				// onAuthenticate()
-			case nonStdWfmSbi.Complete:
-				// onCompletion()
-			case nonStdWfmSbi.Wait:
-				// wait for some time
-				// onWait()
-			}
-		}
-
-		return onboardDeviceResp.JSON202.DeviceId, nil
-	default:
-		return "", cli.handleErrorResponse(onboardDeviceResp.Body, onboardDeviceResp.StatusCode(), "onboard device")
-	}
-}
-
-// DeviceDeboard sends a request to device a device.
-//
-// Parameters:
-//   - deviceId: The unique identifier of the device
-//   - error: any error that occured during this process
-//
-// Returns:
-//   - error: An error if the package cannot be deleted
-func (cli *WFMCli) DeviceDeboard(deviceId string, certPem []byte) error {
-	// check status of the device
-
-	client, err := cli.createNonStdSbiClient()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := cli.createContext()
-	defer cancel()
-
-	resp, err := client.DeboardDevice(ctx, deviceId, nil)
-	if err != nil {
-		return fmt.Errorf("deboard device error occured: %w", err)
-	}
-	defer resp.Body.Close()
-
-	deboardDeviceResp, err := nonStdWfmSbi.ParseDeboardDeviceResponse(resp)
-	if err != nil {
-		return fmt.Errorf("failed to parse delete deboard device response: %w", err)
-	}
-
-	switch deboardDeviceResp.StatusCode() {
-	case 200, 202:
-		cli.logger.Printf("Successfully sent the request to deboard the device")
-		return nil
-	default:
-		return cli.handleErrorResponse(deboardDeviceResp.Body, deboardDeviceResp.StatusCode(), "deboard device")
 	}
 }
 

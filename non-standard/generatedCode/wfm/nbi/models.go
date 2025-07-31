@@ -16,10 +16,33 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for ApplicationDeploymentOperation.
+const (
+	DELETE ApplicationDeploymentOperation = "DELETE"
+	DEPLOY ApplicationDeploymentOperation = "DEPLOY"
+	UPDATE ApplicationDeploymentOperation = "UPDATE"
+)
+
+// Defines values for ApplicationDeploymentOperationStatus.
+const (
+	ApplicationDeploymentOperationStatusCANCELLED  ApplicationDeploymentOperationStatus = "CANCELLED"
+	ApplicationDeploymentOperationStatusCOMPLETED  ApplicationDeploymentOperationStatus = "COMPLETED"
+	ApplicationDeploymentOperationStatusFAILED     ApplicationDeploymentOperationStatus = "FAILED"
+	ApplicationDeploymentOperationStatusPENDING    ApplicationDeploymentOperationStatus = "PENDING"
+	ApplicationDeploymentOperationStatusPROCESSING ApplicationDeploymentOperationStatus = "PROCESSING"
+)
+
 // Defines values for ApplicationDeploymentProfileType.
 const (
 	Compose ApplicationDeploymentProfileType = "compose"
 	HelmV3  ApplicationDeploymentProfileType = "helm.v3"
+)
+
+// Defines values for ApplicationDeploymentStatusState.
+const (
+	CRASHLOOP ApplicationDeploymentStatusState = "CRASHLOOP"
+	RUNNING   ApplicationDeploymentStatusState = "RUNNING"
+	UPDATING  ApplicationDeploymentStatusState = "UPDATING"
 )
 
 // Defines values for ApplicationPackageOperation.
@@ -46,47 +69,47 @@ const (
 
 // Defines values for ApplicationPackageStatusState.
 const (
-	ApplicationPackageStatusStateDEBOARDED ApplicationPackageStatusState = "DEBOARDED"
-	ApplicationPackageStatusStateFAILED    ApplicationPackageStatusState = "FAILED"
-	ApplicationPackageStatusStateONBOARDED ApplicationPackageStatusState = "ONBOARDED"
-	ApplicationPackageStatusStatePENDING   ApplicationPackageStatusState = "PENDING"
-	ApplicationPackageStatusStateSTAGED    ApplicationPackageStatusState = "STAGED"
-	ApplicationPackageStatusStateUNSTAGED  ApplicationPackageStatusState = "UNSTAGED"
+	DEBOARDED ApplicationPackageStatusState = "DEBOARDED"
+	FAILED    ApplicationPackageStatusState = "FAILED"
+	ONBOARDED ApplicationPackageStatusState = "ONBOARDED"
+	PENDING   ApplicationPackageStatusState = "PENDING"
+	STAGED    ApplicationPackageStatusState = "STAGED"
+	UNSTAGED  ApplicationPackageStatusState = "UNSTAGED"
 )
 
 // APIResponse defines model for APIResponse.
 type APIResponse struct {
-	RequestId string    `json:"requestId"`
+	// RequestId Request identifier
+	RequestId string `json:"requestId"`
+
+	// Timestamp Timestamp of the request
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// ApplicationDeployment defines model for ApplicationDeployment.
-type ApplicationDeployment struct {
-	ApiVersion string   `json:"apiVersion"`
-	Kind       string   `json:"kind"`
-	Metadata   Metadata `json:"metadata"`
-	Spec       struct {
-		AppPackageRef struct {
-			Id string `json:"id"`
-		} `json:"appPackageRef"`
-		DeploymentProfile ApplicationDeploymentProfile `json:"deploymentProfile"`
-		Parameters        *ApplicationParameters       `json:"parameters,omitempty"`
-	} `json:"spec"`
-	Status *ApplicationPackageStatus `json:"status,omitempty"`
+// ApplicationDeploymentListResp List of Application Deployments
+type ApplicationDeploymentListResp struct {
+	// ApiVersion API version
+	ApiVersion string                      `json:"apiVersion"`
+	Items      []ApplicationDeploymentResp `json:"items"`
+
+	// Kind Resource kind
+	Kind     string             `json:"kind"`
+	Metadata PaginationMetadata `json:"metadata"`
 }
 
-// ApplicationDeploymentList defines model for ApplicationDeploymentList.
-type ApplicationDeploymentList struct {
-	ApiVersion string                  `json:"apiVersion"`
-	Items      []ApplicationDeployment `json:"items"`
-	Kind       string                  `json:"kind"`
-	Metadata   PaginationMetadata      `json:"metadata"`
-}
+// ApplicationDeploymentOperation Current application deployment operation
+type ApplicationDeploymentOperation string
 
-// ApplicationDeploymentProfile defines model for ApplicationDeploymentProfile.
+// ApplicationDeploymentOperationStatus Current state of the application deployment operation
+type ApplicationDeploymentOperationStatus string
+
+// ApplicationDeploymentProfile Application Deployment Profile
 type ApplicationDeploymentProfile struct {
+	// Components Components of the deployment profile
 	Components []ApplicationDeploymentProfile_Components_Item `json:"components"`
-	Type       ApplicationDeploymentProfileType               `json:"type"`
+
+	// Type Type of deployment profile
+	Type ApplicationDeploymentProfileType `json:"type"`
 }
 
 // ApplicationDeploymentProfile_Components_Item defines model for ApplicationDeploymentProfile.components.Item.
@@ -94,25 +117,118 @@ type ApplicationDeploymentProfile_Components_Item struct {
 	union json.RawMessage
 }
 
-// ApplicationDeploymentProfileType defines model for ApplicationDeploymentProfile.Type.
+// ApplicationDeploymentProfileType Type of deployment profile
 type ApplicationDeploymentProfileType string
 
-// ApplicationPackage defines model for ApplicationPackage.
-type ApplicationPackage struct {
-	ApiVersion      string                             `json:"apiVersion"`
+// ApplicationDeploymentRecentOperation defines model for ApplicationDeploymentRecentOperation.
+type ApplicationDeploymentRecentOperation struct {
+	// Op Current application deployment operation
+	Op ApplicationDeploymentOperation `json:"op"`
+
+	// Status Current state of the application deployment operation
+	Status ApplicationDeploymentOperationStatus `json:"status"`
+}
+
+// ApplicationDeploymentRequest Application Deployment request
+type ApplicationDeploymentRequest struct {
+	// ApiVersion API version
+	ApiVersion string `json:"apiVersion"`
+
+	// Kind Resource kind
+	Kind     string `json:"kind"`
+	Metadata struct {
+		// Annotations Annotations for the deployment
+		Annotations *map[string]string `json:"annotations,omitempty"`
+
+		// CreationTimestamp Creation timestamp
+		CreationTimestamp *time.Time `json:"creationTimestamp,omitempty"`
+
+		// Id This field is generated by the server.
+		Id *string `json:"id,omitempty"`
+
+		// Labels Labels for the deployment
+		Labels *map[string]string `json:"labels,omitempty"`
+
+		// Name Name of the deployment
+		Name string `json:"name"`
+
+		// Namespace Namespace of the deployment
+		Namespace *string `json:"namespace,omitempty"`
+	} `json:"metadata"`
+
+	// Spec Application Deployment specification
+	Spec ApplicationDeploymentSpec `json:"spec"`
+}
+
+// ApplicationDeploymentResp Application Deployment manifest
+type ApplicationDeploymentResp struct {
+	// ApiVersion API version
+	ApiVersion string `json:"apiVersion"`
+
+	// Kind Resource kind
 	Kind            string                             `json:"kind"`
 	Metadata        Metadata                           `json:"metadata"`
 	RecentOperation *ApplicationPackageRecentOperation `json:"recentOperation,omitempty"`
-	Spec            ApplicationPackageSpec             `json:"spec"`
-	Status          *ApplicationPackageStatus          `json:"status,omitempty"`
+
+	// Spec Application Deployment specification
+	Spec ApplicationDeploymentSpec `json:"spec"`
+
+	// Status Application Deployment status
+	Status *ApplicationDeploymentStatus `json:"status,omitempty"`
 }
 
-// ApplicationPackageList defines model for ApplicationPackageList.
-type ApplicationPackageList struct {
-	ApiVersion string               `json:"apiVersion"`
-	Items      []ApplicationPackage `json:"items"`
-	Kind       string               `json:"kind"`
-	Metadata   *PaginationMetadata  `json:"metadata,omitempty"`
+// ApplicationDeploymentSpec Application Deployment specification
+type ApplicationDeploymentSpec struct {
+	AppPackageRef struct {
+		// Id ID of the ApplicationPackage
+		Id string `json:"id"`
+	} `json:"appPackageRef"`
+
+	// DeploymentProfile Application Deployment Profile
+	DeploymentProfile ApplicationDeploymentProfile         `json:"deploymentProfile"`
+	DeviceRef         *ApplicationDeploymentSpec_DeviceRef `json:"deviceRef,omitempty"`
+
+	// Parameters Application Parameters
+	Parameters *ApplicationParameters `json:"parameters,omitempty"`
+}
+
+// ApplicationDeploymentSpecDeviceRef0 defines model for .
+type ApplicationDeploymentSpecDeviceRef0 = interface{}
+
+// ApplicationDeploymentSpecDeviceRef1 defines model for .
+type ApplicationDeploymentSpecDeviceRef1 = interface{}
+
+// ApplicationDeploymentSpec_DeviceRef defines model for ApplicationDeploymentSpec.DeviceRef.
+type ApplicationDeploymentSpec_DeviceRef struct {
+	// Id ID of the Device
+	Id *string `json:"id,omitempty"`
+
+	// Labels Labels for the Device
+	Labels *map[string]interface{} `json:"labels,omitempty"`
+	union  json.RawMessage
+}
+
+// ApplicationDeploymentStatus Application Deployment status
+type ApplicationDeploymentStatus struct {
+	ContextualInfo *ContextualInfo `json:"contextualInfo,omitempty"`
+
+	// LastUpdateTime Last update time
+	LastUpdateTime *time.Time `json:"lastUpdateTime,omitempty"`
+
+	// State State of the deployment
+	State *ApplicationDeploymentStatusState `json:"state,omitempty"`
+}
+
+// ApplicationDeploymentStatusState State of the deployment
+type ApplicationDeploymentStatusState string
+
+// ApplicationPackageListResp List of Application Packages
+type ApplicationPackageListResp struct {
+	// ApiVersion API version
+	ApiVersion string                   `json:"apiVersion"`
+	Items      []ApplicationPackageResp `json:"items"`
+	Kind       string                   `json:"kind"`
+	Metadata   *PaginationMetadata      `json:"metadata,omitempty"`
 }
 
 // ApplicationPackageOperation Current application package operation
@@ -130,7 +246,47 @@ type ApplicationPackageRecentOperation struct {
 	Status ApplicationPackageOperationStatus `json:"status"`
 }
 
-// ApplicationPackageSpec defines model for ApplicationPackageSpec.
+// ApplicationPackageRequest Application Package manifest
+type ApplicationPackageRequest struct {
+	// ApiVersion API version
+	ApiVersion string `json:"apiVersion"`
+
+	// Kind Resource kind
+	Kind     string `json:"kind"`
+	Metadata struct {
+		// Annotations Annotations for the resource
+		Annotations *map[string]string `json:"annotations,omitempty"`
+
+		// Labels Labels for the resource
+		Labels *map[string]string `json:"labels,omitempty"`
+
+		// Name Name of the resource
+		Name string `json:"name"`
+
+		// Namespace Namespace of the resource
+		Namespace *string `json:"namespace,omitempty"`
+	} `json:"metadata"`
+
+	// Spec Application Package specification
+	Spec ApplicationPackageSpec `json:"spec"`
+}
+
+// ApplicationPackageResp Application Package manifest
+type ApplicationPackageResp struct {
+	// ApiVersion API version
+	ApiVersion string `json:"apiVersion"`
+
+	// Kind Resource kind
+	Kind            string                             `json:"kind"`
+	Metadata        Metadata                           `json:"metadata"`
+	RecentOperation *ApplicationPackageRecentOperation `json:"recentOperation,omitempty"`
+
+	// Spec Application Package specification
+	Spec   ApplicationPackageSpec    `json:"spec"`
+	Status *ApplicationPackageStatus `json:"status,omitempty"`
+}
+
+// ApplicationPackageSpec Application Package specification
 type ApplicationPackageSpec struct {
 	// Source Source configuration based on sourceType
 	Source ApplicationPackageSpec_Source `json:"source"`
@@ -149,52 +305,80 @@ type ApplicationPackageSpecSourceType string
 
 // ApplicationPackageStatus defines model for ApplicationPackageStatus.
 type ApplicationPackageStatus struct {
-	ContextualInfo *ContextualInfo                `json:"contextualInfo,omitempty"`
-	LastUpdateTime *time.Time                     `json:"lastUpdateTime,omitempty"`
-	State          *ApplicationPackageStatusState `json:"state,omitempty"`
+	ContextualInfo *ContextualInfo `json:"contextualInfo,omitempty"`
+
+	// LastUpdateTime Last update time
+	LastUpdateTime *time.Time `json:"lastUpdateTime,omitempty"`
+
+	// State State of the application package
+	State *ApplicationPackageStatusState `json:"state,omitempty"`
 }
 
-// ApplicationPackageStatusState defines model for ApplicationPackageStatus.State.
+// ApplicationPackageStatusState State of the application package
 type ApplicationPackageStatusState string
 
-// ApplicationParameterTarget defines model for ApplicationParameterTarget.
+// ApplicationParameterTarget Application Parameter Target
 type ApplicationParameterTarget struct {
+	// Components Components of the parameter
 	Components []string `json:"components"`
-	Pointer    string   `json:"pointer"`
+
+	// Pointer Pointer to the parameter
+	Pointer string `json:"pointer"`
 }
 
-// ApplicationParameterValue defines model for ApplicationParameterValue.
+// ApplicationParameterValue Application Parameter Value
 type ApplicationParameterValue struct {
+	// Targets Targets of the parameter
 	Targets []ApplicationParameterTarget `json:"targets"`
-	Value   string                       `json:"value"`
+
+	// Value Value of the parameter
+	Value string `json:"value"`
 }
 
-// ApplicationParameters defines model for ApplicationParameters.
+// ApplicationParameters Application Parameters
 type ApplicationParameters map[string]ApplicationParameterValue
 
-// ComposeApplicationDeploymentProfileComponent defines model for ComposeApplicationDeploymentProfileComponent.
+// ComposeApplicationDeploymentProfileComponent Compose Application Deployment Profile Component
 type ComposeApplicationDeploymentProfileComponent struct {
+	// Name Name of the component
 	Name       string `json:"name"`
 	Properties struct {
-		KeyLocation     *string `json:"keyLocation,omitempty"`
-		PackageLocation string  `json:"packageLocation"`
-		Timeout         *string `json:"timeout,omitempty"`
-		Wait            *bool   `json:"wait,omitempty"`
+		// KeyLocation Key location of the component
+		KeyLocation *string `json:"keyLocation,omitempty"`
+
+		// PackageLocation Package location of the component
+		PackageLocation string `json:"packageLocation"`
+
+		// Timeout Timeout for the component
+		Timeout *string `json:"timeout,omitempty"`
+
+		// Wait Wait for the component to be ready
+		Wait *bool `json:"wait,omitempty"`
 	} `json:"properties"`
 }
 
 // ContextualInfo defines model for ContextualInfo.
 type ContextualInfo struct {
-	Code    *string `json:"code,omitempty"`
+	// Code Code of the contextual information
+	Code *string `json:"code,omitempty"`
+
+	// Message Message of the contextual information
 	Message *string `json:"message,omitempty"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
-	Details   *map[string]interface{} `json:"details,omitempty"`
-	ErrorCode string                  `json:"errorCode"`
-	RequestId string                  `json:"requestId"`
-	Timestamp time.Time               `json:"timestamp"`
+	// Details Additional details about the error
+	Details *map[string]interface{} `json:"details,omitempty"`
+
+	// ErrorCode Error code
+	ErrorCode string `json:"errorCode"`
+
+	// RequestId Request identifier
+	RequestId string `json:"requestId"`
+
+	// Timestamp Timestamp of the request
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // GitRepo Git repository source configuration
@@ -225,63 +409,93 @@ type GitRepo0 = interface{}
 // GitRepo1 defines model for .
 type GitRepo1 = interface{}
 
-// HelmApplicationDeploymentProfileComponent defines model for HelmApplicationDeploymentProfileComponent.
+// HelmApplicationDeploymentProfileComponent Helm Application Deployment Profile Component
 type HelmApplicationDeploymentProfileComponent struct {
+	// Name Name of the component
 	Name       string `json:"name"`
 	Properties struct {
-		Repository string  `json:"repository"`
-		Revision   *string `json:"revision,omitempty"`
-		Timeout    *string `json:"timeout,omitempty"`
-		Wait       *bool   `json:"wait,omitempty"`
+		// Repository Repository of the component
+		Repository string `json:"repository"`
+
+		// Revision Revision of the component
+		Revision *string `json:"revision,omitempty"`
+
+		// Timeout Timeout for the component
+		Timeout *string `json:"timeout,omitempty"`
+
+		// Wait Wait for the component to be ready
+		Wait *bool `json:"wait,omitempty"`
 	} `json:"properties"`
 }
 
 // Metadata defines model for Metadata.
 type Metadata struct {
-	Annotations       *map[string]string `json:"annotations,omitempty"`
-	CreationTimestamp *time.Time         `json:"creationTimestamp,omitempty"`
+	// Annotations Annotations for the resource
+	Annotations *map[string]string `json:"annotations,omitempty"`
+
+	// CreationTimestamp Creation timestamp
+	CreationTimestamp *time.Time `json:"creationTimestamp,omitempty"`
 
 	// Id This field is generated by the server.
-	Id        *string            `json:"id,omitempty"`
-	Labels    *map[string]string `json:"labels,omitempty"`
-	Name      string             `json:"name"`
-	Namespace *string            `json:"namespace,omitempty"`
+	Id *string `json:"id,omitempty"`
+
+	// Labels Labels for the resource
+	Labels *map[string]string `json:"labels,omitempty"`
+
+	// Name Name of the resource
+	Name string `json:"name"`
+
+	// Namespace Namespace of the resource
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // PaginationMetadata defines model for PaginationMetadata.
 type PaginationMetadata struct {
-	Continue           bool `json:"continue"`
+	// Continue Indicates if there are more items to retrieve
+	Continue *bool `json:"continue,omitempty"`
+
+	// RemainingItemCount Number of items remaining
 	RemainingItemCount *int `json:"remainingItemCount,omitempty"`
 }
 
 // ValidationError defines model for ValidationError.
 type ValidationError struct {
-	Field   string `json:"field"`
+	// Field Field with the validation error
+	Field string `json:"field"`
+
+	// Message Validation error message
 	Message string `json:"message"`
 }
 
 // ListApplicationDeploymentsParams defines parameters for ListApplicationDeployments.
 type ListApplicationDeploymentsParams struct {
-	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	// Limit Maximum number of items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Continue Token for pagination
 	Continue *string `form:"continue,omitempty" json:"continue,omitempty"`
 }
 
 // ListAppPackagesParams defines parameters for ListAppPackages.
 type ListAppPackagesParams struct {
-	Limit    *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	// Limit Maximum number of items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Continue Token for pagination
 	Continue *string `form:"continue,omitempty" json:"continue,omitempty"`
 }
 
 // DeleteAppPackageParams defines parameters for DeleteAppPackage.
 type DeleteAppPackageParams struct {
+	// Force Force deletion even if in use
 	Force *bool `form:"force,omitempty" json:"force,omitempty"`
 }
 
 // CreateApplicationDeploymentJSONRequestBody defines body for CreateApplicationDeployment for application/json ContentType.
-type CreateApplicationDeploymentJSONRequestBody = ApplicationDeployment
+type CreateApplicationDeploymentJSONRequestBody = ApplicationDeploymentRequest
 
 // OnboardAppPackageJSONRequestBody defines body for OnboardAppPackage for application/json ContentType.
-type OnboardAppPackageJSONRequestBody = ApplicationPackage
+type OnboardAppPackageJSONRequestBody = ApplicationPackageRequest
 
 // AsHelmApplicationDeploymentProfileComponent returns the union data inside the ApplicationDeploymentProfile_Components_Item as a HelmApplicationDeploymentProfileComponent
 func (t ApplicationDeploymentProfile_Components_Item) AsHelmApplicationDeploymentProfileComponent() (HelmApplicationDeploymentProfileComponent, error) {
@@ -342,6 +556,116 @@ func (t ApplicationDeploymentProfile_Components_Item) MarshalJSON() ([]byte, err
 
 func (t *ApplicationDeploymentProfile_Components_Item) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsApplicationDeploymentSpecDeviceRef0 returns the union data inside the ApplicationDeploymentSpec_DeviceRef as a ApplicationDeploymentSpecDeviceRef0
+func (t ApplicationDeploymentSpec_DeviceRef) AsApplicationDeploymentSpecDeviceRef0() (ApplicationDeploymentSpecDeviceRef0, error) {
+	var body ApplicationDeploymentSpecDeviceRef0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromApplicationDeploymentSpecDeviceRef0 overwrites any union data inside the ApplicationDeploymentSpec_DeviceRef as the provided ApplicationDeploymentSpecDeviceRef0
+func (t *ApplicationDeploymentSpec_DeviceRef) FromApplicationDeploymentSpecDeviceRef0(v ApplicationDeploymentSpecDeviceRef0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeApplicationDeploymentSpecDeviceRef0 performs a merge with any union data inside the ApplicationDeploymentSpec_DeviceRef, using the provided ApplicationDeploymentSpecDeviceRef0
+func (t *ApplicationDeploymentSpec_DeviceRef) MergeApplicationDeploymentSpecDeviceRef0(v ApplicationDeploymentSpecDeviceRef0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsApplicationDeploymentSpecDeviceRef1 returns the union data inside the ApplicationDeploymentSpec_DeviceRef as a ApplicationDeploymentSpecDeviceRef1
+func (t ApplicationDeploymentSpec_DeviceRef) AsApplicationDeploymentSpecDeviceRef1() (ApplicationDeploymentSpecDeviceRef1, error) {
+	var body ApplicationDeploymentSpecDeviceRef1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromApplicationDeploymentSpecDeviceRef1 overwrites any union data inside the ApplicationDeploymentSpec_DeviceRef as the provided ApplicationDeploymentSpecDeviceRef1
+func (t *ApplicationDeploymentSpec_DeviceRef) FromApplicationDeploymentSpecDeviceRef1(v ApplicationDeploymentSpecDeviceRef1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeApplicationDeploymentSpecDeviceRef1 performs a merge with any union data inside the ApplicationDeploymentSpec_DeviceRef, using the provided ApplicationDeploymentSpecDeviceRef1
+func (t *ApplicationDeploymentSpec_DeviceRef) MergeApplicationDeploymentSpecDeviceRef1(v ApplicationDeploymentSpecDeviceRef1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JsonMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ApplicationDeploymentSpec_DeviceRef) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Id != nil {
+		object["id"], err = json.Marshal(t.Id)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'id': %w", err)
+		}
+	}
+
+	if t.Labels != nil {
+		object["labels"], err = json.Marshal(t.Labels)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'labels': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *ApplicationDeploymentSpec_DeviceRef) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["id"]; found {
+		err = json.Unmarshal(raw, &t.Id)
+		if err != nil {
+			return fmt.Errorf("error reading 'id': %w", err)
+		}
+	}
+
+	if raw, found := object["labels"]; found {
+		err = json.Unmarshal(raw, &t.Labels)
+		if err != nil {
+			return fmt.Errorf("error reading 'labels': %w", err)
+		}
+	}
+
 	return err
 }
 

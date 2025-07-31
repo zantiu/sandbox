@@ -4,10 +4,10 @@ set -e
 
 # Configuration
 WFM_NBI_SPEC_FILE=("spec/wfm-nbi.yaml")
-WFM_SBI_SPEC_FILE=("spec/wfm-sbi.yaml")
+# WFM_SBI_SPEC_FILE=("spec/wfm-sbi.yaml")
 OUTPUT_DIR="./generatedCode"
 WFM_NBI_PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
-WFM_SBI_PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
+# WFM_SBI_PACKAGE_NAME="github.com/margo/dev-repo/non-standard/generatedCode/wfm/sbi"
 
 # Colors
 RED='\033[0;31m'
@@ -38,12 +38,12 @@ check_prerequisites() {
     
     log_success "OpenAPI spec file found: $WFM_NBI_SPEC_FILE"
 
-    if [ ! -f "$WFM_SBI_SPEC_FILE" ]; then
-        log_error "OpenAPI spec file '$WFM_SBI_SPEC_FILE' not found!"
-        exit 1
-    fi
+    # if [ ! -f "$WFM_SBI_SPEC_FILE" ]; then
+    #     log_error "OpenAPI spec file '$WFM_SBI_SPEC_FILE' not found!"
+    #     exit 1
+    # fi
     
-    log_success "OpenAPI spec file found: $WFM_SBI_SPEC_FILE"
+    # log_success "OpenAPI spec file found: $WFM_SBI_SPEC_FILE"
 }
 
 install_tools() {
@@ -58,8 +58,8 @@ generate_code() {
     log_info "Generating Go code..."
     
     # Clean and create output directory
-    rm -rf "$OUTPUT_DIR"/{wfm,device}
-    mkdir -p "$OUTPUT_DIR"/{wfm,device}/{sbi,nbi}
+    rm -rf "$OUTPUT_DIR"/wfm
+    mkdir -p "$OUTPUT_DIR"/wfm/{sbi,nbi}
     
     # Generate models first
     log_info "Generating models..."
@@ -70,12 +70,12 @@ generate_code() {
     oapi-codegen -generate client -package nbi "$WFM_NBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/nbi/client.go"
 
     # Generate models first
-    log_info "Generating models..."
-    oapi-codegen -generate types,skip-prune -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/models.go"
+    # log_info "Generating models..."
+    # oapi-codegen -generate types,skip-prune -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/models.go"
     
-    # Generate client
-    log_info "Generating client..."
-    oapi-codegen -generate client -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/client.go"
+    # # Generate client
+    # log_info "Generating client..."
+    # oapi-codegen -generate client -package sbi "$WFM_SBI_SPEC_FILE" > "$OUTPUT_DIR/wfm/sbi/client.go"
     
     # Generate server (optional)
     # log_info "Generating server..."

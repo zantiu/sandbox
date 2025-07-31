@@ -1,4 +1,4 @@
-package agent
+package main
 
 import (
 	"bytes"
@@ -35,9 +35,8 @@ type DeviceAgent struct {
 
 // Config holds configuration for the device agent.
 type Config struct { // Renamed AgentConfig to Config
-	DeviceID    string `json:"deviceId" validate:"required"`        // Device identifier
-	WFMServer   string `json:"wfmServer" validate:"required,url"`   // WFM server "https://host:port" without trailing slash
-	SbiBasePath string `json:"sbiBasePath" validate:"required,url"` // SBI base URL, "/margo/sbi"
+	DeviceID  string `json:"deviceId" validate:"required"`      // Device identifier
+	WfmSbiUrl string `json:"wfmServer" validate:"required,url"` // WFM server "https://host:port/margo/sbi" ensure to include the base path
 }
 
 // Device represents the device instance.
@@ -165,7 +164,7 @@ func (da *DeviceAgent) syncAppStates() error {
 		currentAppStates = append(currentAppStates, appState)
 	}
 
-	client, err := sbi.NewClient(da.config.WFMServer, sbi.WithBaseURL(da.config.SbiBasePath))
+	client, err := sbi.NewClient(da.config.WfmSbiUrl)
 	if err != nil {
 		da.log.Errorw("Failed to create API client", "error", err)
 		return fmt.Errorf("%w: %v", ErrFailedToCreateClient, err) // Use predefined error
@@ -302,30 +301,4 @@ func (da *DeviceAgent) convertAppStateToAppDeployment(appState sbi.AppState) (sb
 	}
 
 	return appDeployment, nil
-}
-
-// Main function (example usage).  This should be in a separate main.go file in a real application.
-func main() {
-	// Initialize the logger
-	logger, _ := zap.NewDevelopment()
-	defer logger.Sync() // flushes buffer, if any
-	sugar := logger.Sugar()
-
-	config := &Config{
-		DeviceID:    "test-device",
-		WFMServer:   "http://localhost:3000",
-		SbiBasePath: "/wfm/state", // Corrected sbiBasePath
-	}
-
-	agent, err := NewDeviceAgent(config, sugar)
-	if err != nil {
-		sugar.Fatalf("Failed to create device agent: %v", err)
-	}
-
-	if err := agent.Start(); err != nil {
-		sugar.Fatalf("Failed to start device agent: %v", err)
-	}
-
-	// Wait for interrupt signal (example)
-	select {}
 }
