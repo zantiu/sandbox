@@ -42,6 +42,7 @@ const (
 const (
 	CRASHLOOP ApplicationDeploymentStatusState = "CRASHLOOP"
 	RUNNING   ApplicationDeploymentStatusState = "RUNNING"
+	UNKNOWN   ApplicationDeploymentStatusState = "UNKNOWN"
 	UPDATING  ApplicationDeploymentStatusState = "UPDATING"
 )
 

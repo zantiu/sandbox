@@ -15,7 +15,7 @@ type Application struct {
 
 func NewApplication(desc ApplicationDescription, op AppPkgOp, status AppPkgOpStatus, details string) Application {
 	return Application{
-		AppId:          utils.GenerateAppId(),
+		AppId:          utils.GenerateAppPkgId(),
 		AppPkgOpStatus: status,
 	}
 }
