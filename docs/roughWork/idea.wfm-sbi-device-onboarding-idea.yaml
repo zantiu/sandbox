@@ -2,7 +2,8 @@ openapi: 3.1.0
 info:
   title: Device Management API
   version: 1.0.0
-  description: API to manage devices using various authentication protocols including FIDO, PKI
+  description: This spec is not defined by margo at all. This is just some rough ideas been drafting. 
+    API to manage devices using various authentication protocols including FIDO, PKI
 
 servers:
   - url: http://localhost:8082/non-margo/wfm-sbi/api/v0

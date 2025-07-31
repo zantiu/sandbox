@@ -7,13 +7,6 @@ info:
     These APIs are used to manage application workloads.
     1. App package management
     2. Deployments management
-  contact:
-    # name: TBD
-    # email: TBD
-    # url: TBD
-  license:
-    # name: TBD
-    # url: TBD
 
 servers:
   - url: http://localhost:8082/non-margo/wfm-nbi/api/v0
@@ -26,7 +19,7 @@ paths:
         Onboard an application package in manifest style (Kubernetes manifest like).
         The onboarding process is asynchronous and returns immediately with the application package object with a unique identifier in it.
         The workload-supplier uses this API to give info about its Application Registry(Git Repo).
-        Note: There is no separate story for Application Registry management, hence we created this suite of APIs to let the WFM know where the app descriptions are hosted. 
+        Note: There is no separate story for Application Registry management, hence we created this suite of APIs to let the WFM know where the app descriptions are hosted.
       operationId: onboardAppPackage
       tags: [Application Packages]
       requestBody:
@@ -34,7 +27,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationPackage'
+              $ref: '#/components/schemas/ApplicationPackageRequest'
             examples:
               basic:
                 summary: Onboarding a manifest-style ApplicationPackage
@@ -58,7 +51,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationPackage'
+                $ref: '#/components/schemas/ApplicationPackageResp'
         '400':
           description: Bad request - validation failed
           content:
@@ -100,16 +93,18 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 20 }
+          description: Maximum number of items to return
         - name: continue
           in: query
           schema: { type: string }
+          description: Token for pagination
       responses:
         '200':
           description: List of ApplicationPackages
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationPackageList'
+                $ref: '#/components/schemas/ApplicationPackageListResp'
         '400':
           description: Bad request - invalid query parameters
           content:
@@ -134,13 +129,14 @@ paths:
           in: path
           required: true
           schema: { type: string }
+          description: ID of the ApplicationPackage to retrieve
       responses:
         '200':
           description: ApplicationPackage manifest
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationPackage'
+                $ref: '#/components/schemas/ApplicationPackageResp'
         '404':
           description: ApplicationPackage not found
           content:
@@ -165,16 +161,18 @@ paths:
           in: path
           required: true
           schema: { type: string }
+          description: ID of the ApplicationPackage to delete
         - name: force
           in: query
           schema: { type: boolean, default: false }
+          description: Force deletion even if in use
       responses:
         '202':
           description: ApplicationPackage deletion request accepted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationPackage'
+                $ref: '#/components/schemas/ApplicationPackageResp'
         '404':
           description: ApplicationPackage not found
           content:
@@ -208,7 +206,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationDeployment'
+              $ref: '#/components/schemas/ApplicationDeploymentRequest'
             examples:
               basic:
                 summary: Create a manifest-style ApplicationDeployment
@@ -244,7 +242,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationDeployment'
+                $ref: '#/components/schemas/ApplicationDeploymentResp'
         '400':
           description: Bad request
           content:
@@ -273,16 +271,18 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 20 }
+          description: Maximum number of items to return
         - name: continue
           in: query
           schema: { type: string }
+          description: Token for pagination
       responses:
         '200':
           description: List of ApplicationDeployments
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationDeploymentList'
+                $ref: '#/components/schemas/ApplicationDeploymentListResp'
         '400':
           description: Bad request
           content:
@@ -307,13 +307,14 @@ paths:
           in: path
           required: true
           schema: { type: string }
+          description: ID of the ApplicationDeployment to retrieve
       responses:
         '200':
           description: ApplicationDeployment manifest
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationDeployment'
+                $ref: '#/components/schemas/ApplicationDeploymentResp'
         '404':
           description: ApplicationDeployment not found
           content:
@@ -338,13 +339,14 @@ paths:
           in: path
           required: true
           schema: { type: string }
+          description: ID of the ApplicationDeployment to delete
       responses:
         '202':
           description: ApplicationDeployment deletion request accepted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationDeployment'
+                $ref: '#/components/schemas/ApplicationDeploymentResp'
         '404':
           description: ApplicationDeployment not found
           content:
@@ -371,32 +373,399 @@ components:
       properties:
         requestId:
           type: string
+          description: Request identifier
         timestamp:
           type: string
           format: date-time
+          description: Timestamp of the request
       required: [requestId, timestamp]
 
-    ErrorResponse:
-      allOf:
-        - $ref: '#/components/schemas/APIResponse'
-        - type: object
+    # Application Package Schemas
+    ApplicationPackageRequest:
+      type: object
+      description: Application Package manifest
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: non-margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationPackage
+          description: Resource kind
+        metadata:
+          type: object
+          required: [name]
           properties:
-            errorCode:
+            name:
               type: string
-            details:
+              description: Name of the resource
+            namespace:
+              type: string
+              description: Namespace of the resource
+            labels:
+              type: object
+              additionalProperties: { type: string }
+              description: Labels for the resource
+            annotations:
+              type: object
+              additionalProperties: { type: string }
+              description: Annotations for the resource
+        spec:
+          $ref: '#/components/schemas/ApplicationPackageSpec'
+          description: Specification of the package
+    
+    # Application Package Schemas
+    ApplicationPackageResp:
+      type: object
+      description: Application Package manifest
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: non-margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationPackage
+          description: Resource kind
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+          description: Metadata of the package
+        spec:
+          $ref: '#/components/schemas/ApplicationPackageSpec'
+          description: Specification of the package
+        recentOperation:
+          $ref: '#/components/schemas/ApplicationPackageRecentOperation'
+          description: Recent operation details
+        status:
+          $ref: '#/components/schemas/ApplicationPackageStatus'
+          description: Status of the package
+
+    ApplicationPackageListResp:
+      type: object
+      description: List of Application Packages
+      required: [apiVersion, kind, items]
+      properties:
+        apiVersion:
+          type: string
+          description: API version
+        kind:
+          type: string
+          default: ApplicationPackageList
+        metadata:
+          type: object
+          $ref: '#/components/schemas/PaginationMetadata'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationPackageResp'
+
+    ApplicationDeploymentRequest:
+      type: object
+      description: Application Deployment request
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: non-margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationDeployment
+          description: Resource kind
+        metadata:
+          type: object
+          required: [name]
+          properties:
+            id:
+              type: string
+              readOnly: true
+              description: This field is generated by the server.
+            name:
+              type: string
+              description: Name of the deployment
+            namespace:
+              type: string
+              description: Namespace of the deployment
+            labels:
+              type: object
+              additionalProperties: { type: string }
+              description: Labels for the deployment
+            annotations:
+              type: object
+              additionalProperties: { type: string }
+              description: Annotations for the deployment
+            creationTimestamp:
+              type: string
+              format: date-time
+              readOnly: true
+              description: Creation timestamp
+        spec:
+          $ref: '#/components/schemas/ApplicationDeploymentSpec'
+          description: Specification of the deployment
+
+
+    # Application Deployment Schemas
+    ApplicationDeploymentResp:
+      type: object
+      description: Application Deployment manifest
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: non-margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationDeployment
+          description: Resource kind
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        spec:
+          $ref: '#/components/schemas/ApplicationDeploymentSpec'
+        status:
+          $ref: '#/components/schemas/ApplicationDeploymentStatus'
+          description: Status of the deployment
+        recentOperation:
+          $ref: '#/components/schemas/ApplicationPackageRecentOperation'
+          description: Recent operation details
+
+    ApplicationDeploymentListResp:
+      type: object
+      description: List of Application Deployments
+      required: [apiVersion, kind, metadata, items]
+      properties:
+        apiVersion:
+          type: string
+          default: non-margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationDeploymentList
+          description: Resource kind
+        metadata:
+          type: object
+          $ref: '#/components/schemas/PaginationMetadata'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationDeploymentResp'
+
+    ApplicationDeploymentOperation:
+      type: string
+      enum: [DEPLOY, DELETE, UPDATE]
+      description: Current application deployment operation
+
+    ApplicationDeploymentOperationStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED]
+      description: Current state of the application deployment operation
+
+    ApplicationDeploymentRecentOperation:
+      type: object
+      required: [op, status]
+      readOnly: true
+      properties:
+        op:
+          $ref: '#/components/schemas/ApplicationDeploymentOperation'
+          description: The operation being performed
+        status:
+          $ref: '#/components/schemas/ApplicationDeploymentOperationStatus'
+          description: The status of the operation
+
+    ApplicationDeploymentSpec:
+      type: object
+      description: Application Deployment specification
+      required: [appPackageRef, deploymentProfile]
+      properties:
+        appPackageRef:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              description: ID of the ApplicationPackage
+        deviceRef:
+          type: object
+          oneOf:
+            - required: [id]
+            - required: [labels]
+          properties:
+            id:
+              type: string
+              description: ID of the Device
+            labels:
               type: object
               additionalProperties: true
-          required: [errorCode]
+              description: Labels for the Device
+        deploymentProfile:
+          $ref: '#/components/schemas/ApplicationDeploymentProfile'
+          description: Deployment profile
+        parameters:
+          $ref: '#/components/schemas/ApplicationParameters'
+          description: Parameters for the deployment
 
-    ValidationError:
+    ApplicationDeploymentStatus:
       type: object
+      description: Application Deployment status
+      required: [state]
       properties:
-        field:
+        state:
           type: string
-        message:
+          enum: [RUNNING, UPDATING, CRASHLOOP]
+          example: RUNNING
+          description: State of the deployment
+          readOnly: true
+        contextualInfo:
+          $ref: '#/components/schemas/ContextualInfo'
+          description: Contextual information
+          readOnly: true
+        lastUpdateTime:
           type: string
-      required: [field, message]
+          format: date-time
+          description: Last update time
+          readOnly: true
 
+    ApplicationDeploymentProfile:
+      type: object
+      description: Application Deployment Profile
+      required: [type, components]
+      properties:
+        type:
+          type: string
+          enum: ["helm.v3", "compose"]
+          description: Type of deployment profile
+        components:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/HelmApplicationDeploymentProfileComponent'
+              - $ref: '#/components/schemas/ComposeApplicationDeploymentProfileComponent'
+          description: Components of the deployment profile
+
+    HelmApplicationDeploymentProfileComponent:
+      type: object
+      description: Helm Application Deployment Profile Component
+      required: [name, properties]
+      properties:
+        name:
+          type: string
+          description: Name of the component
+        properties:
+          type: object
+          required: [repository]
+          properties:
+            repository:
+              type: string
+              description: Repository of the component
+            revision:
+              type: string
+              description: Revision of the component
+            timeout:
+              type: string
+              description: Timeout for the component
+            wait:
+              type: boolean
+              description: Wait for the component to be ready
+
+    ComposeApplicationDeploymentProfileComponent:
+      type: object
+      description: Compose Application Deployment Profile Component
+      required: [name, properties]
+      properties:
+        name:
+          type: string
+          description: Name of the component
+        properties:
+          type: object
+          required: [packageLocation]
+          properties:
+            packageLocation:
+              type: string
+              description: Package location of the component
+            keyLocation:
+              type: string
+              description: Key location of the component
+            timeout:
+              type: string
+              description: Timeout for the component
+            wait:
+              type: boolean
+              description: Wait for the component to be ready
+
+    ApplicationParameterTarget:
+      type: object
+      description: Application Parameter Target
+      required: [pointer, components]
+      properties:
+        pointer:
+          type: string
+          description: Pointer to the parameter
+        components:
+          type: array
+          items:
+            type: string
+          description: Components of the parameter
+
+    ApplicationParameterValue:
+      type: object
+      description: Application Parameter Value
+      required: [value, targets]
+      properties:
+        value:
+          type: string
+          description: Value of the parameter
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationParameterTarget'
+          description: Targets of the parameter
+
+    ApplicationParameters:
+      type: object
+      description: Application Parameters
+      additionalProperties:
+        $ref: '#/components/schemas/ApplicationParameterValue'
+
+    ApplicationPackageOperation:
+      type: string
+      enum: [ONBOARD, DEBOARD, STAGE, UNSTAGE]
+      description: Current application package operation
+
+    ApplicationPackageOperationStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED]
+      description: Current state of the application package operation
+
+    ApplicationPackageRecentOperation:
+      type: object
+      required: [op, status]
+      readOnly: true
+      properties:
+        op:
+          $ref: '#/components/schemas/ApplicationPackageOperation'
+          description: The operation being performed
+        status:
+          $ref: '#/components/schemas/ApplicationPackageOperationStatus'
+          description: The status of the operation
+
+    ApplicationPackageSpec:
+      type: object
+      description: Application Package specification
+      required: [sourceType, source]
+      properties:
+        sourceType:
+          type: string
+          enum:
+            - GIT_REPO
+          description: Type of source for the application package
+        source:
+          oneOf:
+            - $ref: '#/components/schemas/GitRepo'
+          description: Source configuration based on sourceType
+    
     GitRepo:
       type: object
       description: Git repository source configuration
@@ -444,6 +813,52 @@ components:
         - required: [branch]
         - required: [tag]
 
+    ApplicationPackageStatus:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [PENDING, ONBOARDED, DEBOARDED, FAILED, STAGED, UNSTAGED]
+          example: ONBOARDED
+          description: State of the application package
+          readOnly: true
+        contextualInfo:
+          $ref: '#/components/schemas/ContextualInfo'
+          description: Contextual information
+          readOnly: true
+        lastUpdateTime:
+          type: string
+          format: date-time
+          description: Last update time
+          readOnly: true
+
+    # Common Schemas
+    ContextualInfo:
+      type: object
+      readOnly: true
+      properties:
+        code:
+          type: string
+          description: Code of the contextual information
+        message:
+          type: string
+          description: Message of the contextual information
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/APIResponse'
+        - type: object
+          properties:
+            errorCode:
+              type: string
+              description: Error code
+            details:
+              type: object
+              additionalProperties: true
+              description: Additional details about the error
+          required: [errorCode]
+
     Metadata:
       type: object
       required: [name]
@@ -454,258 +869,44 @@ components:
           description: This field is generated by the server.
         name:
           type: string
+          description: Name of the resource
         namespace:
           type: string
+          description: Namespace of the resource
         labels:
           type: object
           additionalProperties: { type: string }
+          description: Labels for the resource
         annotations:
           type: object
           additionalProperties: { type: string }
+          description: Annotations for the resource
         creationTimestamp:
           type: string
           format: date-time
           readOnly: true
-
-    ApplicationPackageOperation:
-      type: string
-      enum: [ONBOARD, DEBOARD, STAGE, UNSTAGE]
-      description: Current application package operation
-
-    ApplicationPackageOperationStatus:
-      type: string
-      enum: [PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED]
-      description: Current state of the application package operation
-
-    ContextualInfo:
-      type: object
-      readOnly: true
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-
-
-    ApplicationPackageStatus:
-      type: object
-      required: [state]
-      properties:
-        state:
-          type: string
-          enum: [PENDING, ONBOARDED, DEBOARDED, FAILED, STAGED, UNSTAGED]
-          example: ONBOARDED
-          readOnly: true
-        contextualInfo:
-          $ref: '#/components/schemas/ContextualInfo'
-          readOnly: true
-        lastUpdateTime:
-          type: string
-          format: date-time
-          readOnly: true
-
-    ApplicationPackageSpec:
-      type: object
-      required: [sourceType, source]
-      properties:
-        sourceType:
-          type: string
-          enum:
-            - GIT_REPO
-          description: Type of source for the application package
-        source:
-          oneOf:
-            - $ref: '#/components/schemas/GitRepo'
-          description: Source configuration based on sourceType
-
-    ApplicationPackageRecentOperation:
-      type: object
-      required: [op, status]
-      readOnly: true
-      properties:
-        op:
-          $ref: '#/components/schemas/ApplicationPackageOperation'
-        status:
-          $ref: '#/components/schemas/ApplicationPackageOperationStatus'
-
-
-    ApplicationPackage:
-      type: object
-      required: [apiVersion, kind, metadata, spec]
-      properties:
-        apiVersion:
-          type: string
-          const: non-margo.org
-          # default: non-margo.org
-        kind:
-          type: string
-          const: ApplicationPackage
-          # default: ApplicationPackage
-        metadata:
-          $ref: '#/components/schemas/Metadata'
-        spec:
-          $ref: '#/components/schemas/ApplicationPackageSpec'
-        recentOperation:
-          $ref: '#/components/schemas/ApplicationPackageRecentOperation'
-        status:
-          $ref: '#/components/schemas/ApplicationPackageStatus'
-
-    ApplicationPackageList:
-      type: object
-      required: [apiVersion, kind, items]
-      properties:
-        apiVersion:
-          type: string
-          example: non-margo.org
-        kind:
-          type: string
-          example: ApplicationPackageList
-        metadata:
-          type: object
-          $ref: '#/components/schemas/PaginationMetadata'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ApplicationPackage'
-
-
-    HelmApplicationDeploymentProfileComponent:
-      type: object
-      required: [name, properties]
-      properties:
-        name:
-          type: string
-        properties:
-          type: object
-          required: [repository]
-          properties:
-            repository:
-              type: string
-            revision:
-              type: string
-            timeout:
-              type: string
-            wait:
-              type: boolean
-    
-    ComposeApplicationDeploymentProfileComponent:
-      type: object
-      required: [name, properties]
-      properties:
-        name:
-          type: string
-        properties:
-          type: object
-          required: [packageLocation]
-          properties:
-            packageLocation:
-              type: string
-            keyLocation:
-              type: string
-            timeout:
-              type: string
-            wait:
-              type: boolean
-
-    ApplicationDeploymentProfile:
-      type: object
-      required: [type, components]
-      properties:
-        type:
-          type: string
-          enum: ["helm.v3", "compose"]
-        components:
-          type: array
-          items:
-            oneOf:
-                - $ref: '#/components/schemas/HelmApplicationDeploymentProfileComponent'
-                - $ref: '#/components/schemas/ComposeApplicationDeploymentProfileComponent'
-            # $ref: '#/components/schemas/ApplicationDeploymentProfileComponent'
-
-    ApplicationParameterTarget:
-      type: object
-      required: [pointer, components]
-      properties:
-        pointer:
-          type: string
-        components:
-          type: array
-          items:
-            type: string
-
-    ApplicationParameterValue:
-      type: object
-      required: [value, targets]
-      properties:
-        value:
-          type: string
-        targets:
-          type: array
-          items:
-            $ref: '#/components/schemas/ApplicationParameterTarget'
-
-    ApplicationParameters:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/ApplicationParameterValue'
-
-    ApplicationDeployment:
-      type: object
-      required: [apiVersion, kind, metadata, spec]
-      properties:
-        apiVersion:
-          type: string
-          const: non-margo.org
-        kind:
-          type: string
-          const: ApplicationDeployment
-        metadata:
-          $ref: '#/components/schemas/Metadata'
-        spec:
-          type: object
-          required: [appPackageRef, deploymentProfile]
-          properties:
-            appPackageRef:
-              type: object
-              required: [id]
-              properties:
-                id:
-                  type: string
-            deploymentProfile:
-              $ref: '#/components/schemas/ApplicationDeploymentProfile'
-            parameters:
-              $ref: '#/components/schemas/ApplicationParameters'
-        status:
-          $ref: '#/components/schemas/ApplicationPackageStatus'
-
-    ApplicationDeploymentList:
-      type: object
-      required: [apiVersion, kind, metadata, items]
-      properties:
-        apiVersion:
-          type: string
-          const: non-margo.org
-        kind:
-          type: string
-          const: ApplicationDeploymentList
-        metadata:
-          type: object
-          $ref: '#/components/schemas/PaginationMetadata'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ApplicationDeployment'
+          description: Creation timestamp
 
     PaginationMetadata:
       type: object
       properties:
         continue:
           type: boolean
+          description: Indicates if there are more items to retrieve
         remainingItemCount:
           type: integer
-      required:
-        - continue
-        - remainingCount  
+          description: Number of items remaining
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field with the validation error
+        message:
+          type: string
+          description: Validation error message
+      required: [field, message]
 
 security:
   - BearerAuth: []

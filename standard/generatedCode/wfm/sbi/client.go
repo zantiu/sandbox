@@ -95,9 +95,9 @@ type ClientInterface interface {
 	Process(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// StateWithBody request with any body
-	StateWithBody(ctx context.Context, params *StateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	StateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	State(ctx context.Context, params *StateParams, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	State(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ProcessWithBody(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -124,8 +124,8 @@ func (c *Client) Process(ctx context.Context, params *ProcessParams, body Proces
 	return c.Client.Do(req)
 }
 
-func (c *Client) StateWithBody(ctx context.Context, params *StateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) StateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func (c *Client) StateWithBody(ctx context.Context, params *StateParams, content
 	return c.Client.Do(req)
 }
 
-func (c *Client) State(ctx context.Context, params *StateParams, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequest(c.Server, params, body)
+func (c *Client) State(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -181,22 +181,6 @@ func NewProcessRequestWithBody(server string, params *ProcessParams, contentType
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if params.DeviceId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "deviceId", runtime.ParamLocationQuery, *params.DeviceId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
 		if params.RpcId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rpcId", runtime.ParamLocationQuery, *params.RpcId); err != nil {
@@ -227,18 +211,18 @@ func NewProcessRequestWithBody(server string, params *ProcessParams, contentType
 }
 
 // NewStateRequest calls the generic State builder with application/json body
-func NewStateRequest(server string, params *StateParams, body StateJSONRequestBody) (*http.Request, error) {
+func NewStateRequest(server string, body StateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewStateRequestWithBody(server, params, "application/json", bodyReader)
+	return NewStateRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewStateRequestWithBody generates requests for State with any type of body
-func NewStateRequestWithBody(server string, params *StateParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewStateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -254,56 +238,6 @@ func NewStateRequestWithBody(server string, params *StateParams, contentType str
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.DeviceId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "deviceId", runtime.ParamLocationQuery, *params.DeviceId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "deviceState", runtime.ParamLocationQuery, params.DeviceState); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if params.RpcId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rpcId", runtime.ParamLocationQuery, *params.RpcId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -365,9 +299,9 @@ type ClientWithResponsesInterface interface {
 	ProcessWithResponse(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*ProcessResponse, error)
 
 	// StateWithBodyWithResponse request with any body
-	StateWithBodyWithResponse(ctx context.Context, params *StateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error)
+	StateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error)
 
-	StateWithResponse(ctx context.Context, params *StateParams, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
+	StateWithResponse(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
 }
 
 type ProcessResponse struct {
@@ -434,16 +368,16 @@ func (c *ClientWithResponses) ProcessWithResponse(ctx context.Context, params *P
 }
 
 // StateWithBodyWithResponse request with arbitrary body returning *StateResponse
-func (c *ClientWithResponses) StateWithBodyWithResponse(ctx context.Context, params *StateParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.StateWithBody(ctx, params, contentType, body, reqEditors...)
+func (c *ClientWithResponses) StateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error) {
+	rsp, err := c.StateWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseStateResponse(rsp)
 }
 
-func (c *ClientWithResponses) StateWithResponse(ctx context.Context, params *StateParams, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.State(ctx, params, body, reqEditors...)
+func (c *ClientWithResponses) StateWithResponse(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error) {
+	rsp, err := c.State(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

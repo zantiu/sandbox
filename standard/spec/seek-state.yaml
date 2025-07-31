@@ -41,36 +41,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/currentAppStates'
-      parameters:
-        - name: deviceId
-          in: query
-          description: Device Identifier
-          required: false
-          explode: true
-          schema:
-            type: string
-            example: Marseilles-Press-ProdCell-15
-        - name: deviceState
-          in: query
-          description: Statusof the device
-          required: true
-          explode: true
-          schema:
-            type: string
-            default: STOPPED
-            enum:
-              - INITIALIZING
-              - RUNNING
-              - UPDATING
-              - REBOOTING
-              - STOPPED
-        - name: rpcId
-          in: query
-          description: An RPC call to the WFM, initiated by the Device
-          required: false
-          explode: true
-          schema:
-            type: integer
       responses:
         '200':
           description: Successful operation, WFM returns desired state of Applications
@@ -78,10 +48,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/desiredAppStates'
-        '400':
-          description: Invalid Device ID supplied
-        '404':
-          description: Device not found
         '422':
           description: Validation exception
         default:
@@ -108,14 +74,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/privatePayload'
       parameters:
-        - name: deviceId
-          in: query
-          description: Device Identifier
-          required: false
-          explode: true
-          schema:
-            type: string
-            example: Marseilles-Press-ProdCell-15
         - name: rpcId
           in: query
           description: An RPC call to the WFM, initiated by the Device
@@ -130,10 +88,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/privatePayload'
-        '400':
-          description: Invalid Device ID supplied
-        '404':
-          description: Device not found
         '422':
           description: Validation exception
         default:
@@ -148,6 +102,150 @@ paths:
             - read:state            
 components:
   schemas:
+    appDeploymentMetadata:
+      type: object
+      required: [name]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the application deployment
+        name:
+          type: string
+          description: Name of the resource
+        namespace:
+          type: string
+          description: Namespace of the resource
+        labels:
+          type: object
+          additionalProperties: { type: string }
+          description: Labels for the resource
+        annotations:
+          type: object
+          additionalProperties: { type: string }
+          description: Annotations for the resource
+    helmApplicationDeploymentProfileComponent:
+      type: object
+      description: Helm Application Deployment Profile Component
+      required: [name, properties]
+      properties:
+        name:
+          type: string
+          description: Name of the component
+        properties:
+          type: object
+          required: [repository]
+          properties:
+            repository:
+              type: string
+              description: Repository of the component
+            revision:
+              type: string
+              description: Revision of the component
+            timeout:
+              type: string
+              description: Timeout for the component
+            wait:
+              type: boolean
+              description: Wait for the component to be ready
+    composeApplicationDeploymentProfileComponent:
+      type: object
+      description: Compose Application Deployment Profile Component
+      required: [name, properties]
+      properties:
+        name:
+          type: string
+          description: Name of the component
+        properties:
+          type: object
+          required: [packageLocation]
+          properties:
+            packageLocation:
+              type: string
+              description: Package location of the component
+            keyLocation:
+              type: string
+              description: Key location of the component
+            timeout:
+              type: string
+              description: Timeout for the component
+            wait:
+              type: boolean
+              description: Wait for the component to be ready
+    appDeploymentProfile:
+      type: object
+      description: Application Deployment Profile
+      required: [type, components]
+      properties:
+        type:
+          type: string
+          enum: ["helm.v3", "compose"]
+          description: Type of deployment profile
+        components:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/helmApplicationDeploymentProfileComponent'
+              - $ref: '#/components/schemas/composeApplicationDeploymentProfileComponent'
+          description: Components of the deployment profile
+    appParameterTarget:
+      type: object
+      description: Application Parameter Target
+      required: [pointer, components]
+      properties:
+        pointer:
+          type: string
+          description: Pointer to the parameter
+        components:
+          type: array
+          items:
+            type: string
+          description: Components of the parameter
+    appParameterValue:
+      type: object
+      description: Application Parameter Value
+      required: [value, targets]
+      properties:
+        value:
+          type: string
+          description: Value of the parameter
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/appParameterTarget'
+          description: Targets of the parameter
+    appDeploymentParams:
+      type: object
+      description: Application Parameters
+      additionalProperties:
+        $ref: '#/components/schemas/appParameterValue'
+    appDeploymentSpec:
+      type: object
+      description: Application Deployment specification
+      required: [appPackageRef, deploymentProfile]
+      properties:
+        deploymentProfile:
+          $ref: '#/components/schemas/appDeploymentProfile'
+          description: Deployment profile
+        parameters:
+          $ref: '#/components/schemas/appDeploymentParams'
+          description: Parameters for the deployment
+    appDeployment:
+      type: object
+      description: Application Deployment manifest
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion:
+          type: string
+          default: margo.org
+          description: API version
+        kind:
+          type: string
+          default: ApplicationDeployment
+          description: Resource kind
+        metadata:
+          $ref: '#/components/schemas/appDeploymentMetadata'
+        spec:
+          $ref: '#/components/schemas/appDeploymentSpec'
     currentAppStates:
       type: array
       items:

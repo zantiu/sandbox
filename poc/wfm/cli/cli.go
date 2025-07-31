@@ -27,14 +27,11 @@ const (
 	// southboundBaseURL is the default base URL path for the Northbound API
 	southboundBaseURL = "margo/sbi/v1"
 
-	// desiredStateBaseURL is the default base URL path for the DesiredState API
-	desiredStateBaseURL = "margo/sbi/v1"
-
 	// Default timeout for API requests
 	defaultTimeout = 30 * time.Second
 )
 
-// Type aliases for better API ergonomics
+// Type aliases for better API ergonomics, and can be used later on to change the structs if needed
 type (
 	AppPkgOnboardingReq  = nonStdWfmNbi.ApplicationPackage
 	AppPkgOnboardingResp = nonStdWfmNbi.ApplicationPackage
@@ -436,7 +433,7 @@ func (cli *WFMCli) DeviceDeboard(deviceId string, certPem []byte) error {
 // the Margo DesiredState service, including operations for onboarding, listing, retrieving,
 // and deleting application packages.
 
-// Type aliases for better API ergonomics
+// Type aliases for better API ergonomics, and can be used later on to change the structs if needed
 type (
 	SyncAppStateReq  = stdWfmSbi.StateJSONRequestBody
 	SyncAppStateResp = stdWfmSbi.DesiredAppStates
@@ -462,11 +459,7 @@ func (cli *WFMCli) PollAppState(deviceId string, params SyncAppStateReq) (*SyncA
 	defer cancel()
 
 	// Make API request
-	resp, err := client.State(ctx,
-		&stdWfmSbi.StateParams{
-			DeviceId: &deviceId,
-		}, params, nil,
-	)
+	resp, err := client.State(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("poll app state request failed: %s", err.Error())
 	}
