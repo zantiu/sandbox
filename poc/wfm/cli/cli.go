@@ -36,6 +36,11 @@ type (
 	AppPkgSummary        = nonStdWfmNbi.ApplicationPackageResp
 	ListAppPkgsParams    = nonStdWfmNbi.ListAppPackagesParams
 	ListAppPkgsResp      = nonStdWfmNbi.ApplicationPackageListResp
+
+	DeploymentReq        = nonStdWfmNbi.ApplicationDeploymentRequest
+	DeploymentResp       = nonStdWfmNbi.ApplicationDeploymentResp
+	DeploymentListResp   = nonStdWfmNbi.ApplicationDeploymentListResp
+	DeploymentListParams = nonStdWfmNbi.ListApplicationDeploymentsParams
 )
 
 // WFMCli provides a client interface for the Margo Northbound API.
@@ -320,6 +325,144 @@ func (cli *WFMCli) DeleteAppPkg(pkgId string) error {
 		return nil
 	default:
 		return cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "delete app package")
+	}
+}
+
+func (cli *WFMCli) CreateDeployment(params DeploymentReq) (*DeploymentResp, error) {
+	// Validate required parameters
+	// Create client and context
+	client, err := cli.createNonStdNbiClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	// Make API request
+	resp, err := client.CreateApplicationDeployment(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("onboard app package request failed: %s", err.Error())
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	pkgResp, err := nonStdWfmNbi.ParseCreateApplicationDeploymentResponse(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse onboard app package response: %s", err.Error())
+	}
+
+	// Handle response based on status code
+	switch pkgResp.StatusCode() {
+	case 200, 202:
+		cli.logger.Printf("Application deployment request accepted for package: %s", params.Spec.AppPackageRef.Id)
+		if pkgResp.JSON202 != nil {
+			return pkgResp.JSON202, nil
+		}
+		return nil, nil
+	default:
+		return nil, cli.handleErrorResponse(pkgResp.Body, pkgResp.StatusCode(), "create app deployment")
+	}
+}
+
+// GetDeployment retrieves details for a specific application deployment.
+func (cli *WFMCli) GetDeployment(deploymentId string) (*DeploymentResp, error) {
+	if deploymentId == "" {
+		return nil, fmt.Errorf("deployment ID cannot be empty")
+	}
+
+	client, err := cli.createNonStdNbiClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	resp, err := client.GetApplicationDeployment(ctx, deploymentId)
+	if err != nil {
+		return nil, fmt.Errorf("get app package request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	deploymentResp, err := nonStdWfmNbi.ParseGetApplicationDeploymentResponse(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse get app deployment response: %w", err)
+	}
+
+	switch deploymentResp.StatusCode() {
+	case 200:
+		cli.logger.Printf("Successfully retrieved package: %s", deploymentId)
+		return deploymentResp.JSON200, nil
+	default:
+		return nil, cli.handleErrorResponse(deploymentResp.Body, deploymentResp.StatusCode(), "get app deployment")
+	}
+}
+
+// ListDeployments retrieves a list of application packages.
+func (cli *WFMCli) ListDeployments(params DeploymentListParams) (*DeploymentListResp, error) {
+	client, err := cli.createNonStdNbiClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	resp, err := client.ListApplicationDeployments(ctx, &params)
+	if err != nil {
+		return nil, fmt.Errorf("list app packages request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	deploymentListResp, err := nonStdWfmNbi.ParseListApplicationDeploymentsResponse(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse list app deployment response: %w", err)
+	}
+
+	switch deploymentListResp.StatusCode() {
+	case 200:
+		packageCount := 0
+		if deploymentListResp.JSON200 != nil {
+			packageCount = len(deploymentListResp.JSON200.Items)
+		}
+		cli.logger.Printf("Successfully listed %d deployments", packageCount)
+		return deploymentListResp.JSON200, nil
+	default:
+		return nil, cli.handleErrorResponse(deploymentListResp.Body, deploymentListResp.StatusCode(), "list app deployments")
+	}
+}
+
+func (cli *WFMCli) DeleteDeployment(deploymentId string) error {
+	if deploymentId == "" {
+		return fmt.Errorf("deployment ID cannot be empty")
+	}
+
+	client, err := cli.createNonStdNbiClient()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := cli.createContext()
+	defer cancel()
+
+	resp, err := client.DeleteApplicationDeployment(ctx, deploymentId, nil)
+	if err != nil {
+		return fmt.Errorf("delete app deployment request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	deploymentResp, err := nonStdWfmNbi.ParseDeleteApplicationDeploymentResponse(resp)
+	if err != nil {
+		return fmt.Errorf("failed to parse delete app deployment response: %w", err)
+	}
+
+	switch deploymentResp.StatusCode() {
+	case 200, 202:
+		cli.logger.Printf("Successfully deleted deployment: %s", deploymentId)
+		return nil
+	default:
+		return cli.handleErrorResponse(deploymentResp.Body, deploymentResp.StatusCode(), "delete app deployment")
 	}
 }
 

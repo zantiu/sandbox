@@ -9,8 +9,8 @@ func main() {
 	sugar := logger.Sugar()
 
 	config := &Config{
-		DeviceID:  "test-device",
-		WfmSbiUrl: "http://localhost:3000/margo/sbi",
+		DeviceID:  "device-101",
+		WfmSbiUrl: "http://localhost:3000/margo/sbi/v1",
 	}
 
 	agent, err := NewDeviceAgent(config, sugar)
