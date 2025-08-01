@@ -447,7 +447,7 @@ func (cli *WFMCli) DeleteDeployment(deploymentId string) error {
 	ctx, cancel := cli.createContext()
 	defer cancel()
 
-	resp, err := client.DeleteApplicationDeployment(ctx, deploymentId, nil)
+	resp, err := client.DeleteApplicationDeployment(ctx, deploymentId)
 	if err != nil {
 		return fmt.Errorf("delete app deployment request failed: %w", err)
 	}

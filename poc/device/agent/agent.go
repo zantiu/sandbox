@@ -238,7 +238,7 @@ func (da *DeviceAgent) mergeAppStates(states sbi.DesiredAppStates) error {
 
 		case sbi.RUNNING, sbi.UPDATING:
 			da.log.Infow("Adding/Updating app", "appId", *appDeployment.Metadata.Id, "state", state.AppState)
-			newAppState, err := pkg.ConvertAppDeploymentToAppState(appDeployment, "", "")
+			newAppState, err := pkg.ConvertAppDeploymentToAppState(appDeployment, *appDeployment.Metadata.Id, "v1", "RUNNING")
 			if err != nil {
 				da.log.Errorw("Failed to convert AppDeployment to AppState", "appId", *appDeployment.Metadata.Id, "error", err)
 				return err
