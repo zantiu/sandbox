@@ -117,6 +117,7 @@ func NewWFMCli(host string, port uint16, nbiBasePath, sbiBasePath *string, opts 
 
 // createClient creates a new API client with proper error handling
 func (cli *WFMCli) createNonStdNbiClient() (*nonStdWfmNbi.Client, error) {
+	fmt.Println("nbi base url", cli.nbiBaseURL)
 	client, err := nonStdWfmNbi.NewClient(cli.nbiBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API client: %w", err)
