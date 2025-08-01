@@ -529,7 +529,7 @@ components:
           $ref: '#/components/schemas/ApplicationDeploymentStatus'
           description: Status of the deployment
         recentOperation:
-          $ref: '#/components/schemas/ApplicationPackageRecentOperation'
+          $ref: '#/components/schemas/ApplicationDeploymentRecentOperation'
           description: Recent operation details
 
     ApplicationDeploymentListResp:

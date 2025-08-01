@@ -170,9 +170,9 @@ type ApplicationDeploymentResp struct {
 	ApiVersion string `json:"apiVersion"`
 
 	// Kind Resource kind
-	Kind            string                             `json:"kind"`
-	Metadata        Metadata                           `json:"metadata"`
-	RecentOperation *ApplicationPackageRecentOperation `json:"recentOperation,omitempty"`
+	Kind            string                                `json:"kind"`
+	Metadata        Metadata                              `json:"metadata"`
+	RecentOperation *ApplicationDeploymentRecentOperation `json:"recentOperation,omitempty"`
 
 	// Spec Application Deployment specification
 	Spec ApplicationDeploymentSpec `json:"spec"`
