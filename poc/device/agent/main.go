@@ -10,7 +10,7 @@ func main() {
 
 	config := &Config{
 		DeviceID:  "device-101",
-		WfmSbiUrl: "http://localhost:3000/margo/sbi/v1",
+		WfmSbiUrl: "http://localhost:8082/v1alpha2/margo/sbi/v1",
 	}
 
 	agent, err := NewDeviceAgent(config, sugar)

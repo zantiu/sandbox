@@ -1,7 +1,9 @@
 package pkg
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -9,7 +11,7 @@ import (
 )
 
 // ConvertAppDeploymentToAppState converts AppDeployment to AppState.
-func ConvertAppDeploymentToAppState(appDeployment *sbi.AppDeployment, appVersion string, appStateValue string) (sbi.AppState, error) {
+func ConvertAppDeploymentToAppState(appDeployment *sbi.AppDeployment, appId, appVersion, appStateValue string) (sbi.AppState, error) {
 	appDeploymentJSON, err := json.Marshal(appDeployment)
 	if err != nil {
 		return sbi.AppState{}, fmt.Errorf("error marshaling AppDeployment to JSON: %w", err)
@@ -17,13 +19,25 @@ func ConvertAppDeploymentToAppState(appDeployment *sbi.AppDeployment, appVersion
 
 	appDeploymentYAML := base64.StdEncoding.EncodeToString(appDeploymentJSON)
 
+	// Create a new SHA-256 hash object
+	hasher := sha256.New()
+
+	// Write the input string's bytes to the hasher
+	hasher.Write([]byte(appDeploymentJSON))
+
+	// Get the finalized hash sum as a byte slice
+	hashBytes := hasher.Sum(nil)
+
+	// Convert the byte slice to a human-readable hexadecimal string
+	hashString := hex.EncodeToString(hashBytes)
+
 	// TODO: Implement a proper hash function for appDeploymentYAML
-	appDeploymentYAMLHash := "" // TODO: add a function to create hash
+	appDeploymentYAMLHash := hashString // TODO: add a function to create hash
 
 	appState := sbi.AppState{
 		AppDeploymentYAML:     &appDeploymentYAML,
 		AppDeploymentYAMLHash: appDeploymentYAMLHash,
-		AppId:                 "",
+		AppId:                 appId,
 		AppState:              sbi.AppStateAppState(appStateValue),
 		AppVersion:            appVersion,
 	}

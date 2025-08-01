@@ -17,7 +17,7 @@ import (
 
 const (
 	stateSeekURLPath     = "/wfm/state" // Corrected naming
-	appStateSyncInterval = 15 * time.Second
+	appStateSyncInterval = 5 * time.Second
 )
 
 // DeviceAgent represents the main device agent.
@@ -184,7 +184,7 @@ func (da *DeviceAgent) syncAppStates() error {
 
 	switch desiredStateResp.StatusCode() {
 	case http.StatusOK, http.StatusAccepted:
-		da.log.Debugw("Received desired state API response", "response", pretty.Sprint(desiredStateResp))
+		da.log.Debugw("Received desired state API response", "response", pretty.Sprint(desiredStateResp.JSON200))
 		if desiredStateResp.JSON200 != nil {
 			if err := da.mergeAppStates(*desiredStateResp.JSON200); err != nil {
 				da.log.Errorw("Failed to merge app states", "error", err)
@@ -232,7 +232,7 @@ func (da *DeviceAgent) mergeAppStates(states sbi.DesiredAppStates) error {
 		da.log.Debugw("Successfully processed AppDeployment", "name", appDeployment.Metadata.Name, "id", *appDeployment.Metadata.Id)
 
 		switch state.AppState {
-		case sbi.REMOVE:
+		case sbi.REMOVING:
 			da.log.Infow("Removing app", "appId", *appDeployment.Metadata.Id)
 			delete(da.currentWorkloads, *appDeployment.Metadata.Id)
 
