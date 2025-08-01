@@ -100,9 +100,9 @@ func NewWFMCli(host string, port uint16, nbiBasePath, sbiBasePath *string, opts 
 	}
 
 	cli := &WFMCli{
-		serverAddress: fmt.Sprintf("http://%s:%d", host, port),
-		nbiBaseURL:    nbiBaseURLPath,
-		sbiBaseURL:    sbiBaseURLPath,
+		serverAddress: fmt.Sprintf("%s:%d", host, port),
+		nbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, nbiBaseURLPath),
+		sbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, sbiBaseURLPath),
 		timeout:       defaultTimeout,
 		logger:        log.Default(),
 	}
