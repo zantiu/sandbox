@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/kr/pretty"
 	"github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
+	"github.com/margo/dev-repo/standard/pkg"
 	"go.uber.org/zap"
 )
 
@@ -221,16 +220,9 @@ func (da *DeviceAgent) mergeAppStates(states sbi.DesiredAppStates) error {
 			continue
 		}
 
-		decodedYaml, err := base64.StdEncoding.DecodeString(*state.AppDeploymentYAML)
+		appDeployment, err := pkg.ParseAppDeploymentFromBase64(*state.AppDeploymentYAML)
 		if err != nil {
-			da.log.Errorw("Failed to decode base64 AppDeploymentYAML", "appId", state.AppId, "error", err)
-			return fmt.Errorf("failed to decode the app deployment yaml from its base64 format, appID: %s, err: %w", state.AppId, err)
-		}
-
-		var appDeployment sbi.AppDeployment
-		if err := json.Unmarshal(decodedYaml, &appDeployment); err != nil {
-			da.log.Errorw("Failed to unmarshal JSON AppDeployment", "appId", state.AppId, "error", err)
-			return fmt.Errorf("failed to parse the app deployment object from the yaml, appID: %s, err: %w", state.AppId, err)
+			return fmt.Errorf("failed to parse the deployment yaml from the base64 encoded string, err: %s", err.Error())
 		}
 
 		if appDeployment.Metadata.Id == nil {
@@ -246,7 +238,7 @@ func (da *DeviceAgent) mergeAppStates(states sbi.DesiredAppStates) error {
 
 		case sbi.RUNNING, sbi.UPDATING:
 			da.log.Infow("Adding/Updating app", "appId", *appDeployment.Metadata.Id, "state", state.AppState)
-			newAppState, err := da.convertAppDeploymentToAppState(appDeployment, "", "")
+			newAppState, err := pkg.ConvertAppDeploymentToAppState(appDeployment, "", "")
 			if err != nil {
 				da.log.Errorw("Failed to convert AppDeployment to AppState", "appId", *appDeployment.Metadata.Id, "error", err)
 				return err
@@ -260,45 +252,4 @@ func (da *DeviceAgent) mergeAppStates(states sbi.DesiredAppStates) error {
 
 	da.log.Debug("App states merged successfully")
 	return nil
-}
-
-// convertAppDeploymentToAppState converts AppDeployment to AppState.
-func (da *DeviceAgent) convertAppDeploymentToAppState(appDeployment sbi.AppDeployment, appVersion string, appStateValue string) (sbi.AppState, error) {
-	appDeploymentJSON, err := json.Marshal(appDeployment)
-	if err != nil {
-		return sbi.AppState{}, fmt.Errorf("error marshaling AppDeployment to JSON: %w", err)
-	}
-
-	appDeploymentYAML := base64.StdEncoding.EncodeToString(appDeploymentJSON)
-
-	// TODO: Implement a proper hash function for appDeploymentYAML
-	appDeploymentYAMLHash := "" // TODO: add a function to create hash
-
-	appState := sbi.AppState{
-		AppDeploymentYAML:     &appDeploymentYAML,
-		AppDeploymentYAMLHash: appDeploymentYAMLHash,
-		AppId:                 "",
-		AppState:              "",
-		AppVersion:            "",
-	}
-
-	return appState, nil
-}
-
-// convertAppStateToAppDeployment converts AppState to AppDeployment.
-func (da *DeviceAgent) convertAppStateToAppDeployment(appState sbi.AppState) (sbi.AppDeployment, error) {
-	if appState.AppDeploymentYAML == nil {
-		return sbi.AppDeployment{}, fmt.Errorf("appState.AppDeploymentYAML is nil")
-	}
-	appDeploymentJSON, err := base64.StdEncoding.DecodeString(*appState.AppDeploymentYAML)
-	if err != nil {
-		return sbi.AppDeployment{}, fmt.Errorf("error decoding AppDeploymentYAML: %w", err)
-	}
-
-	var appDeployment sbi.AppDeployment
-	if err := json.Unmarshal(appDeploymentJSON, &appDeployment); err != nil {
-		return sbi.AppDeployment{}, fmt.Errorf("error unmarshaling AppDeployment from JSON: %w", err)
-	}
-
-	return appDeployment, nil
 }
