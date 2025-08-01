@@ -614,7 +614,7 @@ components:
       properties:
         state:
           type: string
-          enum: [RUNNING, UPDATING, CRASHLOOP, UNKNOWN]
+          enum: [RUNNING, UPDATING, CRASHLOOP, UNKNOWN, PENDING, STOPPED, REMOVING]
           example: RUNNING
           description: State of the deployment
           readOnly: true

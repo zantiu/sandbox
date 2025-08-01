@@ -22,7 +22,8 @@ const (
 // Defines values for AppStateAppState.
 const (
 	CRASHLOOP AppStateAppState = "CRASHLOOP"
-	REMOVE    AppStateAppState = "REMOVE"
+	PENDING   AppStateAppState = "PENDING"
+	REMOVING  AppStateAppState = "REMOVING"
 	RUNNING   AppStateAppState = "RUNNING"
 	STOPPED   AppStateAppState = "STOPPED"
 	UPDATING  AppStateAppState = "UPDATING"

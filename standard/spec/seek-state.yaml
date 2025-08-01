@@ -284,7 +284,8 @@ components:
             - UPDATING
             - CRASHLOOP
             - STOPPED
-            - REMOVE
+            - REMOVING
+            - PENDING
       required:
         - appId
         - appVersion

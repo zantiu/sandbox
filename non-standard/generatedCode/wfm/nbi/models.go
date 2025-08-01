@@ -40,10 +40,13 @@ const (
 
 // Defines values for ApplicationDeploymentStatusState.
 const (
-	CRASHLOOP ApplicationDeploymentStatusState = "CRASHLOOP"
-	RUNNING   ApplicationDeploymentStatusState = "RUNNING"
-	UNKNOWN   ApplicationDeploymentStatusState = "UNKNOWN"
-	UPDATING  ApplicationDeploymentStatusState = "UPDATING"
+	ApplicationDeploymentStatusStateCRASHLOOP ApplicationDeploymentStatusState = "CRASHLOOP"
+	ApplicationDeploymentStatusStatePENDING   ApplicationDeploymentStatusState = "PENDING"
+	ApplicationDeploymentStatusStateREMOVING  ApplicationDeploymentStatusState = "REMOVING"
+	ApplicationDeploymentStatusStateRUNNING   ApplicationDeploymentStatusState = "RUNNING"
+	ApplicationDeploymentStatusStateSTOPPED   ApplicationDeploymentStatusState = "STOPPED"
+	ApplicationDeploymentStatusStateUNKNOWN   ApplicationDeploymentStatusState = "UNKNOWN"
+	ApplicationDeploymentStatusStateUPDATING  ApplicationDeploymentStatusState = "UPDATING"
 )
 
 // Defines values for ApplicationPackageOperation.
@@ -70,12 +73,12 @@ const (
 
 // Defines values for ApplicationPackageStatusState.
 const (
-	DEBOARDED ApplicationPackageStatusState = "DEBOARDED"
-	FAILED    ApplicationPackageStatusState = "FAILED"
-	ONBOARDED ApplicationPackageStatusState = "ONBOARDED"
-	PENDING   ApplicationPackageStatusState = "PENDING"
-	STAGED    ApplicationPackageStatusState = "STAGED"
-	UNSTAGED  ApplicationPackageStatusState = "UNSTAGED"
+	ApplicationPackageStatusStateDEBOARDED ApplicationPackageStatusState = "DEBOARDED"
+	ApplicationPackageStatusStateFAILED    ApplicationPackageStatusState = "FAILED"
+	ApplicationPackageStatusStateONBOARDED ApplicationPackageStatusState = "ONBOARDED"
+	ApplicationPackageStatusStatePENDING   ApplicationPackageStatusState = "PENDING"
+	ApplicationPackageStatusStateSTAGED    ApplicationPackageStatusState = "STAGED"
+	ApplicationPackageStatusStateUNSTAGED  ApplicationPackageStatusState = "UNSTAGED"
 )
 
 // APIResponse defines model for APIResponse.
