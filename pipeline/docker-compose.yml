@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  device-agent:
+    build:
+      context: ../
+      dockerfile: poc/device/agent/Dockerfile
+    container_name: device-agent
+    environment:
+      - DEVICE_ID=my-device-001
+    volumes:
+      - ./config:/config
+      #- /root/.kube/config:/root/.kube/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock # to manage docker runtimes
+      #- ./config/config.yaml:/config/config.yaml
+      - ./config/capabilities.yaml:/config/capabilities.yaml
+      - ./data:/data
+    restart: unless-stopped
+      # entrypoint: ["./device-agent"]
+      #command: ["-config", "/config/config.yaml"]
+
