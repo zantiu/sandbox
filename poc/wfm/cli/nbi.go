@@ -74,7 +74,7 @@ func WithAuth() WFMCliOption {
 	}
 }
 
-// NewWFMCli creates a new Northbound API client.
+// NewNbiHTTPCli creates a new Northbound API client.
 //
 // Parameters:
 //   - host: The hostname or IP address of the Northbound service
@@ -87,24 +87,18 @@ func WithAuth() WFMCliOption {
 //
 // Example:
 //
-//	cli := NewWFMCli("localhost", 8080, nil,
+//	cli := NewNbiHTTPCli("localhost", 8080, nil,
 //	    WithTimeout(60*time.Second),
 //	    WithLogger(customLogger))
-func NewWFMCli(host string, port uint16, nbiBasePath, sbiBasePath *string, opts ...WFMCliOption) *NbiApiClient {
+func NewNbiHTTPCli(host string, port uint16, nbiBasePath *string, opts ...WFMCliOption) *NbiApiClient {
 	nbiBaseURLPath := northboundBaseURL
 	if nbiBasePath != nil {
 		nbiBaseURLPath = *nbiBasePath
 	}
 
-	sbiBaseURLPath := southboundBaseURL
-	if sbiBasePath != nil {
-		sbiBaseURLPath = *nbiBasePath
-	}
-
 	cli := &NbiApiClient{
 		serverAddress: fmt.Sprintf("%s:%d", host, port),
 		nbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, nbiBaseURLPath),
-		sbiBaseURL:    fmt.Sprintf("http://%s:%d/%s", host, port, sbiBaseURLPath),
 		timeout:       nbiDefaultTimeout,
 		logger:        log.Default(),
 	}
