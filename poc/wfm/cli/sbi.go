@@ -77,8 +77,8 @@ func (self *SbiHttpClient) OnboardDeviceClient(ctx context.Context, deviceCertif
 	return onboardingResp.JSON200.ClientId, endpointsList, nil
 }
 
-func (self *SbiHttpClient) ReportCapabilities(ctx context.Context, deviceId string, capabilities sbi.DeviceCapabilities, overrideOptions ...HTTPApiClientOptions) error {
-	resp, err := self.client.PostClientClientIdCapabilities(ctx, deviceId, capabilities)
+func (self *SbiHttpClient) ReportCapabilities(ctx context.Context, deviceClientId string, capabilities sbi.DeviceCapabilities, overrideOptions ...HTTPApiClientOptions) error {
+	resp, err := self.client.PostClientClientIdCapabilities(ctx, deviceClientId, capabilities)
 	if err != nil {
 		return fmt.Errorf("failed to report capabilities: %w", err)
 	}
@@ -91,9 +91,10 @@ func (self *SbiHttpClient) ReportCapabilities(ctx context.Context, deviceId stri
 	return nil
 }
 
-func (self *SbiHttpClient) SyncState(ctx context.Context, currentStates sbi.CurrentAppStates, overrideOptions ...HTTPApiClientOptions) (desiredStates sbi.DesiredAppStates, err error) {
+func (self *SbiHttpClient) SyncState(ctx context.Context, deviceClientId string, currentStates sbi.CurrentAppStates, overrideOptions ...HTTPApiClientOptions) (desiredStates sbi.DesiredAppStates, err error) {
 	resp, err := self.client.State(
 		ctx,
+		deviceClientId,
 		currentStates,
 		overrideOptions...,
 	)

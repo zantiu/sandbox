@@ -93,12 +93,14 @@ func (ss *StateSyncer) performSync() {
 	if device.AuthEnabled {
 		desiredStates, err = ss.apiClient.SyncState(
 			ctx,
+			device.DeviceClientId,
 			currentStates,
 			auth.WithOAuth(ctx, device.OAuthClientId, device.OAuthClientSecret, device.OAuthTokenEndpointUrl),
 		)
 	} else {
 		desiredStates, err = ss.apiClient.SyncState(
 			ctx,
+			device.DeviceClientId,
 			currentStates,
 		)
 	}

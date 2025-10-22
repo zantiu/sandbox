@@ -227,13 +227,21 @@ paths:
       security:
       - PayloadSignature: []
 
-  /wfm/state:
+  /client/{clientId}/wfm/state:
     post:
       tags:
         - wfm
       summary: Device sends this API to the WFM to update the current-state of the device and applications.
       description: Device sends this API to the WFM to update the current-state of the device and applications.
       operationId: state
+      parameters:
+        - in: path
+          name: clientId
+          schema:
+            type: string
+          required: true
+          description: The device client ID registered with the workload orchestration web service.
+          
       requestBody:
         description: The current-state of the device as well as the state of each deployed app
         content:

@@ -9,7 +9,7 @@ import (
 // SBIAPIClient interface
 type SBIAPIClientInterface interface {
 	OnboardDeviceClient(ctx context.Context, deviceSignature []byte, overrideOptions ...HTTPApiClientOptions) (clientId string, endpoints []string, err error)
-	SyncState(ctx context.Context, currentStates sbi.CurrentAppStates, overrideOptions ...HTTPApiClientOptions) (desiredStates sbi.DesiredAppStates, err error)
+	SyncState(ctx context.Context, deviceClientId string, currentStates sbi.CurrentAppStates, overrideOptions ...HTTPApiClientOptions) (desiredStates sbi.DesiredAppStates, err error)
 	ReportCapabilities(ctx context.Context, deviceId string, capabilities sbi.DeviceCapabilities, overrideOptions ...HTTPApiClientOptions) error
 	ReportDeploymentStatus(ctx context.Context, deviceID, appID string, overallAppStatus sbi.OverallStatus, components []sbi.ComponentStatus) error
 	// DeboardDeviceClient(ctx context.Context, clientId string, overrideOptions ...HTTPApiClientOptions) error

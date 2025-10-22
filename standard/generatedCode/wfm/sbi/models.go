@@ -381,14 +381,14 @@ type PutClientClientIdCapabilitiesJSONRequestBody = DeviceCapabilities
 // PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody defines body for PostClientClientIdDeploymentDeploymentIdStatus for application/json ContentType.
 type PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody = DeploymentStatus
 
+// StateJSONRequestBody defines body for State for application/json ContentType.
+type StateJSONRequestBody = CurrentAppStates
+
 // PostOnboardingJSONRequestBody defines body for PostOnboarding for application/json ContentType.
 type PostOnboardingJSONRequestBody = OnboardingRequest
 
 // ProcessJSONRequestBody defines body for Process for application/json ContentType.
 type ProcessJSONRequestBody = PrivatePayload
-
-// StateJSONRequestBody defines body for State for application/json ContentType.
-type StateJSONRequestBody = CurrentAppStates
 
 // AsHelmApplicationDeploymentProfileComponent returns the union data inside the AppDeploymentProfile_Components_Item as a HelmApplicationDeploymentProfileComponent
 func (t AppDeploymentProfile_Components_Item) AsHelmApplicationDeploymentProfileComponent() (HelmApplicationDeploymentProfileComponent, error) {

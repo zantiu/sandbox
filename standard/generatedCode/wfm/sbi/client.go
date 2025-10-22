@@ -105,6 +105,11 @@ type ClientInterface interface {
 
 	PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// StateWithBody request with any body
+	StateWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	State(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostOnboardingWithBody request with any body
 	PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -117,11 +122,6 @@ type ClientInterface interface {
 	ProcessWithBody(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	Process(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// StateWithBody request with any body
-	StateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	State(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) PostClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -196,6 +196,30 @@ func (c *Client) PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Cont
 	return c.Client.Do(req)
 }
 
+func (c *Client) StateWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateRequestWithBody(c.Server, clientId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) State(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewStateRequest(c.Server, clientId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostOnboardingRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -246,30 +270,6 @@ func (c *Client) ProcessWithBody(ctx context.Context, params *ProcessParams, con
 
 func (c *Client) Process(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewProcessRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) StateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) State(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -428,6 +428,53 @@ func NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server str
 	return req, nil
 }
 
+// NewStateRequest calls the generic State builder with application/json body
+func NewStateRequest(server string, clientId string, body StateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewStateRequestWithBody(server, clientId, "application/json", bodyReader)
+}
+
+// NewStateRequestWithBody generates requests for State with any type of body
+func NewStateRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/client/%s/wfm/state", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostOnboardingRequest calls the generic PostOnboarding builder with application/json body
 func NewPostOnboardingRequest(server string, body PostOnboardingJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -557,46 +604,6 @@ func NewProcessRequestWithBody(server string, params *ProcessParams, contentType
 	return req, nil
 }
 
-// NewStateRequest calls the generic State builder with application/json body
-func NewStateRequest(server string, body StateJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewStateRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewStateRequestWithBody generates requests for State with any type of body
-func NewStateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/wfm/state")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -655,6 +662,11 @@ type ClientWithResponsesInterface interface {
 
 	PostClientClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error)
 
+	// StateWithBodyWithResponse request with any body
+	StateWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error)
+
+	StateWithResponse(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
+
 	// PostOnboardingWithBodyWithResponse request with any body
 	PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error)
 
@@ -667,11 +679,6 @@ type ClientWithResponsesInterface interface {
 	ProcessWithBodyWithResponse(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ProcessResponse, error)
 
 	ProcessWithResponse(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*ProcessResponse, error)
-
-	// StateWithBodyWithResponse request with any body
-	StateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error)
-
-	StateWithResponse(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
 }
 
 type PostClientClientIdCapabilitiesResponse struct {
@@ -740,6 +747,29 @@ func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) Status() string 
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type StateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DesiredAppStates
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r StateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r StateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -820,29 +850,6 @@ func (r ProcessResponse) StatusCode() int {
 	return 0
 }
 
-type StateResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DesiredAppStates
-	JSONDefault  *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r StateResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r StateResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // PostClientClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PostClientClientIdCapabilitiesResponse
 func (c *ClientWithResponses) PostClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error) {
 	rsp, err := c.PostClientClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
@@ -894,6 +901,23 @@ func (c *ClientWithResponses) PostClientClientIdDeploymentDeploymentIdStatusWith
 	return ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp)
 }
 
+// StateWithBodyWithResponse request with arbitrary body returning *StateResponse
+func (c *ClientWithResponses) StateWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error) {
+	rsp, err := c.StateWithBody(ctx, clientId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStateResponse(rsp)
+}
+
+func (c *ClientWithResponses) StateWithResponse(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error) {
+	rsp, err := c.State(ctx, clientId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStateResponse(rsp)
+}
+
 // PostOnboardingWithBodyWithResponse request with arbitrary body returning *PostOnboardingResponse
 func (c *ClientWithResponses) PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error) {
 	rsp, err := c.PostOnboardingWithBody(ctx, contentType, body, reqEditors...)
@@ -935,23 +959,6 @@ func (c *ClientWithResponses) ProcessWithResponse(ctx context.Context, params *P
 		return nil, err
 	}
 	return ParseProcessResponse(rsp)
-}
-
-// StateWithBodyWithResponse request with arbitrary body returning *StateResponse
-func (c *ClientWithResponses) StateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.StateWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseStateResponse(rsp)
-}
-
-func (c *ClientWithResponses) StateWithResponse(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.State(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseStateResponse(rsp)
 }
 
 // ParsePostClientClientIdCapabilitiesResponse parses an HTTP response from a PostClientClientIdCapabilitiesWithResponse call
@@ -1074,6 +1081,39 @@ func ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp *http.Respo
 	return response, nil
 }
 
+// ParseStateResponse parses an HTTP response from a StateWithResponse call
+func ParseStateResponse(rsp *http.Response) (*StateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &StateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DesiredAppStates
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostOnboardingResponse parses an HTTP response from a PostOnboardingWithResponse call
 func ParsePostOnboardingResponse(rsp *http.Response) (*PostOnboardingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1173,39 +1213,6 @@ func ParseProcessResponse(rsp *http.Response) (*ProcessResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest PrivatePayload
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseStateResponse parses an HTTP response from a StateWithResponse call
-func ParseStateResponse(rsp *http.Response) (*StateResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &StateResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DesiredAppStates
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
