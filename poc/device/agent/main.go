@@ -11,16 +11,19 @@ import (
 	"syscall"
 	"time"
 
+	"net/http"
+
 	"github.com/margo/dev-repo/poc/device/agent/database"
 	"github.com/margo/dev-repo/poc/device/agent/types"
+	wfm "github.com/margo/dev-repo/poc/wfm/cli"
+	"github.com/margo/dev-repo/shared-lib/crypto"
 	"github.com/margo/dev-repo/shared-lib/workloads"
-	"github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
 	"go.uber.org/zap"
 )
 
 type Agent struct {
 	log            *zap.SugaredLogger
-	auth           *DeviceSettings
+	auth           *DeviceClientSettings
 	config         types.Config
 	database       database.DatabaseIfc
 	syncer         StateSyncerIfc
@@ -42,10 +45,42 @@ func NewAgent(configPath string) (*Agent, error) {
 	// Create database
 	db := database.NewDatabase("data/")
 
-	// Create API client
-	apiClient, err := sbi.NewClient(cfg.Wfm.SbiURL)
+	// Prepare request editors (e.g., request signer) for WFM client
+	var requestEditors []wfm.HTTPApiClientOptions
+
+	// Create WFM client using configured URL
+	wfmUrl := cfg.Wfm.SbiURL
+	if wfmUrl == "" {
+		return nil, fmt.Errorf("wfm.sbiUrl is empty in configuration")
+	}
+
+	hasRequestSigningKey := false
+	// If request signer plugin enabled, create signer and add as RequestEditorFn
+	if cfg.Wfm.ClientPlugins.RequestSigner != nil && cfg.Wfm.ClientPlugins.RequestSigner.Enabled {
+		if cfg.Wfm.ClientPlugins.RequestSigner.KeyRef == nil {
+			return nil, fmt.Errorf("request signer enabled but no keyRef provided in configuration")
+		}
+		// read private key from file
+		signer, err := crypto.NewSignerFromFile(
+			cfg.Wfm.ClientPlugins.RequestSigner.KeyRef.Path,
+			cfg.Wfm.ClientPlugins.RequestSigner.SignatureAlgo,
+			cfg.Wfm.ClientPlugins.RequestSigner.HashAlgo,
+			cfg.Wfm.ClientPlugins.RequestSigner.SignatureFormat,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request signer: %w", err)
+		}
+
+		hasRequestSigningKey = true
+		// adapter to the generated client's RequestEditorFn signature
+		requestEditors = append(requestEditors, func(ctx context.Context, req *http.Request) error {
+			return signer.SignRequest(ctx, req)
+		})
+	}
+
+	wfmClient, err := wfm.NewSbiHTTPClient(wfmUrl, requestEditors...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create WFM client: %w", err)
 	}
 
 	opts := []Option{}
@@ -74,15 +109,17 @@ func NewAgent(configPath string) (*Agent, error) {
 			opts = append(opts, WithEnableComposeDeployment())
 		}
 	}
-
 	if helmClient == nil && composeClient == nil {
-		return nil, fmt.Errorf("neither kubernetes nor docker runtime objects were able to be attached, please check info if you have misplaced there settings")
+		return nil, fmt.Errorf("neither kubernetes nor docker runtime objects were able to be attached, please check info if you have misplaced their settings")
 	}
 
-	opts = append(opts, WithDeviceSignature(findDeviceSignature(*cfg, log)))
+	opts = append(opts, WithDeviceRootIdentity(findDeviceRootIdentity(*cfg, log)))
 
-	var deviceSettings *DeviceSettings
-	deviceSettings, _ = NewDeviceSettings(apiClient, db, log, opts...)
+	var deviceSettings *DeviceClientSettings
+	deviceSettings, err = NewDeviceSettings(wfmClient, db, log, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize device settings: %w", err)
+	}
 	isOnboarded, err := deviceSettings.IsOnboarded()
 	if err != nil {
 		log.Errorw("failed to check onboarding status", "error", err)
@@ -91,8 +128,8 @@ func NewAgent(configPath string) (*Agent, error) {
 
 	if !isOnboarded {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		deviceId, err := deviceSettings.OnboardWithRetries(ctx, 10)
 		defer cancel()
+		deviceId, err := deviceSettings.OnboardWithRetries(ctx, 10)
 		if err != nil {
 			log.Errorw("device onboarding failed", "error", err)
 			return nil, fmt.Errorf("failed to onboard the device, %s", err.Error())
@@ -100,9 +137,22 @@ func NewAgent(configPath string) (*Agent, error) {
 		log.Infow("device onboarded", "deviceId", deviceId)
 	}
 
+	// Determine signature/certificate availability from deviceSettings (adapt to new attestation model)
+	hasValidDeviceCertificate := false
+	if deviceSettings != nil {
+		if deviceSettings.deviceRootIdentity.HasCertificateReference() {
+			hasValidDeviceCertificate = true
+		}
+		if deviceSettings.deviceRootIdentity.IdentityType == "Random" && deviceSettings.deviceRootIdentity.Attestation.Random != nil && deviceSettings.deviceRootIdentity.Attestation.Random.Value != "" {
+			hasValidDeviceCertificate = true
+		}
+	}
+
 	log.Infow("device details",
-		"deviceId", deviceSettings.deviceID,
-		"deviceSignature", string(deviceSettings.deviceSignature),
+		"deviceId", deviceSettings.deviceClientId,
+		"deviceSignatureType", deviceSettings.deviceRootIdentity.IdentityType,
+		"hasValidDeviceCertificate", hasValidDeviceCertificate,
+		"canSignRequests", hasRequestSigningKey,
 		"canDeployHelm", deviceSettings.canDeployHelm,
 		"canDeployCompose", deviceSettings.canDeployCompose,
 		"isAuthEnabled", deviceSettings.authEnabled,
@@ -115,8 +165,8 @@ func NewAgent(configPath string) (*Agent, error) {
 	// Create components
 	deployer := NewDeploymentManager(db, helmClient, composeClient, log)
 	monitor := NewDeploymentMonitor(db, helmClient, composeClient, log)
-	syncer := NewStateSyncer(db, apiClient, deviceSettings.deviceID, cfg.StateSeeking.Interval, log)
-	statusReporter := NewStatusReporter(db, apiClient, deviceSettings.deviceID, log)
+	syncer := NewStateSyncer(db, wfmClient, deviceSettings.deviceClientId, cfg.StateSeeking.Interval, log)
+	statusReporter := NewStatusReporter(db, wfmClient, deviceSettings.deviceClientId, log)
 
 	return &Agent{
 		database:       db,
@@ -138,7 +188,7 @@ func (a *Agent) Start() error {
 
 	// 1. Onboard device
 	deviceSettings, _ := a.database.GetDeviceSettings()
-	deviceId = deviceSettings.DeviceID
+	deviceId = deviceSettings.DeviceClientId
 
 	// 2. Report capabilities
 	capabilities, err := types.LoadCapabilities(a.config.Capabilities.ReadFromFile)
@@ -161,9 +211,14 @@ func (a *Agent) Start() error {
 	a.monitor.Start()
 	a.syncer.Start()
 
+	hasCfgPubCert := false
+	if a.config.DeviceRootIdentity.HasCertificateReference() {
+		hasCfgPubCert = true
+	}
+
 	a.log.Infow("Agent started successfully",
 		"capabilitiesFile", a.config.Capabilities.ReadFromFile,
-		"hasDeviceSignature", a.config.DeviceSignature != "",
+		"hasDeviceSignature", hasCfgPubCert,
 		"stateSeekingInterval", a.config.StateSeeking.Interval,
 		"sbiUrl", a.config.Wfm.SbiURL,
 	)
@@ -183,10 +238,8 @@ func (a *Agent) Stop() error {
 	return nil
 }
 
-func findDeviceSignature(cfg types.Config, logger *zap.SugaredLogger) []byte {
-	sign := cfg.DeviceSignature
-	logger.Infow("find device signature", "signature", sign)
-	return []byte(sign)
+func findDeviceRootIdentity(cfg types.Config, logger *zap.SugaredLogger) types.DeviceRootIdentity {
+	return cfg.DeviceRootIdentity
 }
 
 func main() {

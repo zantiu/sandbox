@@ -39,6 +39,8 @@ PROM_RELEASE="prometheus"
 GRAFANA_RELEASE="grafana"
 LOKI_RELEASE="loki"
 
+# the directory to generate and store ssl certs in
+CERT_DIR="$HOME/symphony/api/certificates"
 
 # ----------------------------
 # Utility Functions
@@ -517,7 +519,16 @@ start_symphony_api() {
   tail -n 50 $HOME/symphony-api.log
 }
 
-function install_jaeger() {
+enable_tls_in_symphony_api() {
+  cd $HOME
+  echo "Enabling tls in symphony API server (will generate certs and seed their settings in symphony-api-margo.json)..."
+  collect_certs_info && generate_server_certs
+  # replace value of "tls": false, to "tls": true
+  sed -i "s|\"tls\": false|\"tls\": true|" "$HOME/symphony/api/symphony-api-margo.json"
+  echo "TLS Config is setup and seeded in symphony-api-margo.json"
+}
+
+install_jaeger() {
   echo "🔄 Refreshing Jaeger Helm repo..."
   helm repo remove jaegertracing || true
   helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
@@ -596,7 +607,7 @@ create_observability_namespace() {
     fi
 }
 
-function install_prometheus() {
+install_prometheus() {
   cd "$HOME/dev-repo/pipeline/observability"
   echo "📡 Setting up Prometheus to expose metrics for OTEL Collector..."
 
@@ -635,7 +646,7 @@ EOF
   patch_prometheus_configmap
 }
 
-function patch_prometheus_configmap() {
+patch_prometheus_configmap() {
   cd "$HOME/dev-repo/pipeline/observability"
   echo "🛠 Applying Prometheus ConfigMap with DEVICE_NODE_IP..."
 
@@ -674,7 +685,7 @@ function patch_prometheus_configmap() {
 }
 
 
-function install_loki() {
+install_loki() {
   echo "📦 Installing Loki for log aggregation..."
 
   cat <<EOF > loki-values.yaml
@@ -735,7 +746,7 @@ EOF
   echo "✅ Loki installed and exposed at NodePort 32100"
 }
 
-function install_grafana() {
+install_grafana() {
   echo "📊 Installing Grafana..."
   helm repo remove grafana || true
   helm repo add grafana https://grafana.github.io/helm-charts
@@ -1004,6 +1015,9 @@ cleanup_symphony_builds() {
   if [ -d "$RUST_DIR/target" ]; then
     rm -rf "$RUST_DIR/target" && echo "✅ Removed Rust build artifacts"
   fi
+
+  # remove the generated server cerificates as well
+  rm -rf $CERT_DIR
   
   # Clean Go build cache
   if command -v go >/dev/null 2>&1; then
@@ -1471,7 +1485,6 @@ install_prerequisites() {
   clone_symphony_repo
   clone_dev_repo
   
-  
   setup_keycloak
   update_keycloak_config
   
@@ -1498,6 +1511,7 @@ start_symphony() {
   build_symphony_api_server
   build_maestro_cli
   verify_symphony_api
+  enable_tls_in_symphony_api
   start_symphony_api
   echo "symphony API server started"
 }
@@ -1510,6 +1524,129 @@ stop_symphony() {
   else 
     kill -9 $PID && echo '✅ Symphony API stopped'; 
   fi
+}
+
+# Collect certificate information
+collect_certs_info() {
+    read -p "Common Name (FQDN): " CN
+    read -p "Country (2 letters, default: US): " C
+    read -p "State (default: CA): " ST
+    read -p "City (default: San Francisco): " L
+    read -p "Organization (default: MyCompany): " O
+    read -p "Email (default: admin@example.com): " EMAIL
+    read -p "Validity days (default: 365): " DAYS
+    read -p "Additional domains (comma-separated, optional): " SAN_DOMAINS
+    read -p "Additional IPs (comma-separated, optional): " SAN_IPS
+    
+    # Set defaults
+    C=${C:-IN}
+    ST=${ST:-GGN}
+    L=${L:-"Some ABC Location"}
+    O=${O:-Margo}
+    EMAIL=${EMAIL:-admin@example.com}
+    DAYS=${DAYS:-365}
+    
+    [[ -z "$CN" ]] && error "Common Name is required"
+}
+
+# Generate OpenSSL config
+generate_config_for_certs() {
+    local config_file="$1"
+    local cert_type="$2"
+    
+    cat > "$config_file" << EOF
+[req]
+default_bits = 2048
+prompt = no
+distinguished_name = dn
+$([ "$cert_type" = "server" ] && echo "req_extensions = v3_req")
+
+[dn]
+C=$C
+ST=$ST
+L=$L
+O=$O
+CN=$CN
+emailAddress=$EMAIL
+
+$([ "$cert_type" = "server" ] && cat << 'SERVEREXT'
+[v3_req]
+basicConstraints = CA:FALSE
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $CN
+SERVEREXT
+)
+EOF
+
+    # Add SAN domains and IPs
+    if [[ "$cert_type" = "server" && (-n "$SAN_DOMAINS" || -n "$SAN_IPS") ]]; then
+        local dns_count=2
+        local ip_count=1
+        
+        if [[ -n "$SAN_DOMAINS" ]]; then
+            IFS=',' read -ra DOMAINS <<< "$SAN_DOMAINS"
+            for domain in "${DOMAINS[@]}"; do
+                echo "DNS.$dns_count = ${domain// /}" >> "$config_file"
+                ((dns_count++))
+            done
+        fi
+        
+        if [[ -n "$SAN_IPS" ]]; then
+            IFS=',' read -ra IPS <<< "$SAN_IPS"
+            for ip in "${IPS[@]}"; do
+                echo "IP.$ip_count = ${ip// /}" >> "$config_file"
+                ((ip_count++))
+            done
+        fi
+    fi
+}
+
+# Generate CA certificate
+generate_ca() {
+    info "Generating CA certificate..."
+    local ca_key="$CERT_DIR/ca-key.pem"
+    local ca_cert="$CERT_DIR/ca-cert.pem"
+    local ca_config="$CERT_DIR/ca.conf"
+    
+    generate_config_for_certs "$ca_config" "ca"
+    
+    openssl genrsa -out "$ca_key" 2048
+    openssl req -new -x509 -key "$ca_key" -out "$ca_cert" -days "$DAYS" -config "$ca_config"
+    chmod 600 "$ca_key"
+    
+    success "CA generated: $ca_cert"
+}
+
+# Generate server certificate
+generate_server_certs() {
+    info "Generating server certificate..."
+    mkdir -p $CERT_DIR
+    local server_key="$CERT_DIR/server-key.pem"
+    local server_csr="$CERT_DIR/server.csr"
+    local server_cert="$CERT_DIR/server-cert.pem"
+    local server_config="$CERT_DIR/server.conf"
+    
+    generate_config_for_certs "$server_config" "server"
+    
+    openssl genrsa -out "$server_key" 2048
+    openssl req -new -key "$server_key" -out "$server_csr" -config "$server_config"
+    
+    if [[ -f "$CERT_DIR/ca-cert.pem" ]]; then
+        openssl x509 -req -in "$server_csr" -CA "$CERT_DIR/ca-cert.pem" -CAkey "$CERT_DIR/ca-key.pem" \
+            -CAcreateserial -out "$server_cert" -days "$DAYS" -extensions v3_req -extfile "$server_config"
+        success "Server certificate signed by CA: $server_cert"
+    else
+        openssl x509 -req -in "$server_csr" -signkey "$server_key" -out "$server_cert" -days "$DAYS" \
+            -extensions v3_req -extfile "$server_config"
+        success "Self-signed server certificate: $server_cert"
+    fi
+    
+    rm -f "$server_csr"
+    chmod 600 "$server_key"
 }
 
 

@@ -90,25 +90,25 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// PostDeviceDeviceIdCapabilitiesWithBody request with any body
-	PostDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostClientClientIdCapabilitiesWithBody request with any body
+	PostClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDeviceDeviceIdCapabilities(ctx context.Context, deviceId string, body PostDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostClientClientIdCapabilities(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutDeviceDeviceIdCapabilitiesWithBody request with any body
-	PutDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PutClientClientIdCapabilitiesWithBody request with any body
+	PutClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutDeviceDeviceIdCapabilities(ctx context.Context, deviceId string, body PutDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutClientClientIdCapabilities(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBody request with any body
-	PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostClientClientIdDeploymentDeploymentIdStatusWithBody request with any body
+	PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostDeviceDeviceIdDeploymentDeploymentIdStatus(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, body PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostOnboardingDeviceWithBody request with any body
-	PostOnboardingDeviceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostOnboardingWithBody request with any body
+	PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostOnboardingDevice(ctx context.Context, body PostOnboardingDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostOnboarding(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOnboardingRootCA request
 	GetOnboardingRootCA(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -124,8 +124,8 @@ type ClientInterface interface {
 	State(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDeviceDeviceIdCapabilitiesRequestWithBody(c.Server, deviceId, contentType, body)
+func (c *Client) PostClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClientClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func (c *Client) PostDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, dev
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDeviceDeviceIdCapabilities(ctx context.Context, deviceId string, body PostDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDeviceDeviceIdCapabilitiesRequest(c.Server, deviceId, body)
+func (c *Client) PostClientClientIdCapabilities(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClientClientIdCapabilitiesRequest(c.Server, clientId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +148,8 @@ func (c *Client) PostDeviceDeviceIdCapabilities(ctx context.Context, deviceId st
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutDeviceDeviceIdCapabilitiesRequestWithBody(c.Server, deviceId, contentType, body)
+func (c *Client) PutClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutClientClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,8 @@ func (c *Client) PutDeviceDeviceIdCapabilitiesWithBody(ctx context.Context, devi
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutDeviceDeviceIdCapabilities(ctx context.Context, deviceId string, body PutDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutDeviceDeviceIdCapabilitiesRequest(c.Server, deviceId, body)
+func (c *Client) PutClientClientIdCapabilities(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutClientClientIdCapabilitiesRequest(c.Server, clientId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +172,8 @@ func (c *Client) PutDeviceDeviceIdCapabilities(ctx context.Context, deviceId str
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody(c.Server, deviceId, deploymentId, contentType, body)
+func (c *Client) PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(c.Server, clientId, deploymentId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +184,8 @@ func (c *Client) PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBody(ctx cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostDeviceDeviceIdDeploymentDeploymentIdStatus(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, body PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequest(c.Server, deviceId, deploymentId, body)
+func (c *Client) PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostClientClientIdDeploymentDeploymentIdStatusRequest(c.Server, clientId, deploymentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +196,8 @@ func (c *Client) PostDeviceDeviceIdDeploymentDeploymentIdStatus(ctx context.Cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostOnboardingDeviceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostOnboardingDeviceRequestWithBody(c.Server, contentType, body)
+func (c *Client) PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostOnboardingRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +208,8 @@ func (c *Client) PostOnboardingDeviceWithBody(ctx context.Context, contentType s
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostOnboardingDevice(ctx context.Context, body PostOnboardingDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostOnboardingDeviceRequest(c.Server, body)
+func (c *Client) PostOnboarding(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostOnboardingRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -280,24 +280,24 @@ func (c *Client) State(ctx context.Context, body StateJSONRequestBody, reqEditor
 	return c.Client.Do(req)
 }
 
-// NewPostDeviceDeviceIdCapabilitiesRequest calls the generic PostDeviceDeviceIdCapabilities builder with application/json body
-func NewPostDeviceDeviceIdCapabilitiesRequest(server string, deviceId string, body PostDeviceDeviceIdCapabilitiesJSONRequestBody) (*http.Request, error) {
+// NewPostClientClientIdCapabilitiesRequest calls the generic PostClientClientIdCapabilities builder with application/json body
+func NewPostClientClientIdCapabilitiesRequest(server string, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostDeviceDeviceIdCapabilitiesRequestWithBody(server, deviceId, "application/json", bodyReader)
+	return NewPostClientClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
 }
 
-// NewPostDeviceDeviceIdCapabilitiesRequestWithBody generates requests for PostDeviceDeviceIdCapabilities with any type of body
-func NewPostDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostClientClientIdCapabilitiesRequestWithBody generates requests for PostClientClientIdCapabilities with any type of body
+func NewPostClientClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deviceId", runtime.ParamLocationPath, deviceId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func NewPostDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId st
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/device/%s/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/client/%s/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -327,24 +327,24 @@ func NewPostDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId st
 	return req, nil
 }
 
-// NewPutDeviceDeviceIdCapabilitiesRequest calls the generic PutDeviceDeviceIdCapabilities builder with application/json body
-func NewPutDeviceDeviceIdCapabilitiesRequest(server string, deviceId string, body PutDeviceDeviceIdCapabilitiesJSONRequestBody) (*http.Request, error) {
+// NewPutClientClientIdCapabilitiesRequest calls the generic PutClientClientIdCapabilities builder with application/json body
+func NewPutClientClientIdCapabilitiesRequest(server string, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPutDeviceDeviceIdCapabilitiesRequestWithBody(server, deviceId, "application/json", bodyReader)
+	return NewPutClientClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
 }
 
-// NewPutDeviceDeviceIdCapabilitiesRequestWithBody generates requests for PutDeviceDeviceIdCapabilities with any type of body
-func NewPutDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPutClientClientIdCapabilitiesRequestWithBody generates requests for PutClientClientIdCapabilities with any type of body
+func NewPutClientClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deviceId", runtime.ParamLocationPath, deviceId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +354,7 @@ func NewPutDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/device/%s/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/client/%s/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -374,24 +374,24 @@ func NewPutDeviceDeviceIdCapabilitiesRequestWithBody(server string, deviceId str
 	return req, nil
 }
 
-// NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequest calls the generic PostDeviceDeviceIdDeploymentDeploymentIdStatus builder with application/json body
-func NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequest(server string, deviceId string, deploymentId openapi_types.UUID, body PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody) (*http.Request, error) {
+// NewPostClientClientIdDeploymentDeploymentIdStatusRequest calls the generic PostClientClientIdDeploymentDeploymentIdStatus builder with application/json body
+func NewPostClientClientIdDeploymentDeploymentIdStatusRequest(server string, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody(server, deviceId, deploymentId, "application/json", bodyReader)
+	return NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server, clientId, deploymentId, "application/json", bodyReader)
 }
 
-// NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody generates requests for PostDeviceDeviceIdDeploymentDeploymentIdStatus with any type of body
-func NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody(server string, deviceId string, deploymentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody generates requests for PostClientClientIdDeploymentDeploymentIdStatus with any type of body
+func NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server string, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "deviceId", runtime.ParamLocationPath, deviceId)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +408,7 @@ func NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody(server str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/device/%s/deployment/%s/status", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/client/%s/deployment/%s/status", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -428,19 +428,19 @@ func NewPostDeviceDeviceIdDeploymentDeploymentIdStatusRequestWithBody(server str
 	return req, nil
 }
 
-// NewPostOnboardingDeviceRequest calls the generic PostOnboardingDevice builder with application/json body
-func NewPostOnboardingDeviceRequest(server string, body PostOnboardingDeviceJSONRequestBody) (*http.Request, error) {
+// NewPostOnboardingRequest calls the generic PostOnboarding builder with application/json body
+func NewPostOnboardingRequest(server string, body PostOnboardingJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostOnboardingDeviceRequestWithBody(server, "application/json", bodyReader)
+	return NewPostOnboardingRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewPostOnboardingDeviceRequestWithBody generates requests for PostOnboardingDevice with any type of body
-func NewPostOnboardingDeviceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostOnboardingRequestWithBody generates requests for PostOnboarding with any type of body
+func NewPostOnboardingRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -448,7 +448,7 @@ func NewPostOnboardingDeviceRequestWithBody(server string, contentType string, b
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/onboarding/device")
+	operationPath := fmt.Sprintf("/onboarding")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -640,25 +640,25 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// PostDeviceDeviceIdCapabilitiesWithBodyWithResponse request with any body
-	PostDeviceDeviceIdCapabilitiesWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdCapabilitiesResponse, error)
+	// PostClientClientIdCapabilitiesWithBodyWithResponse request with any body
+	PostClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error)
 
-	PostDeviceDeviceIdCapabilitiesWithResponse(ctx context.Context, deviceId string, body PostDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdCapabilitiesResponse, error)
+	PostClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error)
 
-	// PutDeviceDeviceIdCapabilitiesWithBodyWithResponse request with any body
-	PutDeviceDeviceIdCapabilitiesWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutDeviceDeviceIdCapabilitiesResponse, error)
+	// PutClientClientIdCapabilitiesWithBodyWithResponse request with any body
+	PutClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error)
 
-	PutDeviceDeviceIdCapabilitiesWithResponse(ctx context.Context, deviceId string, body PutDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutDeviceDeviceIdCapabilitiesResponse, error)
+	PutClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error)
 
-	// PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBodyWithResponse request with any body
-	PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse, error)
+	// PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with any body
+	PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error)
 
-	PostDeviceDeviceIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, body PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse, error)
+	PostClientClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error)
 
-	// PostOnboardingDeviceWithBodyWithResponse request with any body
-	PostOnboardingDeviceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingDeviceResponse, error)
+	// PostOnboardingWithBodyWithResponse request with any body
+	PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error)
 
-	PostOnboardingDeviceWithResponse(ctx context.Context, body PostOnboardingDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingDeviceResponse, error)
+	PostOnboardingWithResponse(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error)
 
 	// GetOnboardingRootCAWithResponse request
 	GetOnboardingRootCAWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOnboardingRootCAResponse, error)
@@ -674,7 +674,7 @@ type ClientWithResponsesInterface interface {
 	StateWithResponse(ctx context.Context, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
 }
 
-type PostDeviceDeviceIdCapabilitiesResponse struct {
+type PostClientClientIdCapabilitiesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *Error
@@ -683,7 +683,7 @@ type PostDeviceDeviceIdCapabilitiesResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDeviceDeviceIdCapabilitiesResponse) Status() string {
+func (r PostClientClientIdCapabilitiesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -691,14 +691,14 @@ func (r PostDeviceDeviceIdCapabilitiesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDeviceDeviceIdCapabilitiesResponse) StatusCode() int {
+func (r PostClientClientIdCapabilitiesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PutDeviceDeviceIdCapabilitiesResponse struct {
+type PutClientClientIdCapabilitiesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *Error
@@ -707,7 +707,7 @@ type PutDeviceDeviceIdCapabilitiesResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PutDeviceDeviceIdCapabilitiesResponse) Status() string {
+func (r PutClientClientIdCapabilitiesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -715,14 +715,14 @@ func (r PutDeviceDeviceIdCapabilitiesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutDeviceDeviceIdCapabilitiesResponse) StatusCode() int {
+func (r PutClientClientIdCapabilitiesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse struct {
+type PostClientClientIdDeploymentDeploymentIdStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *Error
@@ -731,7 +731,7 @@ type PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse) Status() string {
+func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -739,23 +739,24 @@ func (r PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse) Status() string 
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse) StatusCode() int {
+func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostOnboardingDeviceResponse struct {
+type PostOnboardingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *OnboardingResponse
 	JSON400      *Error
+	JSON409      *Error
 	JSON500      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r PostOnboardingDeviceResponse) Status() string {
+func (r PostOnboardingResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -763,7 +764,7 @@ func (r PostOnboardingDeviceResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostOnboardingDeviceResponse) StatusCode() int {
+func (r PostOnboardingResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -773,7 +774,11 @@ func (r PostOnboardingDeviceResponse) StatusCode() int {
 type GetOnboardingRootCAResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON500      *Error
+	JSON200      *struct {
+		// Certificate Base64-encoded certificate
+		Certificate *string `json:"certificate,omitempty"`
+	}
+	JSON500 *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -838,72 +843,72 @@ func (r StateResponse) StatusCode() int {
 	return 0
 }
 
-// PostDeviceDeviceIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PostDeviceDeviceIdCapabilitiesResponse
-func (c *ClientWithResponses) PostDeviceDeviceIdCapabilitiesWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdCapabilitiesResponse, error) {
-	rsp, err := c.PostDeviceDeviceIdCapabilitiesWithBody(ctx, deviceId, contentType, body, reqEditors...)
+// PostClientClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PostClientClientIdCapabilitiesResponse
+func (c *ClientWithResponses) PostClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PostClientClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDeviceDeviceIdCapabilitiesResponse(rsp)
+	return ParsePostClientClientIdCapabilitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDeviceDeviceIdCapabilitiesWithResponse(ctx context.Context, deviceId string, body PostDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdCapabilitiesResponse, error) {
-	rsp, err := c.PostDeviceDeviceIdCapabilities(ctx, deviceId, body, reqEditors...)
+func (c *ClientWithResponses) PostClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PostClientClientIdCapabilities(ctx, clientId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDeviceDeviceIdCapabilitiesResponse(rsp)
+	return ParsePostClientClientIdCapabilitiesResponse(rsp)
 }
 
-// PutDeviceDeviceIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PutDeviceDeviceIdCapabilitiesResponse
-func (c *ClientWithResponses) PutDeviceDeviceIdCapabilitiesWithBodyWithResponse(ctx context.Context, deviceId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutDeviceDeviceIdCapabilitiesResponse, error) {
-	rsp, err := c.PutDeviceDeviceIdCapabilitiesWithBody(ctx, deviceId, contentType, body, reqEditors...)
+// PutClientClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PutClientClientIdCapabilitiesResponse
+func (c *ClientWithResponses) PutClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PutClientClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutDeviceDeviceIdCapabilitiesResponse(rsp)
+	return ParsePutClientClientIdCapabilitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutDeviceDeviceIdCapabilitiesWithResponse(ctx context.Context, deviceId string, body PutDeviceDeviceIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutDeviceDeviceIdCapabilitiesResponse, error) {
-	rsp, err := c.PutDeviceDeviceIdCapabilities(ctx, deviceId, body, reqEditors...)
+func (c *ClientWithResponses) PutClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PutClientClientIdCapabilities(ctx, clientId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutDeviceDeviceIdCapabilitiesResponse(rsp)
+	return ParsePutClientClientIdCapabilitiesResponse(rsp)
 }
 
-// PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBodyWithResponse request with arbitrary body returning *PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse
-func (c *ClientWithResponses) PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse, error) {
-	rsp, err := c.PostDeviceDeviceIdDeploymentDeploymentIdStatusWithBody(ctx, deviceId, deploymentId, contentType, body, reqEditors...)
+// PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with arbitrary body returning *PostClientClientIdDeploymentDeploymentIdStatusResponse
+func (c *ClientWithResponses) PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
+	rsp, err := c.PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx, clientId, deploymentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDeviceDeviceIdDeploymentDeploymentIdStatusResponse(rsp)
+	return ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostDeviceDeviceIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, deviceId string, deploymentId openapi_types.UUID, body PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse, error) {
-	rsp, err := c.PostDeviceDeviceIdDeploymentDeploymentIdStatus(ctx, deviceId, deploymentId, body, reqEditors...)
+func (c *ClientWithResponses) PostClientClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
+	rsp, err := c.PostClientClientIdDeploymentDeploymentIdStatus(ctx, clientId, deploymentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostDeviceDeviceIdDeploymentDeploymentIdStatusResponse(rsp)
+	return ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp)
 }
 
-// PostOnboardingDeviceWithBodyWithResponse request with arbitrary body returning *PostOnboardingDeviceResponse
-func (c *ClientWithResponses) PostOnboardingDeviceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingDeviceResponse, error) {
-	rsp, err := c.PostOnboardingDeviceWithBody(ctx, contentType, body, reqEditors...)
+// PostOnboardingWithBodyWithResponse request with arbitrary body returning *PostOnboardingResponse
+func (c *ClientWithResponses) PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error) {
+	rsp, err := c.PostOnboardingWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostOnboardingDeviceResponse(rsp)
+	return ParsePostOnboardingResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostOnboardingDeviceWithResponse(ctx context.Context, body PostOnboardingDeviceJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingDeviceResponse, error) {
-	rsp, err := c.PostOnboardingDevice(ctx, body, reqEditors...)
+func (c *ClientWithResponses) PostOnboardingWithResponse(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error) {
+	rsp, err := c.PostOnboarding(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostOnboardingDeviceResponse(rsp)
+	return ParsePostOnboardingResponse(rsp)
 }
 
 // GetOnboardingRootCAWithResponse request returning *GetOnboardingRootCAResponse
@@ -949,15 +954,15 @@ func (c *ClientWithResponses) StateWithResponse(ctx context.Context, body StateJ
 	return ParseStateResponse(rsp)
 }
 
-// ParsePostDeviceDeviceIdCapabilitiesResponse parses an HTTP response from a PostDeviceDeviceIdCapabilitiesWithResponse call
-func ParsePostDeviceDeviceIdCapabilitiesResponse(rsp *http.Response) (*PostDeviceDeviceIdCapabilitiesResponse, error) {
+// ParsePostClientClientIdCapabilitiesResponse parses an HTTP response from a PostClientClientIdCapabilitiesWithResponse call
+func ParsePostClientClientIdCapabilitiesResponse(rsp *http.Response) (*PostClientClientIdCapabilitiesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDeviceDeviceIdCapabilitiesResponse{
+	response := &PostClientClientIdCapabilitiesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -989,15 +994,15 @@ func ParsePostDeviceDeviceIdCapabilitiesResponse(rsp *http.Response) (*PostDevic
 	return response, nil
 }
 
-// ParsePutDeviceDeviceIdCapabilitiesResponse parses an HTTP response from a PutDeviceDeviceIdCapabilitiesWithResponse call
-func ParsePutDeviceDeviceIdCapabilitiesResponse(rsp *http.Response) (*PutDeviceDeviceIdCapabilitiesResponse, error) {
+// ParsePutClientClientIdCapabilitiesResponse parses an HTTP response from a PutClientClientIdCapabilitiesWithResponse call
+func ParsePutClientClientIdCapabilitiesResponse(rsp *http.Response) (*PutClientClientIdCapabilitiesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutDeviceDeviceIdCapabilitiesResponse{
+	response := &PutClientClientIdCapabilitiesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1029,15 +1034,15 @@ func ParsePutDeviceDeviceIdCapabilitiesResponse(rsp *http.Response) (*PutDeviceD
 	return response, nil
 }
 
-// ParsePostDeviceDeviceIdDeploymentDeploymentIdStatusResponse parses an HTTP response from a PostDeviceDeviceIdDeploymentDeploymentIdStatusWithResponse call
-func ParsePostDeviceDeviceIdDeploymentDeploymentIdStatusResponse(rsp *http.Response) (*PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse, error) {
+// ParsePostClientClientIdDeploymentDeploymentIdStatusResponse parses an HTTP response from a PostClientClientIdDeploymentDeploymentIdStatusWithResponse call
+func ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp *http.Response) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostDeviceDeviceIdDeploymentDeploymentIdStatusResponse{
+	response := &PostClientClientIdDeploymentDeploymentIdStatusResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1069,15 +1074,15 @@ func ParsePostDeviceDeviceIdDeploymentDeploymentIdStatusResponse(rsp *http.Respo
 	return response, nil
 }
 
-// ParsePostOnboardingDeviceResponse parses an HTTP response from a PostOnboardingDeviceWithResponse call
-func ParsePostOnboardingDeviceResponse(rsp *http.Response) (*PostOnboardingDeviceResponse, error) {
+// ParsePostOnboardingResponse parses an HTTP response from a PostOnboardingWithResponse call
+func ParsePostOnboardingResponse(rsp *http.Response) (*PostOnboardingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostOnboardingDeviceResponse{
+	response := &PostOnboardingResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1096,6 +1101,13 @@ func ParsePostOnboardingDeviceResponse(rsp *http.Response) (*PostOnboardingDevic
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Error
@@ -1123,6 +1135,16 @@ func ParseGetOnboardingRootCAResponse(rsp *http.Response) (*GetOnboardingRootCAR
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			// Certificate Base64-encoded certificate
+			Certificate *string `json:"certificate,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	Api_keyScopes    = "api_key.Scopes"
-	Margo_authScopes = "margo_auth.Scopes"
+	PayloadSignatureScopes = "PayloadSignature.Scopes"
+	Margo_authScopes       = "margo_auth.Scopes"
 )
 
 // Defines values for ComponentStatusState.
@@ -135,25 +135,19 @@ type Interface struct {
 	Type string `json:"type"`
 }
 
-// OnboardingRequest Request body for the /onboarding/device endpoint.
-type OnboardingRequest = map[string]interface{}
+// OnboardingRequest Request body for the /onboarding endpoint.
+type OnboardingRequest struct {
+	// PublicCertificate Base64-encoded client certificate
+	PublicCertificate *string `json:"publicCertificate,omitempty"`
+}
 
-// OnboardingResponse Response body for the /onboarding/device endpoint.
+// OnboardingResponse Response body for the /onboarding endpoint.
 type OnboardingResponse struct {
-	// ClientId The client ID for OAuth 2.0 authentication.
+	// ClientId The uuid assigned to the device client.
 	ClientId string `json:"clientId"`
 
-	// ClientSecret The client secret for OAuth 2.0 authentication.
-	ClientSecret string `json:"clientSecret"`
-
-	// GitAccessToken An access token for authenticating with the Git repository.
-	GitAccessToken string `json:"gitAccessToken"`
-
-	// GitRepositoryUrl The URL for the Git repository containing the desired state.
-	GitRepositoryUrl string `json:"gitRepositoryUrl"`
-
-	// TokenEndpointUrl The URL for the OAuth 2.0 token endpoint.
-	TokenEndpointUrl string `json:"tokenEndpointUrl"`
+	// EndpointList The endpoints
+	EndpointList *[]string `json:"endpointList,omitempty"`
 }
 
 // OverallStatus Defines the overall deployment status.
@@ -378,17 +372,17 @@ type ProcessParams struct {
 	RpcId *int `form:"rpcId,omitempty" json:"rpcId,omitempty"`
 }
 
-// PostDeviceDeviceIdCapabilitiesJSONRequestBody defines body for PostDeviceDeviceIdCapabilities for application/json ContentType.
-type PostDeviceDeviceIdCapabilitiesJSONRequestBody = DeviceCapabilities
+// PostClientClientIdCapabilitiesJSONRequestBody defines body for PostClientClientIdCapabilities for application/json ContentType.
+type PostClientClientIdCapabilitiesJSONRequestBody = DeviceCapabilities
 
-// PutDeviceDeviceIdCapabilitiesJSONRequestBody defines body for PutDeviceDeviceIdCapabilities for application/json ContentType.
-type PutDeviceDeviceIdCapabilitiesJSONRequestBody = DeviceCapabilities
+// PutClientClientIdCapabilitiesJSONRequestBody defines body for PutClientClientIdCapabilities for application/json ContentType.
+type PutClientClientIdCapabilitiesJSONRequestBody = DeviceCapabilities
 
-// PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody defines body for PostDeviceDeviceIdDeploymentDeploymentIdStatus for application/json ContentType.
-type PostDeviceDeviceIdDeploymentDeploymentIdStatusJSONRequestBody = DeploymentStatus
+// PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody defines body for PostClientClientIdDeploymentDeploymentIdStatus for application/json ContentType.
+type PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody = DeploymentStatus
 
-// PostOnboardingDeviceJSONRequestBody defines body for PostOnboardingDevice for application/json ContentType.
-type PostOnboardingDeviceJSONRequestBody = OnboardingRequest
+// PostOnboardingJSONRequestBody defines body for PostOnboarding for application/json ContentType.
+type PostOnboardingJSONRequestBody = OnboardingRequest
 
 // ProcessJSONRequestBody defines body for Process for application/json ContentType.
 type ProcessJSONRequestBody = PrivatePayload

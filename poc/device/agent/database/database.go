@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/margo/dev-repo/poc/device/agent/types"
 	"github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
 )
 
@@ -23,29 +24,21 @@ type DeploymentRecord struct {
 	LastUpdated     time.Time
 }
 
-type DeploymentChangeType string
+type DeploymentRecordChangeType string
 
 const (
-	DeploymentChangeTypeRecordAdded           DeploymentChangeType = "RECORD-ADDED"
-	DeploymentChangeTypeRecordDeleted         DeploymentChangeType = "RECORD-DELETED"
-	DeploymentChangeTypeComponentPhaseChanged DeploymentChangeType = "COMPONENT-PHASE-CHANGED"
-	DeploymentChangeTypeDesiredStateAdded     DeploymentChangeType = "DESIRED-STATE-ADDED"
-	DeploymentChangeTypeCurrentStateAdded     DeploymentChangeType = "CURRENT-STATE-ADDED"
-)
-
-type DeviceOnboardState string
-
-const (
-	DeviceOnboardStateOnboardInProgress DeviceOnboardState = "IN-PROGRESS"
-	DeviceOnboardStateOnboarded         DeviceOnboardState = "ONBOARDED"
-	DeviceOnboardStateOnboardFailed     DeviceOnboardState = "FAILED"
+	DeploymentChangeTypeRecordAdded           DeploymentRecordChangeType = "RECORD-ADDED"
+	DeploymentChangeTypeRecordDeleted         DeploymentRecordChangeType = "RECORD-DELETED"
+	DeploymentChangeTypeComponentPhaseChanged DeploymentRecordChangeType = "COMPONENT-PHASE-CHANGED"
+	DeploymentChangeTypeDesiredStateAdded     DeploymentRecordChangeType = "DESIRED-STATE-ADDED"
+	DeploymentChangeTypeCurrentStateAdded     DeploymentRecordChangeType = "CURRENT-STATE-ADDED"
 )
 
 type DeviceSettingsRecord struct {
-	DeviceID        string             `json:"deviceId"`
-	DeviceSignature []byte             `json:"deviceSignature"`
-	State           DeviceOnboardState `json:"state"`
-	AuthEnabled     bool               `json:"authEnabled"`
+	DeviceClientId     string                   `json:"deviceClientId"`
+	DeviceRootIdentity types.DeviceRootIdentity `json:"deviceRootIdentity"`
+	State              types.DeviceOnboardState `json:"state"`
+	AuthEnabled        bool                     `json:"authEnabled"`
 	// OAuthClientId The client ID for OAuth 2.0 authentication.
 	OAuthClientId string `json:"clientId"`
 	// OAuthClientSecret The client secret for OAuth 2.0 authentication.
@@ -61,7 +54,7 @@ type DatabaseIfc interface {
 	// if your database engine already has persistence, then just keep the implementation empty
 	// we added an in-memory database implementation for this margo poc, hence needed this one
 	TriggerDataPersist()
-	Subscribe(callback func(string, *DeploymentRecord, DeploymentChangeType))
+	Subscribe(callback func(string, *DeploymentRecord, DeploymentRecordChangeType))
 	SetDesiredState(deploymentId string, state sbi.AppState)
 	SetCurrentState(deploymentId string, state sbi.AppState)
 	SetPhase(deploymentId, phase, message string)
@@ -78,7 +71,7 @@ type DatabaseIfc interface {
 type Database struct {
 	deviceSettings *DeviceSettingsRecord
 	deployments    map[string]*DeploymentRecord
-	subscribers    []func(string, *DeploymentRecord, DeploymentChangeType) // appID, record
+	subscribers    []func(string, *DeploymentRecord, DeploymentRecordChangeType) // appID, record
 	mu             sync.RWMutex
 	subscriberMu   sync.RWMutex
 
@@ -92,7 +85,7 @@ func NewDatabase(dataDir string) *Database {
 	db := &Database{
 		deployments:    make(map[string]*DeploymentRecord),
 		deviceSettings: &DeviceSettingsRecord{},
-		subscribers:    make([]func(string, *DeploymentRecord, DeploymentChangeType), 0),
+		subscribers:    make([]func(string, *DeploymentRecord, DeploymentRecordChangeType), 0),
 		dataDir:        dataDir,
 		persistChan:    make(chan struct{}, 1),
 		stopPersist:    make(chan struct{}),
@@ -177,16 +170,16 @@ func (db *Database) load() {
 	db.deviceSettings = dump.DeviceSettings
 }
 
-func (db *Database) Subscribe(callback func(string, *DeploymentRecord, DeploymentChangeType)) {
+func (db *Database) Subscribe(callback func(string, *DeploymentRecord, DeploymentRecordChangeType)) {
 	db.subscriberMu.Lock()
 	defer db.subscriberMu.Unlock()
 	db.subscribers = append(db.subscribers, callback)
 }
 
-func (db *Database) notify(appID string, record *DeploymentRecord, changeType DeploymentChangeType) {
+func (db *Database) notify(appID string, record *DeploymentRecord, changeType DeploymentRecordChangeType) {
 	db.subscriberMu.RLock()
 	defer db.subscriberMu.RUnlock()
-	subscribers := make([]func(string, *DeploymentRecord, DeploymentChangeType), len(db.subscribers))
+	subscribers := make([]func(string, *DeploymentRecord, DeploymentRecordChangeType), len(db.subscribers))
 	copy(subscribers, db.subscribers)
 
 	for _, callback := range subscribers {
@@ -333,13 +326,13 @@ func (db *Database) SetDeviceSettings(settings DeviceSettingsRecord) error {
 	return nil
 }
 
-func (db *Database) SetDeviceOnboardState(state DeviceOnboardState) error {
+func (db *Database) SetDeviceOnboardState(state types.DeviceOnboardState) error {
 	db.deviceSettings.State = state
 	return nil
 }
 
 func (db *Database) IsDeviceOnboarded() (*DeviceSettingsRecord, bool, error) {
-	return db.deviceSettings, db.deviceSettings.State == DeviceOnboardStateOnboarded, nil
+	return db.deviceSettings, db.deviceSettings.State == types.DeviceOnboardStateOnboarded, nil
 }
 
 func (db *Database) SetDeviceCanDeployHelm(deployable bool) {
