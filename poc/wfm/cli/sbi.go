@@ -106,7 +106,7 @@ func (self *SbiHttpClient) SyncState(ctx context.Context, deviceClientId string,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, err
+		return nil, fmt.Errorf("an errornous status code returned by the server, %v", resp.Request.Response.StatusCode)
 	}
 
 	// Parse response
