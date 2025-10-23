@@ -26,7 +26,6 @@ func NewVerifier(publicKey string, isPubKeyBase64 bool) (*HTMPayloadVerifier, er
 	// if the input is base64 DER, decode first
 	var data []byte
 	var err error
-	isPubKeyBase64 = false
 	if isPubKeyBase64 {
 		data, err = base64.StdEncoding.DecodeString(publicKey)
 		if err != nil {
