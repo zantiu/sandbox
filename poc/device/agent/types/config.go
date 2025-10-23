@@ -183,8 +183,8 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-// CertificatePEM returns the public certificate PEM content if available for PKI attestation.
-func (d DeviceRootIdentity) CertificatePEM() (string, error) {
+// PublicCertificatePEM returns the public certificate PEM content if available for PKI attestation.
+func (d DeviceRootIdentity) PublicCertificatePEM() (string, error) {
 	if d.Attestation.PKI != nil && d.Attestation.PKI.PubCertPath != "" {
 		certBytes, err := os.ReadFile(d.Attestation.PKI.PubCertPath)
 		if err != nil {
@@ -195,8 +195,8 @@ func (d DeviceRootIdentity) CertificatePEM() (string, error) {
 	return "", nil
 }
 
-// CertificatePath returns the public certificate file path if available for PKI attestation.
-func (d DeviceRootIdentity) CertificatePath() string {
+// PublicCertificatePath returns the public certificate file path if available for PKI attestation.
+func (d DeviceRootIdentity) PublicCertificatePath() string {
 	if d.Attestation.PKI != nil {
 		return d.Attestation.PKI.PubCertPath
 	}

@@ -2,12 +2,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,7 +50,7 @@ func NewAgent(configPath string) (*Agent, error) {
 	db := database.NewDatabase("data/")
 
 	// Prepare request editors (e.g., request signer) for WFM client
-	var requestEditors []wfm.HTTPApiClientOptions
+	requestEditors := []wfm.HTTPApiClientOptions{}
 
 	// Create WFM client using configured URL
 	wfmUrl := cfg.Wfm.SbiURL
@@ -77,6 +81,8 @@ func NewAgent(configPath string) (*Agent, error) {
 			return signer.SignRequest(ctx, req)
 		})
 	}
+
+	requestEditors = append(requestEditors, PreflightLogger(100, log))
 
 	wfmClient, err := wfm.NewSbiHTTPClient(wfmUrl, requestEditors...)
 	if err != nil {
@@ -132,7 +138,7 @@ func NewAgent(configPath string) (*Agent, error) {
 		deviceId, err := deviceSettings.OnboardWithRetries(ctx, 10)
 		if err != nil {
 			log.Errorw("device onboarding failed", "error", err)
-			return nil, fmt.Errorf("failed to onboard the device, %s", err.Error())
+			return nil, fmt.Errorf("'failed to onboard' the device, %s", err.Error())
 		}
 		log.Infow("device onboarded", "deviceId", deviceId)
 	}
@@ -277,4 +283,128 @@ func main() {
 	<-sigChan
 
 	agent.Stop()
+}
+
+// PreflightLogger returns a RequestEditorFn that logs method, URL, headers (redacted)
+// and a truncated preview of the request body. It restores req.Body so the request
+// remains intact for other editors (e.g. signing) and for sending.
+func PreflightLogger(maxPreviewBytes int, logger *zap.SugaredLogger) func(ctx context.Context, req *http.Request) error {
+	// headers we always redact
+	redact := map[string]struct{}{
+		"authorization":       {},
+		"proxy-authorization": {},
+		"cookie":              {},
+		"set-cookie":          {},
+		"x-auth-token":        {},
+	}
+
+	isTextLike := func(ct string) bool {
+		ct = strings.ToLower(ct)
+		if strings.Contains(ct, "json") || strings.Contains(ct, "xml") || strings.HasPrefix(ct, "text/") {
+			return true
+		}
+		return false
+	}
+
+	return func(ctx context.Context, req *http.Request) error {
+		// start-line
+		method := req.Method
+		urlStr := ""
+		if req.URL != nil {
+			urlStr = req.URL.String()
+		}
+
+		// headers (redact sensitive)
+		headers := map[string][]string{}
+		for k, vv := range req.Header {
+			kl := strings.ToLower(k)
+			if _, ok := redact[kl]; ok {
+				headers[k] = []string{"[REDACTED]"}
+			} else {
+				headers[k] = vv
+			}
+		}
+
+		// body preview logic:
+		var preview string
+		var truncated bool
+		var bodyLen int64 = -1
+
+		// If request has a GetBody factory, use it to sample body without consuming original
+		if req.GetBody != nil {
+			r, err := req.GetBody()
+			if err == nil {
+				defer r.Close()
+				// read up to maxPreviewBytes+1 to detect truncation
+				limited := io.LimitReader(r, int64(maxPreviewBytes)+1)
+				b, _ := io.ReadAll(limited)
+				bodyLen = int64(len(b))
+				if len(b) > maxPreviewBytes {
+					truncated = true
+					b = b[:maxPreviewBytes]
+				}
+				if isTextLike(req.Header.Get("Content-Type")) {
+					preview = string(b)
+				} else {
+					// try to detect small textual content, else base64
+					if http.DetectContentType(b)[:4] == "text" || strings.Contains(strings.ToLower(req.Header.Get("Content-Type")), "json") {
+						preview = string(b)
+					} else {
+						preview = base64.StdEncoding.EncodeToString(b)
+					}
+				}
+			}
+		} else if req.Body != nil {
+			// If ContentLength provided and very large, skip body capture to avoid OOM
+			if req.ContentLength > 0 && req.ContentLength > int64(maxPreviewBytes*10) {
+				// skip capturing large bodies when GetBody not available
+				preview = "<body too large to capture; no GetBody available>"
+			} else {
+				// read full body into memory (be cautious here in production)
+				bodyBytes, err := io.ReadAll(req.Body)
+				if err != nil {
+					preview = "<error reading body>"
+					// Restore a closed body to prevent downstream failures (best-effort)
+					req.Body = io.NopCloser(bytes.NewReader(nil))
+				} else {
+					bodyLen = int64(len(bodyBytes))
+					// restore body for downstream editors/sender
+					req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+					// build preview (truncate if needed)
+					b := bodyBytes
+					if len(b) > maxPreviewBytes {
+						truncated = true
+						b = b[:maxPreviewBytes]
+					}
+					if isTextLike(req.Header.Get("Content-Type")) {
+						preview = string(b)
+					} else {
+						// detect if it's actually textual
+						detected := http.DetectContentType(b)
+						if strings.HasPrefix(detected, "text/") || strings.Contains(strings.ToLower(req.Header.Get("Content-Type")), "json") {
+							preview = string(b)
+						} else {
+							preview = base64.StdEncoding.EncodeToString(b)
+						}
+					}
+				}
+			}
+		} else {
+			preview = "<no body>"
+			bodyLen = 0
+		}
+
+		// Log structured info
+		fields := []interface{}{
+			"method", method,
+			"url", urlStr,
+			"headers", headers,
+			"body_preview", preview,
+			"body_truncated", truncated,
+			"body_len", bodyLen,
+		}
+		logger.Infow("preflight-http-request", fields...)
+		return nil
+	}
 }

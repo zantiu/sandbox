@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"net/http"
 	"testing"
@@ -39,6 +40,7 @@ func TestComputeKeyIDFromPrivateKeyPEM(t *testing.T) {
 
 func TestSignVerifyRoundTrip(t *testing.T) {
 	priv, pub := generateTestKeyPair(t)
+	pub = base64.StdEncoding.EncodeToString([]byte(pub))
 
 	kid, err := ComputeKeyIDFromPrivateKeyPEM(priv)
 	require.NoError(t, err)
@@ -55,7 +57,7 @@ func TestSignVerifyRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify using a verifier with the public key
-	verifier, err := NewVerifier(pub)
+	verifier, err := NewVerifier(pub, true)
 	require.NoError(t, err)
 	err = verifier.VerifyRequest(context.Background(), req)
 	require.NoError(t, err)

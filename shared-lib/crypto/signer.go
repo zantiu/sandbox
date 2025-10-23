@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/lestrrat-go/htmsig/component"
 	htmsighttp "github.com/lestrrat-go/htmsig/http"
@@ -56,14 +57,14 @@ func NewSignerFromFile(filepath, signatureAlgo, hashAlgo, signatureFormat string
 // parameter which will be included in the produced Signature header.
 func NewSigner(privateKeyPEM string, keyid string, signatureAlgo string, hashAlgo string, signatureFormat string) (HTTPSigner, error) {
 	// validate basic config values (we keep mapping to htmsig minimal for now)
-	switch signatureAlgo {
+	switch strings.ToLower(signatureAlgo) {
 	case "", "auto", "rsa", "ecdsa":
 		// allowed
 	default:
 		return nil, fmt.Errorf("unsupported signatureAlgo: %s", signatureAlgo)
 	}
 
-	switch hashAlgo {
+	switch strings.ToLower(hashAlgo) {
 	case "", "sha256", "sha512":
 		// allowed
 	default:
@@ -71,8 +72,8 @@ func NewSigner(privateKeyPEM string, keyid string, signatureAlgo string, hashAlg
 	}
 
 	// signatureFormat is deliberately permissive for now; accept empty or common values
-	switch signatureFormat {
-	case "", "sig1", "structured", "compact":
+	switch strings.ToLower(signatureFormat) {
+	case "", "sig1", "structured", "compact", "http-signature":
 		// allowed
 	default:
 		return nil, fmt.Errorf("unsupported signatureFormat: %s", signatureFormat)

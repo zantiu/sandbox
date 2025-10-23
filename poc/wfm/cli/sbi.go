@@ -2,6 +2,7 @@ package wfm
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -44,7 +45,8 @@ func NewSbiHTTPClient(url string, options ...HTTPApiClientOptions) (*SbiHttpClie
 }
 
 func (self *SbiHttpClient) OnboardDeviceClient(ctx context.Context, deviceCertificate []byte, overrideOptions ...HTTPApiClientOptions) (clientId string, endpoints []string, err error) {
-	cert := string(deviceCertificate)
+	cert := base64.StdEncoding.EncodeToString([]byte(deviceCertificate))
+
 	onboardingReq := sbi.OnboardingRequest{
 		PublicCertificate: &cert,
 	}

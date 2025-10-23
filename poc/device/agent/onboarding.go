@@ -123,14 +123,13 @@ func NewDeviceSettings(client wfm.SBIAPIClientInterface, db database.DatabaseIfc
 }
 
 func (da *DeviceClientSettings) Onboard(ctx context.Context) (deviceClientId string, err error) {
-	devicePubCert, err := da.deviceRootIdentity.CertificatePEM()
+	devicePubCert, err := da.deviceRootIdentity.PublicCertificatePEM()
 	if err != nil {
 		return "", err
 	}
-	devicePubCertBytes := []byte(devicePubCert)
-	da.log.Infow("Starting device onboarding", "hasValidDeviceSignature", len(devicePubCertBytes) != 0)
 
-	clientId, wfmEndpointsForClient, err := da.apiClient.OnboardDeviceClient(ctx, devicePubCertBytes)
+	da.log.Infow("Starting device onboarding", "hasValidDeviceSignature", len(devicePubCert) != 0)
+	clientId, wfmEndpointsForClient, err := da.apiClient.OnboardDeviceClient(ctx, []byte(devicePubCert))
 	if err != nil {
 		return "", fmt.Errorf("failed to onboard device client: %s", err.Error())
 	}

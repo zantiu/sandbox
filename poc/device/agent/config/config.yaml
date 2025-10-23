@@ -15,18 +15,18 @@ deviceRootIdentity:
     # if you have set identity type as PKI, then set these details
     pki:
       # certificate that the device client will present to the wfm during registration
-      pubCertPath: /config/device-rsa.crt
+      pubCertPath: ./config/device-rsa.crt
 
 wfm:
-  sbiUrl: http://52.224.241.180:8082/v1alpha2/margo/sbi/v1 #http://172.19.59.148:8082/v1alpha2/margo/sbi/v1
+  sbiUrl: http://127.0.0.1:8082/v1alpha2/margo/sbi/v1 #http://172.19.59.148:8082/v1alpha2/margo/sbi/v1
   clientPlugins:
     requestSigner:
       enabled: true
-      hashAlgo: "SHA256" # supported: SHA256, used to create a hash of the payload
-      signatureAlgo: "RSA256" # supported: RSA256, or ES256, these are used to sign the hash
-      signatureFormat: "http-signature" # supported: http-signature, how the signature will be added to the http request
+      hashAlgo: "sha256" # supported: sha256, used to create a hash of the payload
+      signatureAlgo: "rsa" # supported: rsa, or ecdsa, these are used to sign the hash
+      signatureFormat: "structured" # supported: structured, http-signature, how the signature will be added to the http request
       keyRef:
-        path: "/config/device-rsa.key" # this should be the path to the private key pem file
+        path: "./config/device-rsa.key" # this should be the path to the private key pem file
 
     # the auth info is auto-fetched by the agent when it gets onboarded
     # but if you, for any reason, want to specify the oauth info, then you can pass that info over here 
@@ -63,4 +63,4 @@ runtimes:
 # in the file.
 # Path to the capabilities file (required).
 capabilities:
-  readFromFile: /config/capabilities.json
+  readFromFile: ./config/capabilities.json

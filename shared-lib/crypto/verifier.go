@@ -3,6 +3,7 @@ package crypto
 import (
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -22,7 +23,15 @@ type HTMPayloadVerifier struct {
 	verifier     *htmsighttp.Verifier
 }
 
-func NewVerifier(publicKey string) (*HTMPayloadVerifier, error) {
+func NewVerifier(publicKey string, isPubKeyBase64 bool) (*HTMPayloadVerifier, error) {
+	if isPubKeyBase64 {
+		der, err := base64.StdEncoding.DecodeString(publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base64 public key, %s", err.Error())
+		}
+		publicKey = string(der)
+	}
+
 	// try to parse PEM public key to supply a parsed key to the resolver
 	block, _ := pem.Decode([]byte(publicKey))
 	var parsedKey any
