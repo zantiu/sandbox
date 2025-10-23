@@ -44,3 +44,5 @@ spec:
         - name: data-volume
           emptyDir: {}
         {{- end }}
+        - name: certs
+          secretName: certsecretname

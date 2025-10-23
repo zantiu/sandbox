@@ -18,6 +18,9 @@
 {{- printf "%s-%s" ( include "agentchart.fullname" . ) "-cm" -}}
 {{- end -}}
 
+{{- define "agentchart.certsecretname" -}}
+{{- printf "%s-%s" ( include "agentchart.fullname" . ) "-certs" -}}
+{{- end -}}
 
 {{- define "agentchart.k8ssecret" -}}
 {{- printf "%s" .Values.kubeconfig.secretName -}}
