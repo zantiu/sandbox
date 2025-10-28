@@ -3,11 +3,12 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/margo/dev-repo/poc/device/agent/database"
+	wfm "github.com/margo/dev-repo/poc/wfm/cli"
 	"github.com/margo/dev-repo/shared-lib/http/auth"
 	"github.com/margo/dev-repo/standard/generatedCode/wfm/sbi"
 	"github.com/margo/dev-repo/standard/pkg"
@@ -21,7 +22,8 @@ type StateSyncerIfc interface {
 
 type StateSyncer struct {
 	database                  *database.Database
-	apiClient                 sbi.ClientInterface
+	apiClient                 wfm.SBIAPIClientInterface
+	requestSigner             crypto.Signer
 	deviceID                  string
 	log                       *zap.SugaredLogger
 	stopChan                  chan struct{}
@@ -30,7 +32,7 @@ type StateSyncer struct {
 
 func NewStateSyncer(
 	db *database.Database,
-	client sbi.ClientInterface,
+	client wfm.SBIAPIClientInterface,
 	deviceID string,
 	stateSeekingIntervalInSec uint16,
 	log *zap.SugaredLogger) *StateSyncer {
@@ -82,44 +84,34 @@ func (ss *StateSyncer) performSync() {
 	}
 
 	// Send to orchestrator and get desired states
-	device, _ := ss.database.GetDeviceSettings()
-	var resp *http.Response
-	var err error
+	device, err := ss.database.GetDeviceSettings()
+	if err != nil {
+		ss.log.Errorw("Sync failed", "err", err.Error(), "msg", "failed to fetch the device settings")
+		return
+	}
+	var desiredStates sbi.DesiredAppStates
 	if device.AuthEnabled {
-		resp, err = ss.apiClient.State(
+		desiredStates, err = ss.apiClient.SyncState(
 			ctx,
+			device.DeviceClientId,
 			currentStates,
-			auth.WithDeviceSignature(ctx, string(device.DeviceSignature)),
 			auth.WithOAuth(ctx, device.OAuthClientId, device.OAuthClientSecret, device.OAuthTokenEndpointUrl),
 		)
 	} else {
-		resp, err = ss.apiClient.State(
+		desiredStates, err = ss.apiClient.SyncState(
 			ctx,
+			device.DeviceClientId,
 			currentStates,
-			auth.WithDeviceSignature(ctx, string(device.DeviceSignature)),
 		)
 	}
 	if err != nil {
-		ss.log.Errorw("Failed to sync states", "error", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		ss.log.Errorw("Sync failed", "statusCode", resp.StatusCode)
-		return
-	}
-
-	// Parse response
-	desiredStateResp, err := sbi.ParseStateResponse(resp)
-	if err != nil || desiredStateResp.JSON200 == nil {
-		ss.log.Errorw("Failed to parse response", "error", err)
+		ss.log.Errorw("Sync failed", "err", err.Error())
 		return
 	}
 
 	// Update desired states in database
 	ss.log.Debugf("setting desired states....")
-	for _, desiredState := range *desiredStateResp.JSON200 {
+	for _, desiredState := range desiredStates {
 		appDeployment, err := pkg.ConvertAppStateToAppDeployment(desiredState)
 		if err != nil {
 			ss.database.SetPhase(desiredState.AppId, "FAILED", fmt.Sprintf("Conversion failed: %v", err))
@@ -133,5 +125,5 @@ func (ss *StateSyncer) performSync() {
 		ss.database.SetDesiredState(*deploymentId, desiredState)
 	}
 
-	ss.log.Debugw("Sync completed", "desiredStates", len(*desiredStateResp.JSON200))
+	ss.log.Debugw("Sync completed", "desiredStates", len(desiredStates))
 }

@@ -25,17 +25,20 @@ paths:
     get:
       summary: Download the workload orchestration solution vendor's public root CA certificate.
       description: |
-        Devices call this API to download the root CA certificate, establishing trust with the WFM web service.
+        Device client calls this API to download the root CA certificate, establishing trust with the WFM web service.
       tags:
         - onboarding
       responses:
         '200':
           description: Successful operation. Returns the root CA certificate.
           content:
-            application/x-pem-file:  # Or application/x-x509-ca-cert, depending on the format
+            application/json:
               schema:
-                type: string
-                description: The root CA certificate in PEM format.
+                type: object
+                properties:
+                  certificate:
+                    type: string
+                    description: Base64-encoded certificate
         '500':
           description: Internal server error.
           content:
@@ -43,7 +46,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /onboarding/device:
+  /onboarding:
     post:
       summary: Onboard the device with the workload orchestration service.
       description: |
@@ -70,16 +73,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - device client is already exists # Review: security concern?
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      security:
-        - api_key: []  # Replace with your actual security scheme
 
-  /device/{deviceId}/capabilities:
+  /client/{clientId}/capabilities:
     post:
       summary: Report device capabilities (Create)
       description: |
@@ -88,7 +95,7 @@ paths:
         - device
       parameters:
         - in: path
-          name: deviceId
+          name: clientId
           schema:
             type: string
           required: true
@@ -110,7 +117,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Device not found.
+          description: Device Client not found.
           content:
             application/json:
               schema:
@@ -122,7 +129,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        - api_key: []  # Replace with your actual security scheme
+      - PayloadSignature: []
     put:
       summary: Update device capabilities (Update)
       description: |
@@ -131,11 +138,11 @@ paths:
         - device
       parameters:
         - in: path
-          name: deviceId
+          name: clientId
           schema:
             type: string
           required: true
-          description: The device's ID registered with the workload orchestration web service.
+          description: The device client ID registered with the workload orchestration web service.
       requestBody:
         description: Device capabilities information
         required: true
@@ -153,7 +160,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Device not found.
+          description: Device client not found.
           content:
             application/json:
               schema:
@@ -165,9 +172,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        - api_key: []  # Replace with your actual security scheme
+      - PayloadSignature: []
 
-  /device/{deviceId}/deployment/{deploymentId}/status:
+  /client/{clientId}/deployment/{deploymentId}/status:
     post:
       summary: Report deployment status
       description: |
@@ -177,11 +184,11 @@ paths:
         - deployment
       parameters:
         - in: path
-          name: deviceId
+          name: clientId
           schema:
             type: string
           required: true
-          description: The device's ID registered with the workload orchestration web service.
+          description: The device client ID registered with the workload orchestration web service.
         - in: path
           name: deploymentId
           schema:
@@ -218,15 +225,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       security:
-        - api_key: []  # Replace with your actual security scheme
+      - PayloadSignature: []
 
-  /wfm/state:
+  /client/{clientId}/wfm/state:
     post:
       tags:
         - wfm
       summary: Device sends this API to the WFM to update the current-state of the device and applications.
       description: Device sends this API to the WFM to update the current-state of the device and applications.
       operationId: state
+      parameters:
+        - in: path
+          name: clientId
+          schema:
+            type: string
+          required: true
+          description: The device client ID registered with the workload orchestration web service.
+          
       requestBody:
         description: The current-state of the device as well as the state of each deployed app
         content:
@@ -313,48 +328,50 @@ components:
     # Onboarding Schemas
     OnboardingRequest:
       type: object
-      description: Request body for the /onboarding/device endpoint.
-      # properties:
-        # TBD - Define the properties of the onboarding request
-        # This will depend on the chosen onboarding method (e.g., FIDO Device Onboarding)
-        # Example:
-        # deviceCertificate:
-        #   type: string
-        #   description: The device's X.509 certificate (PEM encoded).
-      #required:  # Define required fields based on the chosen onboarding method
+      description: Request body for the /onboarding endpoint.
+      properties:
+        publicCertificate:
+          description: Base64-encoded client certificate
+          type: string
 
     OnboardingResponse:
       type: object
-      description: Response body for the /onboarding/device endpoint.
+      description: Response body for the /onboarding endpoint.
       properties:
         clientId:
           type: string
-          description: The client ID for OAuth 2.0 authentication.
+          description: The uuid assigned to the device client.
           example: "your_client_id"
-        clientSecret:
-          type: string
-          description: The client secret for OAuth 2.0 authentication.
-          example: "your_client_secret"
-        tokenEndpointUrl:
-          type: string
-          format: uri
-          description: The URL for the OAuth 2.0 token endpoint.
-          example: "https://wfm.example.com/oauth/token"
-        gitRepositoryUrl:
-          type: string
-          format: uri
-          description: The URL for the Git repository containing the desired state.
-          example: "https://git.example.com/your-repo.git"
-        gitAccessToken:
-          type: string
-          description: An access token for authenticating with the Git repository.
-          example: "your_git_access_token"
+        endpointList:
+          type: array
+          description: The endpoints
+          items:
+            type: string
+
+        # clientSecret:
+        #   type: string
+        #   description: The client secret for OAuth 2.0 authentication.
+        #   example: "your_client_secret"
+        # tokenEndpointUrl:
+        #   type: string
+        #   format: uri
+        #   description: The URL for the OAuth 2.0 token endpoint.
+        #   example: "https://wfm.example.com/oauth/token"
+        # gitRepositoryUrl:
+        #   type: string
+        #   format: uri
+        #   description: The URL for the Git repository containing the desired state.
+        #   example: "https://git.example.com/your-repo.git"
+        # gitAccessToken:
+        #   type: string
+        #   description: An access token for authenticating with the Git repository.
+        #   example: "your_git_access_token"
       required:
         - clientId
-        - clientSecret
-        - tokenEndpointUrl
-        - gitRepositoryUrl
-        - gitAccessToken
+        # - clientSecret
+        # - tokenEndpointUrl
+        # - gitRepositoryUrl
+        # - gitAccessToken
 
     # Device Capabilities Schemas
     DeviceCapabilities:

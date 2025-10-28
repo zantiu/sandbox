@@ -50,7 +50,7 @@ func (dm *DeploymentManager) Stop() {
 	close(dm.stopChan)
 }
 
-func (dm *DeploymentManager) onDeploymentChange(deploymentId string, record *database.DeploymentRecord, changeType database.DeploymentChangeType) {
+func (dm *DeploymentManager) onDeploymentChange(deploymentId string, record *database.DeploymentRecord, changeType database.DeploymentRecordChangeType) {
 	if changeType == database.DeploymentChangeTypeDesiredStateAdded {
 		if dm.database.NeedsReconciliation(deploymentId) {
 			dm.log.Infow("Deployment needs reconciliation", "appId", deploymentId)

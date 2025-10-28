@@ -884,6 +884,28 @@ cleanup_residual() {
   rm -rf "$HOME/device-agent.pid"
 }
 
+create_device_rsa_certs() {
+  echo "Generating device certs..."
+  # Generate RSA private key (2048-bit)
+  openssl genrsa -out device-private.key 2048
+
+  # Generate self-signed certificate
+  openssl req -new -x509 -key device-private.key -out device-public.crt -days 365 \
+    -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
+  echo "✅ Cert generation has been completed."
+}
+
+create_device_ecdsa_certs() {
+  echo "Generating device certs..."
+  # Generate ECDSA private key (P-256 curve)
+  openssl ecparam -genkey -name prime256v1 -out device-ecdsa.key
+
+  # Generate self-signed certificate
+  openssl req -new -x509 -key device-ecdsa.key -out device-ecdsa.crt -days 365 \
+    -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
+  echo "✅ Cert generation has been completed."
+}
+
 
 show_menu() {
   echo "Choose an option:"
@@ -898,7 +920,9 @@ show_menu() {
   echo "9) otel-collector-promtail-uninstallation"
   echo "10) add-container-registry-mirror-to-k3s"
   echo "11) cleanup-residual"
-  read -rp "Enter choice [1-9]: " choice
+  echo "12) create_device_rsa_certs"
+  echo "13) create_device_ecdsa_certs"
+  read -rp "Enter choice [1-13]: " choice
   case $choice in
     1) install_prerequisites;;
     2) uninstall_prerequisites;;
@@ -911,6 +935,8 @@ show_menu() {
     9) uninstall_otel_collector_promtail ;;
     10) add_container_registry_mirror_to_k3s;;
     11) cleanup_residual;;
+    12) create_device_rsa_certs ;;
+    13) create_device_ecdsa_certs ;;
     *) echo "Invalid choice" ;;
   esac
 }
@@ -920,19 +946,4 @@ show_menu() {
 # ----------------------------
 if [ -z "$1" ]; then
   show_menu
-else
-  case $1 in
-    start-docker) start_device_agent_docker ;;
-    start-kubernetes) start_device_agent_kubernetes ;;
-    stop-docker) stop_device_agent_docker ;;
-    stop-kubernetes) stop_device_agent_kubernetes ;;
-    install_prerequisites) install_prerequisites;;
-    uninstall_prerequisites) uninstall_prerequisites;;
-    status) show_status ;;
-    install_otel_collector_promtail) install_otel_collector_promtail ;;
-    uninstall_otel_collector_promtail) uninstall_otel_collector_promtail ;;
-    add_container_registry_mirror_to_k3s) add_container_registry_mirror_to_k3s ;;
-    cleanup_residual) cleanup_residual ;;
-    *) echo "Usage: $0 {start-docker|start-kubernetes|stop-docker|stop-kubernetes|status|install_prerequisites|uninstall_prerequisites|install_otel_collector_promtail|uninstall_otel_collector_promtail|add_container_registry_mirror_to_k3s|cleanup_residual}" ;;
-  esac
 fi
