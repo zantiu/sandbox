@@ -1,193 +1,143 @@
-# Margo Development Repository
+# MARGO Project Documentation
 
-A development repository for the Margo platform - an edge computing orchestration system that manages workloads across margo compliant devices and workload orchestrators.
+## Table of Contents
+- [📘 Introduction](#-introduction)
+- [🚀 Sandbox Quick Start](#-sandbox-quick-start)
+    - [🛠️ Development Toolset](#-development-toolset)
+    - [🔧 How to Build](#-how-to-build)
+    - [🚚 How to Deploy](#-how-to-deploy)
+    - [▶️ How to Run](#-how-to-run)
+- [🗂️ Structure of the Repository](#-structure-of-the-repository)
+- [📦 3rd Party Components](#-3rd-party-components)
+- [🧠 Design and Mapping to MARGO Architecture](#-design-and-mapping-to-margo-architecture)
+  - [🎼 Symphony WFM](#-symphony-wfm)
+  - [📁 Repositories and Registry](#-repositories-and-registry)
+  - [📊 Telemetry and Monitoring](#-telemetry-and-monitoring)
+  - [🧩 MVP Pattern](#-mvp-pattern)
+- [🔐 HTTP/1.1 and API Security](#-http11-and-api-security)
+- [📝 Release Notes](#-release-notes)
+- [💬 Comments and Feedback](#-comments-and-feedback)
 
-## Overview
+---
 
-This repository contains the core components, shared libraries, proof-of-concepts, and tooling for the Margo PoCs.
+## 📘 Introduction
+Welcome to the MARGO project! The MARGO initiative defines mechanisms for interoperable orchestration at scale of edge applications/workloads and devices. It will deliver on the interoperability promise through an open standard, a reference implementation, and a comprehensive compliance testing toolkit. MARGO unlocks barriers to innovation in complex multi-vendor environments and accelerates digital transformation for organizations of all sizes. More about MARGO [here](https://margo.org/).
 
-## Repository Structure
+---
 
-```
-dev-repo/
-├── README.md                 # This file
-├── LICENSE                   # Project license
-├── go.mod                    # Go module dependencies
-├── go.sum                    # Go module checksums
-├── .github/                  # GitHub workflows and templates
-├── .vscode/                  # VS Code configuration
-├── config/                   # Global configuration files
-├── tools/                    # Development and testing tools
-├── shared-lib/               # Reusable libraries and utilities
-├── standard/                 # Standard Margo components and APIs
-├── non-standard/             # Experimental and non-standard components that are not defined in Margo, but needed for a complete PoC
-└── poc/                      # Proof-of-concept implementations
-```
+## 🚀 Sandbox Quick Start
+This section allows you to set up a 'Sandbox' environment for experimenting with the MARGO specifications and APIs. This includes instructions on the prerequisites, how to set up a build environment, creating a deployment on a set of virtual machines and running scenarios between the MARGO WFM and the Device-Agent using a simple CLI.
 
-## Core Components
+### 🛠️ Development Toolset
+- [Development Toolset](./docs/dev-toolsets.md)
 
-### 🤖 Device Agent (`poc/device/agent/`)
-Edge device agent that manages workload deployments on device and talks to the workload orchestrator for state seeking,  status updates and some other operations.
+#### 🔧 How to Build
+- [Build the Sandbox](./docs/build.md)
 
-**Key Features:**
-- Multi-runtime support (Kubernetes Distributions(for Helm workloads), Docker(for docker-compose workloads))
-- Event-driven architecture with state synchronization
-- Device onboarding and capability reporting
-- Workload lifecycle management and monitoring
-- In-memory database with persistence
+#### 🚚 How to Deploy
+- [Deploy the Sandbox](./docs/deploy.md)
 
-**Quick Start:**
-```bash
-cd poc/device/agent
-go build -o agent .
-./agent
-```
+#### ▶️ How to Run
+- [Run the Sandbox](./docs/run.md)
 
-NOTE: Please check the README.md given in `poc/device/agent` directory. It has comprehensive literature on how it works, and how to extend its development.
+---
 
-### 📚 Shared Libraries (`shared-lib/`)
-Reusable Go libraries providing common functionality across Margo components.
+## 🗂️ Structure of the Repository
+The repository is divided into three main parts. More details on [Repository Structure](./docs/repo-structure.md):
 
-**Libraries:**
-- **HTTP utilities** (`http/`) - HTTP client with authentication utilties
-- **Workload management** (`workloads/`) - Helm and Docker Compose clients
-- **File operations** (`file/`) - File download and manipulation utilities
+- `shared-lib`: Reusable libraries and utilities (Open Source Components)
+- `standard`: Standard implementation components as per MARGO specification
+- `non-standard`: Sandbox enabling components, these are not defined by MARGO but required for reference implementation
 
-### 🛠️ Development Tools (`tools/`) [TBD -- Incomplete]
-Scripts and utilities for development, testing, and deployment automation.
+---
 
-**Tools:**
-- **Setup script** (`setup.sh`) - Automated environment setup (Gogs, Harbor, Keycloak, Symphony)
-- **Test suite** (`tests.sh`) - Comprehensive testing framework
-- **Test cases** (`helm-app-pkg-testcases.yaml`) - YAML-based test definitions
+## 📦 3rd Party Components
+| Component Type | Component Name | Version |
+|---|---|---|
+| Container Registry | Harbor | v2.13.2 |
+| Repository Management | Gogs | Latest |
+| Observability Stack | Prometheus | Latest |
+| Observability Stack | Grafana | Latest |
+| Observability Stack | Jaeger | Latest |
+| Observability Stack | Loki | Latest |
+| Observability Stack | OpenTelemetry Collector | Latest |
+| Observability Stack | Promtail | Latest |
+| Security & Authentication | OpenSSL | System default |
+| Supporting Infrastructure | Helm | 3.15.1 |
+| Supporting Infrastructure | Go | 1.23.2 / 1.24.4 |
+| Supporting Infrastructure | Docker | Latest (from get.docker.com) |
+| Supporting Infrastructure | Docker Compose | V2 (latest) |
+| Supporting Infrastructure | K3s | Latest (from get.k3s.io) |
+| Supporting Infrastructure | Rust | Latest (from rustup) |
+| Supporting Infrastructure | Node.js/NPM | System default |
+| System Utilities | curl | System default |
+| System Utilities | git | System default |
+| System Utilities | wget | System default |
+| System Utilities | build-essential | System default |
+| System Utilities | gcc | System default |
+| System Utilities | libc6-dev | System default |
+| System Utilities | dos2unix | System default |
 
-### 📋 Standard Components (`standard/`)
-Official Margo API specifications, generated code, and standard implementations.
+---
 
-**Contents:**
-- Standard data models and schemas derived from the Official Margo spec literature 
-- Generated API clients and server stubs
-- Protocol definitions and interfaces
+## 🧠 Design and Mapping to MARGO Architecture
+MARGO intends to create an open interoperability standard and ecosystem for the industrial edge, allowing edge compute devices, workloads, and fleet management software to be compatible and interoperable across manufacturers and software developers willing to adopt such standard.
 
-### 🧪 Proof of Concepts (`poc/`)
-Experimental implementations and prototypes for new features.
+- MARGO envision the [Architecture](./docs/margo-architecture.png)
+- The reference implementation through this 'Sandbox' environment implements the key MARGO components as per [Overlay-Architecture](./docs/overlay-architecture.png)
 
-## Quick Start
+### 🎼 Symphony WFM
+- Sandbox uses Eclipse Symphony as Workload Fleet Manager
+- As mentioned in MARGO architecture and overlay architecture WFM connects through MARGO envisioned communication mechanisms
 
-### Prerequisites
+### 📁 Repositories and Registry
+- Gogs and Harbor provide application registry and repository functionalities
+- Application supplier's packages are stored in Gogs and docker images/helm artifacts related to these applications are stored in Harbor registry
+- Application packages are pulled/pushed/deleted from Gogs repository whenever WFM performs application package LCM operation
+- The WFM Client/Device-agent pulls docker images/helm artifacts from Harbor whenever workloads are getting deployed corresponding to the application packages during instance deployment
 
-- **Go 1.24.3+** for building components
-- **Docker** for container-based deployments
-- **Kubernetes cluster** (optional, for Helm deployments)
-- **Git** for version control
+### 📊 Telemetry and Monitoring
+- Sandbox deploys OpenTelemetry Collector at WFM client for instrumentation as per MARGO observability specification
+- OpenTelemetry Collector sends telemetry data to observability backends from WFM client. Promtail is also deployed on WFM client for logs aggregation. Promtail agent fetches and pushes logs to Loki on WFM
+- Observability backends should be external to WFM client. In Sandbox implementation, these backends are deployed on WFM. These include Prometheus, Jaeger, Loki and Grafana
+- Loki is deployed for log aggregation and Grafana dashboard for visualization
+- Jaeger is deployed for tracing
+- Prometheus is deployed for Metrics collection
 
-### Environment Setup
+### 🧩 MVP Pattern
+Eclipse Symphony is an open-source orchestration platform developed by the Eclipse Foundation to unify and manage complex workloads across diverse systems. In the context of Eclipse Symphony, MVP refers to a design pattern for building extensible systems, specifically a three-tiered architecture consisting of Managers, Vendors, and Providers.
 
-1. **Clone the repository:**
-```bash
-git clone https://github.com/margo/dev-repo
-cd dev-repo
-```
+This pattern is often referred to as HB-MVP (Host-Bound MVP):
 
-2. **Install dependencies:**
-```bash
-go mod download
-```
+- **Managers**: Implement business logic
+- **Vendors**: Facilitate interaction with other systems
+- **Providers**: Bridge the connection to external systems
 
-3. **Setup development environment:**
-```bash
-cd tools
-chmod +x setup.sh
-./setup.sh
-```
+#### Here's a breakdown of each component:
+- **Vendors**: Vendors offer capabilities, typically exposed through an API surface. They act as the entry point for interacting with a specific service or functionality. Ideally, vendors are protocol-agnostic, allowing them to be bound to various communication protocols (e.g., HTTP, gRPC, MQTT) as needed
+- **Managers**: Managers implement the platform-agnostic business logic for a given capability. They receive requests from vendors and orchestrate the necessary actions, often by interacting with one or more providers. Managers are designed for reuse and encapsulate the core business logic
+- **Providers**: Providers are responsible for interacting with specific external systems or dependencies. They abstract away the details of platform-specific interactions, containing any platform-specific knowledge within their scope. Managers utilize providers to perform actions on external resources
 
-4. **Build and run device agent:**
-```bash
-cd poc/device/agent
-go build -o agent .
-./agent
-```
+Sandbox uses MVP pattern to implement MARGO specification.
 
-### Running Tests
+---
 
-```bash
-# Run all tests
-go test ./...
+## 🔐 HTTP/1.1 and API Security
+- Sandbox utilizes HTTP/1.1 to ensure maximum support for existing infrastructure
+- Server-side TLS is utilized instead of mTLS due to potential issues with TLS-terminating HTTPS load-balancer or HTTPS proxies doing lawful inspection
+- Use of X.509 certificates to represent both parties within the REST API construction. These certificates are utilized to prove each participant's identity, establish a secure TLS session, and securely transport information within secure envelopes. Supports client authentication using X.509 certificates conforming to RFC 5280
+- The device establishes a secure HTTPS connection using server-side TLS. It validates the server's identity using the public root CA certificate. By utilizing the certificates to create payload envelopes (HTTP request body), the device's management client can ensure secure transport between the device's management client and the Workload Fleet Management web service
+- For API security, server side TLS 1.3 (minimum) is used, where the keys are obtained from the Server's X.509 Certificate as defined in the standard HTTP over TLS
+- For API integrity, the device's management client is issued a client-specific X.509 certificate. The issuer of the client X.509 certificate is trusted under the assumption that the root CA download to the Workload Fleet Management server occurs as a precondition to onboarding the devices
 
-# Run with coverage
-go test -cover ./...
+---
 
-# Run integration tests
-cd tools
-./test_runner.sh
-```
+## 📝 Release Notes
+Details of version updates, bug fixes, and new features.
 
-## Development Workflow
+---
 
-### Adding New Features
+## 💬 Comments and Feedback
+We welcome your thoughts! Please open an issue or submit a pull request for suggestions or improvements.
 
-1. **Shared functionality** → Add to `shared-lib/`
-2. **API changes from Official Margo Spec** → Update `standard/` specifications
-2. **API changes needed for PoC but not defined in Margo spec** → Update `non-standard/` specifications
-3. **Implementation of the standard and non-standard features** → Implement in `poc/`
-4. **Testing utilities** → Add to `tools/`
-
-### Code Organization
-
-- **Error handling** - Use structured errors with context
-- **Logging** - Structured logging with zap
-- **Testing** - Table-driven tests with mocks
-
-### Testing Strategy
-
-```bash
-# Unit tests
-go test ./shared-lib/...
-go test ./poc/device/agent/...
-
-# Integration tests
-cd tools
-# End-to-end tests
-./test_runner.sh -f test-cases/e2e-tests.yaml
-```
-
-## Deployment Options
-
-### Development
-```bash
-# Local development
-go run ./poc/device/agent
-
-# With custom config
-go run ./poc/device/agent -config custom-config.yaml
-```
-
-### Production
-[TBD]
-
-## Contributing
-
-### Development Setup
-
-1. **Fork the repository**
-2. **Create feature branch**: `git checkout -b feature/new-feature`
-3. **Follow code standards**: Run `gofmt` and `golangci-lint`
-4. **Write tests**: [Not a priority]
-5. **Update documentation**: Include README updates
-6. **Submit PR**: Include tests and documentation
-
-### Code Standards
-
-- **Go conventions** - Follow effective Go practices
-- **Error handling** - Use structured errors with context
-- **Testing** - Table-driven tests with proper mocking [Not a priority]
-- **Documentation** - Godoc comments for public APIs
-- **Logging** - Structured logging with appropriate levels
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Build failures** - Check Go version and dependencies
-2. **Agent connectivity** - Verify orchestrator URL and network access
-3. **Runtime errors** - Check Docker
+---
