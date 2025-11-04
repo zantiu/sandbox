@@ -113,22 +113,12 @@ func NewNbiHTTPCli(host string, port uint16, nbiBasePath *string, opts ...WFMCli
         nbiBaseURLPath = *nbiBasePath
     }
 
-<<<<<<< HEAD
-    cli := &NbiApiClient{
-        serverAddress: fmt.Sprintf("%s:%d", host, port),
-        nbiBaseURL:    fmt.Sprintf("https://%s:%d/%s", host, port, nbiBaseURLPath), // Changed to https
-        timeout:       nbiDefaultTimeout,
-        logger:        log.Default(),
-        httpClient:    &http.Client{Timeout: nbiDefaultTimeout}, // Add default HTTP client
-    }
-=======
 	cli := &NbiApiClient{
 		serverAddress: fmt.Sprintf("%s:%d", host, port),
 		nbiBaseURL:    fmt.Sprintf("https://%s:%d/%s", host, port, nbiBaseURLPath),
 		timeout:       nbiDefaultTimeout,
 		logger:        log.Default(),
 	}
->>>>>>> d00c002 (changed cli from http to https)
 
     // Apply options
     for _, opt := range opts {
