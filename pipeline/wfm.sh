@@ -1559,8 +1559,8 @@ start_symphony_api_container(){
     docker rm symphony-api-container 2>/dev/null || true
     
     # Remove existing image if present
-   # echo "Removing existing margo-symphony-api:latest image if present..."
-   # docker rmi margo-symphony-api:latest 2>/dev/null || true
+   echo "Removing existing margo-symphony-api:latest image if present..."
+   docker rmi margo-symphony-api:latest 2>/dev/null || true
     
 
 
@@ -1571,11 +1571,11 @@ start_symphony_api_container(){
     echo "$GITHUB_TOKEN" > github_token.txt
 
     # Build with secrets
-    # docker build \
-    #   --secret id=github_username,src=github_username.txt \
-    #   --secret id=github_token,src=github_token.txt \
-    #   -t margo-symphony-api:latest \
-    #   .. -f Dockerfile
+    docker build \
+      --secret id=github_username,src=github_username.txt \
+      --secret id=github_token,src=github_token.txt \
+      -t margo-symphony-api:latest \
+      .. -f Dockerfile
 
     # Clean up credential files
     rm github_username.txt github_token.txt
