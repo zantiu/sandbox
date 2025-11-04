@@ -118,6 +118,7 @@ func NewNbiHTTPCli(host string, port uint16, nbiBasePath *string, opts ...WFMCli
 		nbiBaseURL:    fmt.Sprintf("https://%s:%d/%s", host, port, nbiBaseURLPath),
 		timeout:       nbiDefaultTimeout,
 		logger:        log.Default(),
+		httpClient:    &http.Client{Timeout: nbiDefaultTimeout},
 	}
 
     // Apply options

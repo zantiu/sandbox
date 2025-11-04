@@ -15,7 +15,7 @@ deviceRootIdentity:
     # if you have set identity type as PKI, then set these details
     pki:
       # certificate that the device client will present to the wfm during registration
-      pubCertPath: ./config/device-rsa.crt
+      pubCertPath: ./config/device-public.crt
 
 wfm:
   sbiUrl: https://10.139.9.90:8082/v1alpha2/margo/sbi/v1 #http://172.19.59.148:8082/v1alpha2/margo/sbi/v1
@@ -26,7 +26,7 @@ wfm:
       signatureAlgo: "rsa" # supported: rsa, or ecdsa, these are used to sign the hash
       signatureFormat: "structured" # supported: structured, http-signature, how the signature will be added to the http request
       keyRef:
-        path: "./config/device-rsa.key" # this should be the path to the private key pem file
+        path: "./config/device-private.key" # this should be the path to the private key pem file
 
     # the auth info is auto-fetched by the agent when it gets onboarded
     # but if you, for any reason, want to specify the oauth info, then you can pass that info over here 
