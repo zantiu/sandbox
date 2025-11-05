@@ -373,7 +373,7 @@ build_start_device_agent_k3s_service() {
         kubectl delete secret device-agent-tls --namespace=default 2>/dev/null || true
         
         # Create the secret directly (this handles base64 encoding automatically)
-        kubectl create secret generic device-agent-tls \
+        kubectl create secret generic device-agent-device-agent--certs \
             --from-file=device-private.key="$HOME/certs/device-private.key" \
             --from-file=device-public.crt="$HOME/certs/device-public.crt" \
             --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
@@ -408,7 +408,7 @@ build_start_device_agent_k3s_service() {
         --set serviceAccount.create=true \
         --set serviceAccount.name=device-agent-sa \
         --set secrets.create=false \
-        --set secrets.existingSecret=device-agent-tls \
+        --set secrets.existingSecret=device-agent-device-agent--certs \
         --debug \
         --wait
 

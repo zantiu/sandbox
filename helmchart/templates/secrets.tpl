@@ -6,8 +6,8 @@ metadata:
   namespace: {{ include "agentchart.namespace" . }}
 type: Opaque
 data:
-  device-rsa.key: {{ .Files.Get "device-private.key" | b64enc | quote }}
-  device-rsa.crt: {{ .Files.Get "device-public.crt" | b64enc | quote }}
+  device-private.key: {{ .Files.Get "device-private.key" | b64enc | quote }}
+  device-public.crt: {{ .Files.Get "device-public.crt" | b64enc | quote }}
   device-ecdsa.key: {{ .Files.Get "device-ecdsa.key" | b64enc | quote }}
   device-ecdsa.crt: {{ .Files.Get "device-ecdsa.crt" | b64enc | quote }}
 {{- end }}
