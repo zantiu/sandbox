@@ -214,7 +214,7 @@ setup_k3s() {
 #-----------------------------------------------------------------
 
 enable_kubernetes_runtime() {
-  CONFIG_FILE="$HOME/dev-repo/helmchart/config.yaml"
+  CONFIG_FILE="$HOME/dev-repo/helmchart/config/config.yaml"
   echo "Enabling Kubernetes section in config.yaml for ServiceAccount authentication..."
   sed -i \
   -e 's/^[[:space:]]*#\s*-\s*type:\s*KUBERNETES/- type: KUBERNETES/' \
@@ -347,13 +347,21 @@ build_start_device_agent_k3s_service() {
       return 1
     fi
     
-    # # Step 4: Create namespace ( Not required using default namespace)
-    # echo "Creating device-agent namespace..."
-    # kubectl create namespace device-agent 2>/dev/null || echo "Namespace device-agent already exists"
     
-    # Step 5: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
+    # Step 4: Copy config files and certs (ServiceAccount approach - no kubeconfig secret needed)
+    update_agent_sbi_url
+    
     echo "Copying configuration files..."
-    cp -r ../poc/device/agent/config/* .
+    mkdir -p config
+  
+    if [ -d "$HOME/certs" ] && [ "$(ls -A "$HOME/certs")" ]; then
+      cp "$HOME"/certs/* ../poc/device/agent/config/
+      echo "Copied certs from \$HOME/certs to ../poc/device/agent/config/"
+        else
+      echo "No certs found or directory missing: \$HOME/certs"
+    fi
+
+    cp -r ../poc/device/agent/config/* ./config
     if [ $? -eq 0 ]; then
       echo "✅ Configuration files copied successfully"
     else
@@ -361,16 +369,15 @@ build_start_device_agent_k3s_service() {
       return 1
     fi
     
-    # Step 6: Update config.yaml with environment variables
-    update_agent_sbi_url
     enable_kubernetes_runtime
     
-    # Create secrets using kubectl create secret
+    # Step 5: Create secrets using kubectl create secret 
+    
     if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
         echo "Creating TLS secrets..."
         
         # Delete existing secret if it exists
-        kubectl delete secret device-agent-tls --namespace=default 2>/dev/null || true
+        kubectl delete secret device-agent-device-agent--certs --namespace=default 2>/dev/null || true
         
         # Create the secret directly (this handles base64 encoding automatically)
         kubectl create secret generic device-agent-device-agent--certs \
@@ -391,12 +398,13 @@ build_start_device_agent_k3s_service() {
     fi
 
 
-    # Step 7: Deploy using Helm
+    # Step 6: Deploy using Helm
 
     # Clean up existing resources
     echo "Cleaning up any existing resources..."
     kubectl delete clusterrole device-agent-device-agent-role 2>/dev/null || true
     kubectl delete clusterrolebinding device-agent-device-agent-binding 2>/dev/null || true
+    
     helm uninstall device-agent -n default 2>/dev/null || true
     
     # Wait for resources to be fully removed
@@ -419,7 +427,7 @@ build_start_device_agent_k3s_service() {
         return 1
     fi
 
-    #STEP 8: Fix RBAC permissions
+    #STEP 7: Fix RBAC permissions
     if [ $? -eq 0 ]; then
       echo "🔧 Applying RBAC permissions fix..."
       
