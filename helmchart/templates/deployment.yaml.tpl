@@ -32,7 +32,7 @@ spec:
             - name: data-volume
               mountPath: /data
             - name: certs
-              mountPath: /certs
+              mountPath: /config
               readOnly: true
               
       volumes:
