@@ -362,7 +362,7 @@ build_start_device_agent_k3s_service() {
     fi
 
     cp -r ../poc/device/agent/config/* ./config
-    rm -f ./config/config.yaml ./config/capabilities.yaml
+    
     if [ $? -eq 0 ]; then
       echo "✅ Configuration files copied successfully"
     else
