@@ -1558,29 +1558,26 @@ start_symphony_api_container(){
     docker stop symphony-api-container 2>/dev/null || true
     docker rm symphony-api-container 2>/dev/null || true
     
-    # Remove existing image if present
-    echo "Removing existing margo-symphony-api:latest image if present..."
-    docker rmi margo-symphony-api:latest 2>/dev/null || true
-    
-
-
-
-
+    # Remove existing image if present (Un-cmment if want to remove older image)
+    #echo "Removing existing margo-symphony-api:latest image if present..."
+    #docker rmi margo-symphony-api:latest 2>/dev/null || true
+   
     # Create credential files
     echo "$GITHUB_USER" > github_username.txt
     echo "$GITHUB_TOKEN" > github_token.txt
 
-    # Build with secrets
-    docker build \
-      --secret id=github_username,src=github_username.txt \
-      --secret id=github_token,src=github_token.txt \
-      -t margo-symphony-api:latest \
-      .. -f Dockerfile
+    # Build with secrets 
+    #  Uncommet below if want to build symphony image 
+    # ( especially required if VM has older image and there are some changes in codebase)
+    # docker build \
+    #   --secret id=github_username,src=github_username.txt \
+    #   --secret id=github_token,src=github_token.txt \
+    #   -t margo-symphony-api:latest \
+    #   .. -f Dockerfile
 
     # Clean up credential files
     rm github_username.txt github_token.txt
-    
-    
+      
     
     if [ $? -eq 0 ]; then
         echo "Symphony API container built successfully with tag: margo-symphony-api:latest"
@@ -1646,8 +1643,8 @@ collect_certs_info() {
     O="Margo"
     EMAIL="admin@example.com"
     DAYS="365"
-    SAN_DOMAINS=""
-    SAN_IPS=""
+    SAN_DOMAINS="${EXPOSED_SYMPHONY_IP:-localhost}"
+    SAN_IPS="${EXPOSED_SYMPHONY_IP:-localhost}"
     
     # # Set defaults
     # C=${C:-IN}
@@ -1666,6 +1663,7 @@ generate_config_for_certs() {
     local config_file="$1"
     local cert_type="$2"
     
+    # Create base config
     cat > "$config_file" << EOF
 [req]
 default_bits = 2048
@@ -1680,11 +1678,6 @@ L=$L
 O=$O
 CN=$CN
 emailAddress=$EMAIL
-EOF
-
-    # Add server extensions separately for better control
-    if [ "$cert_type" = "server" ]; then
-        cat >> "$config_file" << EOF
 
 [v3_req]
 basicConstraints = CA:FALSE
@@ -1695,29 +1688,34 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = $CN
 EOF
+
+    # Initialize counters
+    local dns_count=2
+    local ip_count=1
+
+    # Add SAN domains if provided
+    if [ -n "$SAN_DOMAINS" ]; then
+        echo "Adding SAN domains..."
+        IFS=',' read -ra DOMAINS <<< "$SAN_DOMAINS"
+        for domain in "${DOMAINS[@]}"; do
+            echo "DNS.$dns_count = ${domain// /}" >> "$config_file"
+            ((dns_count++))
+        done
     fi
 
-    # Add SAN domains and IPs (rest of the function remains the same)
-    if [[ "$cert_type" = "server" && (-n "$SAN_DOMAINS" || -n "$SAN_IPS") ]]; then
-        local dns_count=2
-        local ip_count=1
-        
-        if [[ -n "$SAN_DOMAINS" ]]; then
-            IFS=',' read -ra DOMAINS <<< "$SAN_DOMAINS"
-            for domain in "${DOMAINS[@]}"; do
-                echo "DNS.$dns_count = ${domain// /}" >> "$config_file"
-                ((dns_count++))
-            done
-        fi
-        
-        if [[ -n "$SAN_IPS" ]]; then
-            IFS=',' read -ra IPS <<< "$SAN_IPS"
-            for ip in "${IPS[@]}"; do
-                echo "IP.$ip_count = ${ip// /}" >> "$config_file"
-                ((ip_count++))
-            done
-        fi
-    fi
+    # Add SAN IPs if provided
+  if [ -n "$SAN_IPS" ]; then
+    echo "Adding SAN IPs..."
+    IFS=',' read -ra IPS <<< "$SAN_IPS"
+    for ip in "${IPS[@]}"; do
+        echo "IP.$ip_count = ${ip// /}" >> "$config_file"
+        ((ip_count++))
+    done
+  fi
+
+    # Debug output
+    echo "Generated OpenSSL config at $config_file:"
+    cat "$config_file"
 }
 
 
@@ -1774,7 +1772,7 @@ generate_server_certs() {
 }
 
 
-# Update the show_menu function to include uninstall option
+
 show_menu() {
   echo "Choose an option:"
   echo "1) PreRequisites: Setup"
@@ -1784,8 +1782,6 @@ show_menu() {
   echo "5) ObeservabiliyStack: Start"
   echo "6) ObeservabiliyStack: Stop"
   echo "7) Registry-K3s: Add-Pull-Secrets"
-  # echo "8) Advanced: Setup"
-  # echo "9) Advanced: Cleanup"
   read -p "Enter choice [1-7]: " choice
   case $choice in
     1) install_prerequisites ;;
@@ -1795,8 +1791,7 @@ show_menu() {
     5) observability_stack_install ;;
     6) observability_stack_uninstall ;;
     7) add_container_registry_mirror_to_k3s;;
-    # 8) show_advance_setup_menu;;
-    # 9) show_advance_teardown_menu;;
+    
     *) echo "⚠️ Invalid choice"; exit 1 ;;
   esac
 }
@@ -1808,97 +1803,3 @@ show_menu() {
 if [[ -z "$1" ]]; then
   show_menu
 fi
-
-
-
-show_advance_setup_menu() {
-  echo "Choose an option:"
-  echo "1) Install Basic Utilities"
-  echo "2) Install Golang"
-  echo "3) Install K3s"
-  echo "4) Bring up Gogs"
-  echo "5) Bring up Harbor"
-  echo "6) Bring up Keycloak"
-  echo "7) Clone Symphony"
-  echo "8) Build Symphony"
-  echo "9) Clone Dev-Repo"
-  echo "10) Build Custom OTEL Images"
-  echo "11) Install Observability"
-  echo "12) Push Nginx Package"
-  echo "13) Push Custom OTEL Package"
-  echo "14) Push Nextcloud Package"
-  echo "15) Go Back"
-  read -p "Enter choice [1-15]: " choice
-  case $choice in
-    1) install_basic_utilities ;;
-    2) install_go ;;
-    3) setup_k3s ;;
-    4) 
-      setup_gogs_directories
-      start_gogs
-      wait_for_gogs
-      create_gogs_admin
-      create_gogs_token
-      create_gogs_repositories ;;
-    5) setup_harbor ;;
-    6) 
-      setup_keycloak
-      update_keycloak_config ;;
-    7) clone_symphony_repo ;;
-    8) 
-      build_rust
-      build_symphony_api_server
-      build_maestro_cli
-      verify_symphony_api ;;
-    9) clone_dev_repo ;;
-    10) build_custom_otel_container_images ;;
-    11) observability_stack_install ;;
-    12) push_nginx_files ;;
-    13) push_custom_otel_files ;;
-    14) push_nextcloud_files ;;
-    15) show_menu ;;
-    *) echo "⚠️ Invalid choice"; show_advance_setup_menu ;;
-  esac
-}
-
-show_advance_tearup_menu() {
-  echo "Choose a teardown option:"
-  echo "1) Stop Symphony API Server"
-  echo "2) Remove Symphony Builds/Binaries" 
-  echo "3) Reset App Supplier Repositories Changes"
-  echo "4) Remove Gogs Repositories"
-  echo "5) Cleanup Gogs Admin & Token"
-  echo "6) Stop Gogs Service"
-  echo "7) Cleanup Gogs Data Directories"
-  echo "8) Revert Keycloak Config"
-  echo "9) Stop Keycloak Service"
-  echo "10) Stop Harbor Service"
-  echo "11) Remove Cloned Repositories"
-  echo "12) Uninstall Rust"
-  echo "13) Uninstall Docker Compose"
-  echo "14) Uninstall Go"
-  echo "15) Cleanup Basic Utilities"
-  echo "16) Uninstall Observability Stack"
-  echo "17) Go Back"
-  read -p "Enter choice [1-17]: " choice
-  case $choice in
-    1) stop_symphony_api_process ;;
-    2) cleanup_symphony_builds ;;
-    3) cleanup_app_supplier_git_repositories ;;
-    4) remove_gogs_repositories ;;
-    5) cleanup_gogs_admin ;;
-    6) stop_gogs_service ;;
-    7) cleanup_gogs_directories ;;
-    8) revert_keycloak_config ;;
-    9) stop_keycloak_service ;;
-    10) stop_harbor_service ;;
-    11) remove_cloned_repositories ;;
-    12) uninstall_rust ;;
-    13) uninstall_docker_compose ;;
-    14) uninstall_go ;;
-    15) cleanup_basic_utilities ;;
-    16) observability_stack_uninstall ;;
-    17) show_menu ;;
-    *) echo "⚠️ Invalid choice"; show_advance_tearup_menu ;;
-  esac
-}

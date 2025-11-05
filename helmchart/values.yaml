@@ -10,6 +10,11 @@ image:
 rbac:
   create: true
 
+# Secrets configuration
+secrets:
+  create: true  
+
+
 # if persistence.enabled=true then you need to give a volume claim name
 # the agent will use this volume claim to store its data, make sure that the volume claim is in the same namespace
 # where you have installed the chart

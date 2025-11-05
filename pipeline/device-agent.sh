@@ -157,13 +157,9 @@ clone_dev_repo() {
 # Configuration Functions
 # ----------------------------
 update_agent_sbi_url() {
-  echo 'Updating wfm.sbiUrl in agent config for k3s device ...'
-  sed -i "s|sbiUrl:.*|sbiUrl: http://$WFM_IP:$WFM_PORT/v1alpha2/margo/sbi/v1|" "$HOME/dev-repo/helmchart/config.yaml"
-
-  echo 'Updating wfm.sbiUrl in agent config for docker device ...'
-  sed -i "s|sbiUrl:.*|sbiUrl: http://$WFM_IP:$WFM_PORT/v1alpha2/margo/sbi/v1|" "$HOME/dev-repo/docker-compose/config/config.yaml"
+  echo 'Updating wfm.sbiUrl in agent config ...'
+  sed -i "s|sbiUrl:.*|sbiUrl: https://$WFM_IP:$WFM_PORT/v1alpha2/margo/sbi/v1|" "$HOME/dev-repo/poc/device/agent/config/config.yaml"
 }
-
 
 # ----------------------------
 # K3s Installation Functions
@@ -218,7 +214,7 @@ setup_k3s() {
 #-----------------------------------------------------------------
 
 enable_kubernetes_runtime() {
-  CONFIG_FILE="$HOME/dev-repo/helmchart/config.yaml"
+  CONFIG_FILE="$HOME/dev-repo/helmchart/config/config.yaml"
   echo "Enabling Kubernetes section in config.yaml for ServiceAccount authentication..."
   sed -i \
   -e 's/^[[:space:]]*#\s*-\s*type:\s*KUBERNETES/- type: KUBERNETES/' \
@@ -227,15 +223,19 @@ enable_kubernetes_runtime() {
   -e 's/^[[:space:]]*docker:/  # docker:/' \
   -e 's/^[[:space:]]*url:/  # url:/' \
   "$CONFIG_FILE"
+
+  # Fix certificate paths
+  sed -i \
+    -e 's|pubCertPath:.*|pubCertPath: /certs/device-public.crt|' \
+    -e 's|path: "./config/device-private.key"|path: "/certs/device-private.key"|' \
+    -e 's|path: "./config/ca-cert.pem"|path: "/certs/ca-cert.pem"|' \
+    "$CONFIG_FILE"
   
   # Set kubeconfigPath to empty string for ServiceAccount authentication
   sed -i 's|kubeconfigPath:.*|kubeconfigPath: ""|' "$CONFIG_FILE"
   
   echo "✅ Kubernetes runtime enabled with ServiceAccount authentication"
 }
-
-
-
 
 enable_docker_runtime() {
   CONFIG_FILE="$HOME/dev-repo/docker-compose/config/config.yaml"
@@ -267,22 +267,40 @@ build_device_agent_docker() {
   echo 'device-agent image build complete.'     
 }
 
-
 # ----------------------------
 # Device Agent Service Functions
 # ----------------------------
 
-
 start_device_agent_docker_service() {
   echo 'Starting device-agent...'
   cd "$HOME/dev-repo/docker-compose"
-  
   mkdir -p config
-  cp -r ../poc/device/agent/config/* ./config/
+  
+  if [ -d "$HOME/certs" ] && [ "$(ls -A "$HOME/certs")" ]; then
+    cp "$HOME"/certs/* ../poc/device/agent/config/
+    echo "Copied certs from \$HOME/certs to ../poc/device/agent/config/"
+      else
+    echo "No certs found or directory missing: \$HOME/certs"
+  fi
+
+
+  cp ../poc/device/agent/config/device-private.key ./config/
+  cp ../poc/device/agent/config/device-public.crt ./config/
+  cp ../poc/device/agent/config/device-ecdsa.key ./config/
+  cp ../poc/device/agent/config/device-ecdsa.crt ./config/
+ #cp ../poc/device/agent/config/ca-cert.pem ./config/
+  
+  cp ../poc/device/agent/config/capabilities.json ./config/
+  cp ../poc/device/agent/config/config.yaml ./config/
+
+
+  #cp ../poc/device/agent/config/device-{device-private.key,device-public.crt,ecdsa.key,ecdsa.crt} ./config/ 2>/dev/null
+
+  #cp ../poc/device/agent/config/-{capabilities.json,config.yaml} ./config/ 2>/dev/null
+
   mkdir -p data
   enable_docker_runtime
   docker compose up -d
-   
 }
 
 
@@ -290,6 +308,178 @@ stop_device_agent_service_docker() {
   echo "Stopping device-agent..."
   cd "$HOME/dev-repo/docker-compose"
   docker compose down
+}
+
+build_start_device_agent_k3s_service() {
+    cd "$HOME/dev-repo"
+    echo "Building and deploying device-agent on Kubernetes..."
+    
+    # Step 1: Build the Docker image if it doesn't exist
+    echo "Checking if device-agent image exists..."
+    if ! docker images | grep -q "margo.org/device-agent"; then
+      echo "Building device-agent Docker image..."
+      docker build -f poc/device/agent/Dockerfile . -t margo.org/device-agent:latest
+      if [ $? -ne 0 ]; then
+        echo "❌ Failed to build device-agent image"
+        return 1
+      fi
+      echo "✅ Device-agent image built successfully"
+    else
+      echo "✅ Device-agent image already exists"
+    fi
+    
+    # Step 2: Save and import image to k3s
+    echo "Importing image to k3s cluster..."
+    docker save -o device-agent.tar margo.org/device-agent:latest
+    
+    # Import to k3s cluster
+    if command -v k3s >/dev/null 2>&1; then
+      k3s ctr -n k8s.io image import device-agent.tar
+      echo "✅ Image imported to k3s cluster"
+    elif command -v ctr >/dev/null 2>&1; then
+      ctr -n k8s.io image import device-agent.tar
+      echo "✅ Image imported to k8s cluster"
+    else
+      echo "❌ Neither k3s nor ctr command found"
+      return 1
+    fi
+    
+    # Clean up tar file
+    rm -f device-agent.tar
+    
+    # Step 3: Navigate to helmchart directory
+    cd helmchart
+    if [ $? -ne 0 ]; then
+      echo "❌ Failed to navigate to helmchart directory"
+      return 1
+    fi
+    
+    
+    # Step 4: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
+    update_agent_sbi_url
+    
+    echo "Copying configuration files..."
+    mkdir -p config
+    cp -r ../poc/device/agent/config/* ./config
+    
+    if [ $? -eq 0 ]; then
+      echo "✅ Configuration files copied successfully"
+    else
+      echo "❌ Failed to copy configuration files"
+      return 1
+    fi
+    
+    enable_kubernetes_runtime
+    
+    # Step 5: Create secrets using kubectl create secret 
+    
+    if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
+        echo "Creating TLS secrets..."
+        
+        # Delete existing secret if it exists
+        kubectl delete secret device-agent-device-agent--certs --namespace=default 2>/dev/null || true
+        
+        # Create the secret directly (this handles base64 encoding automatically)
+        kubectl create secret generic device-agent-device-agent--certs \
+            --from-file=device-private.key="$HOME/certs/device-private.key" \
+            --from-file=device-public.crt="$HOME/certs/device-public.crt" \
+            --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
+            --from-file=device-ecdsa.crt="$HOME/certs/device-ecdsa.crt" \
+            --from-file=ca-cert.pem="$HOME/certs/ca-cert.pem" \
+            --namespace=default
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ TLS secrets created successfully"
+        else
+            echo "❌ Failed to create TLS secrets"
+            return 1
+        fi
+    else
+        echo "⚠️ Certificates not found in $HOME/certs, skipping TLS secret creation"
+    fi
+
+
+    # Step 6: Deploy using Helm
+
+    # Clean up existing resources
+    echo "Cleaning up any existing resources..."
+    kubectl delete clusterrole device-agent-device-agent-role 2>/dev/null || true
+    kubectl delete clusterrolebinding device-agent-device-agent-binding 2>/dev/null || true
+    
+    helm uninstall device-agent -n default 2>/dev/null || true
+    
+    # Wait for resources to be fully removed
+    sleep 5
+
+    # Install helm chart with modified values
+    echo "Installing new device-agent deployment..."
+    helm install device-agent . \
+        --set serviceAccount.create=true \
+        --set serviceAccount.name=device-agent-sa \
+        --set secrets.create=false \
+        --set secrets.existingSecret=device-agent-device-agent--certs \
+        --debug \
+        --wait
+
+        if [ $? -eq 0 ]; then
+        echo "✅ Helm installation successful"
+    else
+        echo "❌ Helm installation failed"
+        return 1
+    fi
+
+    #STEP 7: Fix RBAC permissions
+    if [ $? -eq 0 ]; then
+      echo "🔧 Applying RBAC permissions fix..."
+      
+      # Force update ClusterRole with secrets permissions
+      kubectl patch clusterrole device-agent-device-agent-role --type='json' -p='[
+        {
+          "op": "add",
+          "path": "/rules/-",
+          "value": {
+            "apiGroups": [""],
+            "resources": ["secrets", "configmaps"],
+            "verbs": ["create", "get", "list", "update", "patch", "delete"]
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/rules/1/verbs",
+          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
+        },
+        {
+          "op": "replace",
+          "path": "/rules/0/verbs", 
+          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
+        }
+      ]' 2>/dev/null || echo "⚠️ ClusterRole patch failed, trying alternative method..."
+      
+      # Alternative: Create namespace-scoped RoleBinding for secrets
+      kubectl create rolebinding device-agent-secrets-access \
+        --clusterrole=admin \
+        --serviceaccount=device-agent:device-agent-device-agent-sa \
+        --namespace=device-agent 2>/dev/null || echo "RoleBinding already exists"
+      
+      # Verify permissions
+      echo "🔍 Verifying RBAC permissions..."
+      if kubectl auth can-i create secrets --as=system:serviceaccount:device-agent:device-agent-device-agent-sa -n default | grep -q "yes"; then
+        echo "✅ RBAC permissions applied successfully"
+      else
+        echo "⚠️ RBAC permissions may need manual verification"
+      fi
+      
+      echo "✅ Device-agent deployed successfully on Kubernetes with ServiceAccount"
+      
+      # Verify deployment
+      echo "Verifying deployment..."
+      kubectl get pods -n default
+      kubectl get serviceaccount -n default
+      
+    else
+      echo "❌ Failed to deploy device-agent"
+      return 1
+    fi
 }
 
 stop_device_agent_kubernetes() {
@@ -526,131 +716,6 @@ start_device_agent_kubernetes() {
   build_start_device_agent_k3s_service
   echo '✅ device-agent-pod started with ServiceAccount authentication'
 }
-
-
-build_start_device_agent_k3s_service() {
-    cd "$HOME/dev-repo"
-    echo "Building and deploying device-agent on Kubernetes..."
-    
-    # Step 1: Build the Docker image if it doesn't exist
-    echo "Checking if device-agent image exists..."
-    if ! docker images | grep -q "margo.org/device-agent"; then
-      echo "Building device-agent Docker image..."
-      docker build -f poc/device/agent/Dockerfile . -t margo.org/device-agent:latest
-      if [ $? -ne 0 ]; then
-        echo "❌ Failed to build device-agent image"
-        return 1
-      fi
-      echo "✅ Device-agent image built successfully"
-    else
-      echo "✅ Device-agent image already exists"
-    fi
-    
-    # Step 2: Save and import image to k3s
-    echo "Importing image to k3s cluster..."
-    docker save -o device-agent.tar margo.org/device-agent:latest
-    
-    # Import to k3s cluster
-    if command -v k3s >/dev/null 2>&1; then
-      k3s ctr -n k8s.io image import device-agent.tar
-      echo "✅ Image imported to k3s cluster"
-    elif command -v ctr >/dev/null 2>&1; then
-      ctr -n k8s.io image import device-agent.tar
-      echo "✅ Image imported to k8s cluster"
-    else
-      echo "❌ Neither k3s nor ctr command found"
-      return 1
-    fi
-    
-    # Clean up tar file
-    rm -f device-agent.tar
-    
-    # Step 3: Navigate to helmchart directory
-    cd helmchart
-    if [ $? -ne 0 ]; then
-      echo "❌ Failed to navigate to helmchart directory"
-      return 1
-    fi
-    
-    # Step 4: Create namespace
-    echo "Creating device-agent namespace..."
-    kubectl create namespace device-agent 2>/dev/null || echo "Namespace device-agent already exists"
-    
-    # Step 5: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
-    echo "Copying configuration files..."
-    cp -r ../poc/device/agent/config/* .
-    if [ $? -eq 0 ]; then
-      echo "✅ Configuration files copied successfully"
-    else
-      echo "❌ Failed to copy configuration files"
-      return 1
-    fi
-    
-    # Step 6: Update config.yaml with environment variables
-    update_agent_sbi_url
-    enable_kubernetes_runtime
-    
-    # Step 7: Install/upgrade Helm chart (ServiceAccount approach)
-    
-      echo "Installing new device-agent deployment..."
-      helm install device-agent . 
-    
-    
-    #STEP 8: Fix RBAC permissions
-    if [ $? -eq 0 ]; then
-      echo "🔧 Applying RBAC permissions fix..."
-      
-      # Force update ClusterRole with secrets permissions
-      kubectl patch clusterrole device-agent-device-agent-role --type='json' -p='[
-        {
-          "op": "add",
-          "path": "/rules/-",
-          "value": {
-            "apiGroups": [""],
-            "resources": ["secrets", "configmaps"],
-            "verbs": ["create", "get", "list", "update", "patch", "delete"]
-          }
-        },
-        {
-          "op": "replace",
-          "path": "/rules/1/verbs",
-          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
-        },
-        {
-          "op": "replace",
-          "path": "/rules/0/verbs", 
-          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
-        }
-      ]' 2>/dev/null || echo "⚠️ ClusterRole patch failed, trying alternative method..."
-      
-      # Alternative: Create namespace-scoped RoleBinding for secrets
-      kubectl create rolebinding device-agent-secrets-access \
-        --clusterrole=admin \
-        --serviceaccount=device-agent:device-agent-device-agent-sa \
-        --namespace=device-agent 2>/dev/null || echo "RoleBinding already exists"
-      
-      # Verify permissions
-      echo "🔍 Verifying RBAC permissions..."
-      if kubectl auth can-i create secrets --as=system:serviceaccount:device-agent:device-agent-device-agent-sa -n default | grep -q "yes"; then
-        echo "✅ RBAC permissions applied successfully"
-      else
-        echo "⚠️ RBAC permissions may need manual verification"
-      fi
-      
-      echo "✅ Device-agent deployed successfully on Kubernetes with ServiceAccount"
-      
-      # Verify deployment
-      echo "Verifying deployment..."
-      kubectl get pods -n default
-      kubectl get serviceaccount -n default
-      
-    else
-      echo "❌ Failed to deploy device-agent"
-      return 1
-    fi
-}
-
-
 
 stop_device_agent_docker() {
   echo "Stopping device-agent on VM2 ($VM2_HOST)..."
@@ -896,25 +961,45 @@ cleanup_residual() {
  }
 
 create_device_rsa_certs() {
-  echo "Generating device certs..."
+  CERT_DIR="$HOME/certs"
+  mkdir -p "$CERT_DIR"
+  cd "$CERT_DIR" || exit 1
+
+  echo "Generating RSA device certs..."
   # Generate RSA private key (2048-bit)
   openssl genrsa -out device-private.key 2048
 
   # Generate self-signed certificate
   openssl req -new -x509 -key device-private.key -out device-public.crt -days 365 \
     -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
-  echo "✅ Cert generation has been completed."
+  echo "✅ RSA Cert generation has been completed."
+
+  #echo "Copying RSA Certs in dev-repo"
+  #cp device-private.key device-public.crt "$HOME/dev-repo/docker-compose/config/"
 }
 
 create_device_ecdsa_certs() {
-  echo "Generating device certs..."
+  CERT_DIR="$HOME/certs"
+
+  if [ ! -d "$CERT_DIR" ]; then
+    echo "Cert directory not found. Creating $CERT_DIR ..."
+    mkdir -p "$CERT_DIR"
+  else
+    echo "Using existing cert directory: $CERT_DIR"
+  fi
+
+  cd "$CERT_DIR" || exit 1
+  echo "Generating ECDSA device certs..."
   # Generate ECDSA private key (P-256 curve)
   openssl ecparam -genkey -name prime256v1 -out device-ecdsa.key
 
   # Generate self-signed certificate
   openssl req -new -x509 -key device-ecdsa.key -out device-ecdsa.crt -days 365 \
     -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
-  echo "✅ Cert generation has been completed."
+  echo "✅ ECDSA Cert generation has been completed."
+
+  #echo "Copying ECDSA Certs in dev-repo"
+  #cp device-ecdsa.key device-ecdsa.crt "$HOME/dev-repo/docker-compose/config/"
 }
 
 

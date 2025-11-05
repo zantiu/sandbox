@@ -19,7 +19,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["./device-agent"]
-          args: ["-config", "config/config.yaml"]
+          args: ["-config", "/config/config.yaml"]
           env:
             - name: KUBERNETES_SERVICE_HOST
               value: "kubernetes.default.svc"
@@ -31,6 +31,9 @@ spec:
               readOnly: true
             - name: data-volume
               mountPath: /data
+            - name: certs
+              mountPath: /certs
+              readOnly: true
               
       volumes:
         - name: agent-config-volume
@@ -45,4 +48,5 @@ spec:
           emptyDir: {}
         {{- end }}
         - name: certs
-          secretName: certsecretname
+          secret:
+            secretName: {{ include "agentchart.certsecretname" . }}
