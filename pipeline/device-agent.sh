@@ -347,9 +347,9 @@ build_start_device_agent_k3s_service() {
       return 1
     fi
     
-    # Step 4: Create namespace
-    echo "Creating device-agent namespace..."
-    kubectl create namespace device-agent 2>/dev/null || echo "Namespace device-agent already exists"
+    # # Step 4: Create namespace ( Not required using default namespace)
+    # echo "Creating device-agent namespace..."
+    # kubectl create namespace device-agent 2>/dev/null || echo "Namespace device-agent already exists"
     
     # Step 5: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
     echo "Copying configuration files..."
@@ -365,40 +365,39 @@ build_start_device_agent_k3s_service() {
     update_agent_sbi_url
     enable_kubernetes_runtime
     
-     # Create secrets with proper base64 encoding
-    if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-rsa.key" ] && [ -f "$HOME/certs/device-rsa.crt" ]; then
-        echo "Creating TLS secrets with proper encoding..."
+    # Create secrets using kubectl create secret
+    if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
+        echo "Creating TLS secrets..."
         
-        # Base64 encode the certificate files
-        RSA_KEY=$(base64 -w 0 "$HOME/certs/device-rsa.key")
-        RSA_CRT=$(base64 -w 0 "$HOME/certs/device-rsa.crt")
-        ECDSA_KEY=$(base64 -w 0 "$HOME/certs/device-ecdsa.key")
-        ECDSA_CRT=$(base64 -w 0 "$HOME/certs/device-ecdsa.crt")
-
-        # Create secret manifest
-        cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: device-agent-tls
-  namespace: device-agent
-type: Opaque
-data:
-  device-rsa.key: ${RSA_KEY}
-  device-rsa.crt: ${RSA_CRT}
-  device-ecdsa.key: ${ECDSA_KEY}
-  device-ecdsa.crt: ${ECDSA_CRT}
-EOF
-        echo "✅ TLS secrets created with proper encoding"
+        # Delete existing secret if it exists
+        kubectl delete secret device-agent-tls --namespace=default 2>/dev/null || true
+        
+        # Create the secret directly (this handles base64 encoding automatically)
+        kubectl create secret generic device-agent-tls \
+            --from-file=device-private.key="$HOME/certs/device-private.key" \
+            --from-file=device-public.crt="$HOME/certs/device-public.crt" \
+            --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
+            --from-file=device-ecdsa.crt="$HOME/certs/device-ecdsa.crt" \
+            --namespace=default
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ TLS secrets created successfully"
+        else
+            echo "❌ Failed to create TLS secrets"
+            return 1
+        fi
     else
         echo "⚠️ Certificates not found in $HOME/certs, skipping TLS secret creation"
     fi
+
+
+    # Step 7: Deploy using Helm
 
     # Clean up existing resources
     echo "Cleaning up any existing resources..."
     kubectl delete clusterrole device-agent-device-agent-role 2>/dev/null || true
     kubectl delete clusterrolebinding device-agent-device-agent-binding 2>/dev/null || true
-    helm uninstall device-agent -n device-agent 2>/dev/null || true
+    helm uninstall device-agent -n default 2>/dev/null || true
     
     # Wait for resources to be fully removed
     sleep 5
@@ -406,11 +405,9 @@ EOF
     # Install helm chart with modified values
     echo "Installing new device-agent deployment..."
     helm install device-agent . \
-        --namespace device-agent \
-        --create-namespace \
         --set serviceAccount.create=true \
         --set serviceAccount.name=device-agent-sa \
-        --set global.namespace=device-agent \
+        --set secrets.create=false \
         --set secrets.existingSecret=device-agent-tls \
         --debug \
         --wait

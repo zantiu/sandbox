@@ -31,6 +31,9 @@ spec:
               readOnly: true
             - name: data-volume
               mountPath: /data
+            - name: certs
+              mountPath: /certs
+              readOnly: true
               
       volumes:
         - name: agent-config-volume
@@ -45,4 +48,5 @@ spec:
           emptyDir: {}
         {{- end }}
         - name: certs
-          secretName: certsecretname
+          secret:
+            secretName: {{ include "agentchart.certsecretname" . }}
