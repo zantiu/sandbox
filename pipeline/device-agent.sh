@@ -223,6 +223,13 @@ enable_kubernetes_runtime() {
   -e 's/^[[:space:]]*docker:/  # docker:/' \
   -e 's/^[[:space:]]*url:/  # url:/' \
   "$CONFIG_FILE"
+
+  # Fix certificate paths
+  sed -i \
+    -e 's|pubCertPath:.*|pubCertPath: /certs/device-public.crt|' \
+    -e 's|path: "./config/device-private.key"|path: "/certs/device-private.key"|' \
+    -e 's|path: "./config/ca-cert.pem"|path: "/certs/ca-cert.pem"|' \
+    "$CONFIG_FILE"
   
   # Set kubeconfigPath to empty string for ServiceAccount authentication
   sed -i 's|kubeconfigPath:.*|kubeconfigPath: ""|' "$CONFIG_FILE"
@@ -348,19 +355,11 @@ build_start_device_agent_k3s_service() {
     fi
     
     
-    # Step 4: Copy config files and certs (ServiceAccount approach - no kubeconfig secret needed)
+    # Step 4: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
     update_agent_sbi_url
     
     echo "Copying configuration files..."
     mkdir -p config
-  
-    if [ -d "$HOME/certs" ] && [ "$(ls -A "$HOME/certs")" ]; then
-      cp "$HOME"/certs/* ../poc/device/agent/config/
-      echo "Copied certs from \$HOME/certs to ../poc/device/agent/config/"
-        else
-      echo "No certs found or directory missing: \$HOME/certs"
-    fi
-
     cp -r ../poc/device/agent/config/* ./config
     
     if [ $? -eq 0 ]; then
@@ -386,6 +385,7 @@ build_start_device_agent_k3s_service() {
             --from-file=device-public.crt="$HOME/certs/device-public.crt" \
             --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
             --from-file=device-ecdsa.crt="$HOME/certs/device-ecdsa.crt" \
+            --from-file=ca-cert.pem="$HOME/certs/ca-cert.pem" \
             --namespace=default
         
         if [ $? -eq 0 ]; then
