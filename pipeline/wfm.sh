@@ -1540,7 +1540,6 @@ start_symphony() {
 start_symphony_api_container(){
 
     cd "$HOME/symphony/api"
-    echo "Building Symphony API container..."
     
     # Check for required environment variables
     if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
@@ -1558,50 +1557,50 @@ start_symphony_api_container(){
     docker stop symphony-api-container 2>/dev/null || true
     docker rm symphony-api-container 2>/dev/null || true
     
-    # Remove existing image if present (Un-cmment if want to remove older image)
-    #echo "Removing existing margo-symphony-api:latest image if present..."
-    #docker rmi margo-symphony-api:latest 2>/dev/null || true
-   
-    # Create credential files
-    echo "$GITHUB_USER" > github_username.txt
-    echo "$GITHUB_TOKEN" > github_token.txt
-
-    # Build with secrets 
-    #  Uncommet below if want to build symphony image 
-    # ( especially required if VM has older image and there are some changes in codebase)
-    # docker build \
-    #   --secret id=github_username,src=github_username.txt \
-    #   --secret id=github_token,src=github_token.txt \
-    #   -t margo-symphony-api:latest \
-    #   .. -f Dockerfile
-
-    # Clean up credential files
-    rm github_username.txt github_token.txt
-      
-    
-    if [ $? -eq 0 ]; then
-        echo "Symphony API container built successfully with tag: margo-symphony-api:latest"
+    # Check if image already exists
+    if docker image inspect margo-symphony-api:latest >/dev/null 2>&1; then
+        echo "✅ Image margo-symphony-api:latest already exists, skipping build"
+    else
+        echo "🔨 Building Symphony API container..."
         
-        # Run the container
-        echo "Starting Symphony API container..."
-        docker run -dit --name symphony-api-container \
-            -p 8082:8082 \
-            -e LOG_LEVEL=Debug \
-            -v "$HOME/symphony/api/certificates:/certificates" \
-            -v "$HOME/symphony/api":/configs \
-            -e CONFIG=symphony-api-margo.json \
-            margo-symphony-api:latest
-            
-        if [ $? -eq 0 ]; then
-            echo "Symphony API container started successfully"
-            echo "Container is running on port 8082"
-            echo "Container name: symphony-api-container"
-        else
-            echo "Failed to start Symphony API container"
+        # Create credential files
+        echo "$GITHUB_USER" > github_username.txt
+        echo "$GITHUB_TOKEN" > github_token.txt
+
+        # Build with secrets
+        docker build \
+          --secret id=github_username,src=github_username.txt \
+          --secret id=github_token,src=github_token.txt \
+          -t margo-symphony-api:latest \
+          .. -f Dockerfile
+
+        # Clean up credential files
+        rm github_username.txt github_token.txt
+        
+        if [ $? -ne 0 ]; then
+            echo "❌ Failed to build Symphony API container"
             return 1
         fi
+        
+        echo "✅ Symphony API container built successfully with tag: margo-symphony-api:latest"
+    fi
+    
+    # Run the container
+    echo "🚀 Starting Symphony API container..."
+    docker run -dit --name symphony-api-container \
+        -p 8082:8082 \
+        -e LOG_LEVEL=Debug \
+        -v "$HOME/symphony/api/certificates:/certificates" \
+        -v "$HOME/symphony/api":/configs \
+        -e CONFIG=symphony-api-margo.json \
+        margo-symphony-api:latest
+        
+    if [ $? -eq 0 ]; then
+        echo "✅ Symphony API container started successfully"
+        echo "📡 Container is running on port 8082"
+        echo "🏷️  Container name: symphony-api-container"
     else
-        echo "Failed to build Symphony API container"
+        echo "❌ Failed to start Symphony API container"
         return 1
     fi
 }
