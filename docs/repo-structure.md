@@ -1,36 +1,36 @@
 ##### [Back To Main](../README.md)
-# Margo Development Repository
+# MARGO Development Repository
 
-A development repository for the Margo project - an edge computing orchestration system that manages workloads across margo compliant devices and workload orchestrators.
+A development repository for the MARGO project - an edge computing orchestration system that manages workloads across margo compliant devices and workload orchestrators.
 
 ## Overview
 
-This repository contains the core components, shared libraries, proof-of-concepts, and tooling for the Margo reference implementation.
+This repository contains the core components, shared libraries, proof-of-concepts, and tooling for the MARGO reference implementation.
 
 ## Repository Structure
 
 ```
 dev-repo/
-├── docker-compose  # files related to run device-agent as docker container
-├── docs            # documentation related to Margo project
+├── docker-compose  # Files related to running device-agent as docker container
+├── docs            # Documentation related to MARGO project
 ├── go.mod          # Go module dependencies
 ├── go.sum          # Go module checksums
 ├── .github/        # GitHub workflows and templates
 ├── .vscode/        # VS Code configuration
-├── helmchart       # helmchart files to run device-agent as pod
+├── helmchart       # Helmchart files to run device-agent as pod
 ├── LICENSE         # Project license
-├── non-standard    # Sandbox enabling components (components that are not defined in Margo, but needed for a complete PoC)
+├── non-standard    # Sandbox enabling components (components that are not defined in MARGO, but needed for a complete PoC)
 ├── pipeline        # Automation scripts for build, deployment and run.
-├── poc             # Margo reference implementations and code for device-agent
+├── poc             # MARGO reference implementations and code for device-agent
 ├── README.md       # Main markdown file for whole project which links to other .md files
 ├── shared-lib      # Reusable libraries and utilities 
-└── standard        # Standard Margo components and APIs
+└── standard        # Standard MARGO components and APIs
 ```
 
 ## Core Components
 
 ### 🤖 Device Agent (`poc/device/agent/`)
-Edge device agent that manages workload deployments on device and talks to the workload orchestrator for state seeking,  status updates and some other operations.
+Edge device agent that manages workload deployments on device and communicates with the workload orchestrator for state seeking,  status updates and other operations.
 
 **Key Features:**
 - Multi-runtime support (Kubernetes Distributions(for Helm workloads), Docker(for docker-compose workloads))
@@ -49,10 +49,10 @@ go build -o agent .
 NOTE: Please check the [Agent Docs](../poc/device/agent/README.md). It has comprehensive literature on how it works, and how to extend its development.
 
 ### 📚 Shared Libraries (`shared-lib/`)
-Reusable Go libraries providing common functionality across Margo components.
+Reusable Go libraries providing common functionality across MARGO components.
 
 **Libraries:**
-- **HTTP utilities** (`http/`) - HTTP client with authentication utilties
+- **HTTP utilities** (`http/`) - HTTP client with authentication utilities
 - **Workload management** (`workloads/`) - Helm and Docker Compose clients
 - **File operations** (`file/`) - File download and manipulation utilities
 
@@ -60,15 +60,15 @@ Reusable Go libraries providing common functionality across Margo components.
 Scripts and utilities for development, testing, and deployment automation.
 
 **Tools:**
-- **Setup script** (`wfm.sh` , device-agent.sh) - Automated environment setup (Gogs, Harbor, device-agent, Symphony etc)
+- **Setup script** (`wfm.sh`, `device-agent.sh`) - Automated environment setup (Gogs, Harbor, device-agent, Symphony etc.)
 - **WFM CLI** (`wfm-cli.sh`) - Interactive menu with options to upload/apply/delete app packages, deploy/delete instances.
 
 
 ### 📋 Standard Components (`standard/`)
-Official Margo API specifications, generated code, and standard implementations.
+Official MARGO API specifications, generated code, and standard implementations.
 
 **Contents:**
-- Standard data models and schemas derived from the Official Margo spec literature 
+- Standard data models and schemas derived from the Official MARGO spec literature 
 - Generated API clients and server stubs
 - Protocol definitions and interfaces
 
@@ -98,7 +98,7 @@ go mod download
 ```
 
 
-4. **Build and run device agent:**
+3. **Build and run device agent:**
 ```bash
 cd poc/device/agent
 go build -o agent .
@@ -121,8 +121,8 @@ go test -cover ./...
 ### Adding New Features
 
 1. **Shared functionality** → Add to `shared-lib/`
-2. **API changes from Official Margo Spec** → Update `standard/` specifications
-2. **API changes needed for PoC but not defined in Margo spec** → Update `non-standard/` specifications
+2. **API changes from Official MARGO Spec** → Update `standard/` specifications
+2. **API changes needed for PoC but not defined in MARGO spec** → Update `non-standard/` specifications
 3. **Implementation of the standard and non-standard features** → Implement in `poc/`
 4. **Testing utilities** → Add to `tools/`
 
@@ -138,7 +138,6 @@ go test -cover ./...
 # Unit tests
 go test ./shared-lib/...
 go test ./poc/device/agent/...
-
 ```
 
 ## Deployment Options
@@ -151,4 +150,3 @@ go run ./poc/device/agent
 # With custom config
 go run ./poc/device/agent -config custom-config.yaml
 ```
-

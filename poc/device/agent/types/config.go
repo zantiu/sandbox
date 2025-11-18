@@ -143,13 +143,13 @@ func LoadConfig(configPath string) (*Config, error) {
 	return &config, validateConfig(&config)
 }
 
-func LoadCapabilities(capabilitiesPath string) (*sbi.DeviceCapabilities, error) {
+func LoadCapabilities(capabilitiesPath string) (*sbi.DeviceCapabilitiesManifest, error) {
 	data, err := os.ReadFile(capabilitiesPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read capabilities file: %w", err)
 	}
 
-	var capabilities sbi.DeviceCapabilities
+	var capabilities sbi.DeviceCapabilitiesManifest
 	if err := json.Unmarshal(data, &capabilities); err != nil {
 		return nil, fmt.Errorf("failed to parse capabilities: %w", err)
 	}

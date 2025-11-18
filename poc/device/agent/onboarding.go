@@ -179,15 +179,18 @@ func (da *DeviceClientSettings) OnboardWithRetries(ctx context.Context, retries 
 	return "", fmt.Errorf("unable to onboard the device")
 }
 
-func (da *DeviceClientSettings) ReportCapabilities(ctx context.Context, capabilities sbi.DeviceCapabilities) error {
-	err := da.apiClient.ReportCapabilities(ctx, da.deviceClientId, capabilities)
-	if err != nil {
-		return fmt.Errorf("failed to report capabilities: %w", err)
-	}
+func (da *DeviceClientSettings) ReportCapabilities(ctx context.Context, capabilities sbi.DeviceCapabilitiesManifest) error {
+    da.log.Infow("Starting capabilities reporting", "deviceClientId", da.deviceClientId)
+    err := da.apiClient.ReportCapabilities(ctx, da.deviceClientId, capabilities)
+    if err != nil {
+        da.log.Errorw("Failed to report capabilities", "error", err, "deviceClientId", da.deviceClientId)
+        return fmt.Errorf("failed to report capabilities: %w", err)
+    }
 
-	da.log.Info("Capabilities reported successfully")
-	return nil
+    da.log.Infow("Capabilities reported successfully", "deviceClientId", da.deviceClientId)
+    return nil
 }
+
 
 func (da *DeviceClientSettings) IsOnboarded() (bool, error) {
 	_, isOnboarded, err := da.db.IsDeviceOnboarded()

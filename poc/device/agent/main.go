@@ -145,6 +145,7 @@ func NewAgent(configPath string) (*Agent, error) {
 		return nil, err
 	}
 
+
 	if !isOnboarded {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -153,7 +154,9 @@ func NewAgent(configPath string) (*Agent, error) {
 			log.Errorw("device onboarding failed", "error", err)
 			return nil, fmt.Errorf("'failed to onboard' the device, %s", err.Error())
 		}
-		log.Infow("device onboarded", "deviceId", deviceId)
+		log.Infow("Device onboarded", "deviceId", deviceId)
+	} else {
+		log.Infow("Device already onboarded, skipping onboarding")
 	}
 
 	// Determine signature/certificate availability from deviceSettings (adapt to new attestation model)
@@ -167,7 +170,7 @@ func NewAgent(configPath string) (*Agent, error) {
 		}
 	}
 
-	log.Infow("device details",
+	log.Infow("Device details",
 		"deviceId", deviceSettings.deviceClientId,
 		"deviceSignatureType", deviceSettings.deviceRootIdentity.IdentityType,
 		"hasValidDeviceCertificate", hasValidDeviceCertificate,
@@ -418,7 +421,7 @@ func PreflightLogger(maxPreviewBytes int, logger *zap.SugaredLogger) func(ctx co
 			"body_truncated", truncated,
 			"body_len", bodyLen,
 		}
-		logger.Infow("preflight-http-request", fields...)
+		logger.Infow("Preflight-http-request", fields...)
 		return nil
 	}
 }

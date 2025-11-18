@@ -18,6 +18,11 @@ DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-dev-sprint-6}"
 WFM_IP="${WFM_IP:-127.0.0.1}"
 WFM_PORT="${WFM_PORT:-8082}"
 
+#--- Registry settings (can be overridden via env)
+REGISTRY_URL="${REGISTRY_URL:-http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}}"
+REGISTRY_USER="${REGISTRY_USER:-admin}"
+REGISTRY_PASS="${REGISTRY_PASS:-Harbor12345}"
+
 # variables for observability stack
 NAMESPACE_OBSERVABILITY="observability"
 PROMTAIL_RELEASE="promtail"
@@ -62,35 +67,37 @@ install_basic_utilities() {
 }
 
 install_docker_compose_v2() {
-  
+
   if ! command -v docker >/dev/null 2>&1; then
-    echo 'Docker not found. Installing Docker...';
-    apt-get remove -y docker docker-engine docker.io containerd runc || true;
-    curl -fsSL "https://get.docker.com" -o get-docker.sh; sh get-docker.sh;
-    usermod -aG docker $USER;
+    echo 'Docker not found. Installing Docker...'
+    apt-get remove -y docker docker-engine docker.io containerd runc || true
+    curl -fsSL "https://get.docker.com" -o get-docker.sh; sh get-docker.sh
+    usermod -aG docker $USER
   else
-    echo 'Docker already installed.';
-  fi;
-    
+    echo 'Docker already installed.'
+  fi
+
   echo "Installing Docker Compose V2 plugin..."
-  
-  # Create the plugins directory
-  sudo mkdir -p /usr/local/lib/docker/cli-plugins
-  
-  # Download the latest Docker Compose V2
-  COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
-  echo "Downloading Docker Compose ${COMPOSE_VERSION}..."
-  
-  sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
-    -o /usr/local/lib/docker/cli-plugins/docker-compose
-  
-  # Make it executable
-  sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-  
-  # Verify installation
+
+  # Correct path for get.docker.com installation
+  sudo mkdir -p /usr/libexec/docker/cli-plugins
+
+# Get latest Tag
+COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d'"' -f4)
+echo "Using Docker Compose version: $COMPOSE_VERSION"
+
+sudo curl -L \
+  "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-Linux-x86_64" \
+  -o /usr/libexec/docker/cli-plugins/docker-compose
+
+					  
+sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+					   
   docker compose version
   echo "✅ Docker Compose V2 installed successfully"
 }
+
 
 
 # Helm install/uninstall
@@ -158,7 +165,7 @@ clone_dev_repo() {
 # ----------------------------
 update_agent_sbi_url() {
   echo 'Updating wfm.sbiUrl in agent config ...'
-  sed -i "s|sbiUrl:.*|sbiUrl: https://$WFM_IP:$WFM_PORT/v1alpha2/margo/sbi/v1|" "$HOME/dev-repo/poc/device/agent/config/config.yaml"
+  sed -i "s|sbiUrl:.*|sbiUrl: https://$WFM_IP:$WFM_PORT/v1alpha2/margo|" "$HOME/dev-repo/poc/device/agent/config/config.yaml"
 }
 
 # ----------------------------
@@ -223,13 +230,13 @@ enable_kubernetes_runtime() {
   -e 's/^[[:space:]]*docker:/  # docker:/' \
   -e 's/^[[:space:]]*url:/  # url:/' \
   "$CONFIG_FILE"
-
-  # Fix certificate paths
+  
+ # Fix certificate paths
   sed -i \
     -e 's|pubCertPath:.*|pubCertPath: /certs/device-public.crt|' \
     -e 's|path: "./config/device-private.key"|path: "/certs/device-private.key"|' \
     -e 's|path: "./config/ca-cert.pem"|path: "/certs/ca-cert.pem"|' \
-    "$CONFIG_FILE"
+    "$CONFIG_FILE"				 
   
   # Set kubeconfigPath to empty string for ServiceAccount authentication
   sed -i 's|kubeconfigPath:.*|kubeconfigPath: ""|' "$CONFIG_FILE"
@@ -288,15 +295,10 @@ start_device_agent_docker_service() {
   cp ../poc/device/agent/config/device-public.crt ./config/
   cp ../poc/device/agent/config/device-ecdsa.key ./config/
   cp ../poc/device/agent/config/device-ecdsa.crt ./config/
- #cp ../poc/device/agent/config/ca-cert.pem ./config/
-  
+   
   cp ../poc/device/agent/config/capabilities.json ./config/
   cp ../poc/device/agent/config/config.yaml ./config/
 
-
-  #cp ../poc/device/agent/config/device-{device-private.key,device-public.crt,ecdsa.key,ecdsa.crt} ./config/ 2>/dev/null
-
-  #cp ../poc/device/agent/config/-{capabilities.json,config.yaml} ./config/ 2>/dev/null
 
   mkdir -p data
   enable_docker_runtime
@@ -368,19 +370,19 @@ build_start_device_agent_k3s_service() {
       echo "❌ Failed to copy configuration files"
       return 1
     fi
-    
-    enable_kubernetes_runtime
-    
-    # Step 5: Create secrets using kubectl create secret 
-    
-    if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
+	
+	enable_kubernetes_runtime
+	
+	   # Step 5: Create secrets using kubectl create secret 
+	
+  if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
         echo "Creating TLS secrets..."
-        
-        # Delete existing secret if it exists
+		
+      # Delete existing secret if it exists
         kubectl delete secret device-agent-device-agent--certs --namespace=default 2>/dev/null || true
-        
+		
         # Create the secret directly (this handles base64 encoding automatically)
-        kubectl create secret generic device-agent-device-agent--certs \
+       kubectl create secret generic device-agent-device-agent--certs \
             --from-file=device-private.key="$HOME/certs/device-private.key" \
             --from-file=device-public.crt="$HOME/certs/device-public.crt" \
             --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
@@ -397,8 +399,8 @@ build_start_device_agent_k3s_service() {
     else
         echo "⚠️ Certificates not found in $HOME/certs, skipping TLS secret creation"
     fi
-
-
+	
+					   
     # Step 6: Deploy using Helm
 
     # Clean up existing resources
@@ -427,8 +429,8 @@ build_start_device_agent_k3s_service() {
         echo "❌ Helm installation failed"
         return 1
     fi
-
-    #STEP 7: Fix RBAC permissions
+  
+  #STEP 7: Fix RBAC permissions
     if [ $? -eq 0 ]; then
       echo "🔧 Applying RBAC permissions fix..."
       
@@ -565,127 +567,86 @@ cleanup_device_agent() {
 
 add_container_registry_mirror_to_k3s() {
   echo "Configuring container registry mirror for k3s..."
-  
-  # Ask for container registry URL or default to https://registry-1.docker.io
-  read -p "Enter container registry URL [https://registry-1.docker.io]: " registry_url
-  registry_url=${registry_url:-"https://registry-1.docker.io"}
-  
-  # Ask for registry username, no default
-  read -p "Enter registry username: " registry_user
-  if [ -z "$registry_user" ]; then
-    echo "❌ Registry username is required"
-    return 1
-  fi
-  
-  # Ask for registry password, no default (hidden input)
-  read -s -p "Enter registry password: " registry_password
-  echo  # New line after hidden input
-  if [ -z "$registry_password" ]; then
-    echo "❌ Registry password is required"
-    return 1
-  fi
-  
-  # Create k3s directory if it doesn't exist
+
+  # ---------------------------------------------------
+  # Load registry settings from environment variables
+  # ---------------------------------------------------
+  registry_url="${REGISTRY_URL:-http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}}"
+  registry_user="${REGISTRY_USER:-admin}"
+  registry_password="${REGISTRY_PASS:-Harbor12345}"
+
+  echo "Using registry mirror: $registry_url"
+  echo "Using registry credentials: $registry_user / ******"
+  # ---------------------------------------------------
+  # Create k3s directory if needed
+  # ---------------------------------------------------
   sudo mkdir -p /var/lib/rancher/k3s
-  
-  # Backup existing registries.yml if it exists
+  sudo mkdir -p /etc/rancher/k3s
+
+  # Backup existing registries if present
   if [ -f /var/lib/rancher/k3s/registries.yml ]; then
     sudo cp /var/lib/rancher/k3s/registries.yml /var/lib/rancher/k3s/registries.yml.backup.$(date +%s)
-    echo "✅ Backed up existing registries.yml"
+    echo "✅ Backed up /var/lib/rancher/k3s/registries.yml"
   fi
-  
-  # Add docker registry mirror and credentials in /var/lib/rancher/k3s
-  cat <<EOF | sudo tee /var/lib/rancher/k3s/registries.yml
+
+  # ---------------------------------------------------
+  # Write the registry config
+  # ---------------------------------------------------
+  cat <<EOF | sudo tee /var/lib/rancher/k3s/registries.yml >/dev/null
 mirrors:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
+  "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}":
     endpoint:
-      - "$registry_url"
+      - "${registry_url}"
 
 configs:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
+  "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}":
     auth:
-      username: "$registry_user"
-      password: "$registry_password"
+      username: "${registry_user}"
+      password: "${registry_password}"
     tls:
-    insecure_skip_verify: true
+      insecure_skip_verify: true
 EOF
 
-  cat <<EOF | sudo tee /var/lib/rancher/k3s/registries.yaml
-mirrors:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    endpoint:
-      - "$registry_url"
+  sudo cp /var/lib/rancher/k3s/registries.yml /var/lib/rancher/k3s/registries.yaml
+  sudo cp /var/lib/rancher/k3s/registries.yml /etc/rancher/k3s/registries.yml
+  sudo cp /var/lib/rancher/k3s/registries.yml /etc/rancher/k3s/registries.yaml
 
-configs:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    auth:
-      username: "$registry_user"
-      password: "$registry_password"
-    tls:
-    insecure_skip_verify: true
-EOF
-
-# Add docker registry mirror and credentials in /etc/rancher/k3s
-cat <<EOF | sudo tee /etc/rancher/k3s/registries.yaml
-mirrors:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    endpoint:
-      - "$registry_url"
-
-configs:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    auth:
-      username: "$registry_user"
-      password: "$registry_password"
-EOF
-
-cat <<EOF | sudo tee /etc/rancher/k3s/registries.yml
-mirrors:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    endpoint:
-      - "$registry_url"
-
-configs:
-  "$EXPOSED_HARBOR_IP:$EXPOSED_HARBOR_PORT":
-    auth:
-      username: "$registry_user"
-      password: "$registry_password"
-EOF
-
-  echo "✅ Created k3s registries configuration"
-  
-  # Restart k3s to apply changes
-  echo "Restarting k3s to apply registry changes..."
+  echo "✅ Created k3s registry mirror configuration"
+  # ---------------------------------------------------
+	
+  # Restart k3s
+  # ---------------------------------------------------
+  echo "Restarting k3s..."
   if sudo systemctl restart k3s; then
     echo "✅ k3s restarted successfully"
-    
-    # Wait for k3s to be ready
-    echo "Waiting for k3s to be ready..."
-    for i in {1..30}; do
-      if sudo systemctl is-active --quiet k3s; then
-        echo "✅ k3s is active and running"
-        break
-      else
-        echo "Waiting for k3s... ($i/30)"
-        sleep 2
-      fi
-    done
-    
-    # Verify k3s is working
-    if sudo k3s kubectl get nodes >/dev/null 2>&1; then
-      echo "✅ k3s cluster is responding"
-    else
-      echo "⚠️ k3s cluster may not be fully ready yet"
-    fi
   else
     echo "❌ Failed to restart k3s"
     return 1
   fi
-  
-  echo "✅ Container registry mirror configuration completed"
+
+  # Wait for k3s active
+  echo "Waiting for k3s to come up..."
+  for i in {1..30}; do
+    if sudo systemctl is-active --quiet k3s; then
+      echo "✅ k3s is running"
+      break
+    fi
+										 
+    sleep 2
+		
+  done
+
+  echo "Checking cluster..."
+  if sudo k3s kubectl get nodes >/dev/null 2>&1; then
+    echo "✅ k3s cluster is responding"
+  else
+    echo "⚠️ k3s cluster not ready yet"
+								
+			
+  fi
+
+  echo "✅ Registry mirror configuration completed."
 }
-
-
 
 # ----------------------------
 # Main Orchestration Functions
@@ -698,6 +659,8 @@ install_prerequisites() {
   install_docker_compose_v2 
   clone_dev_repo
   setup_k3s
+  add_container_registry_mirror_to_k3s
+  echo 'prerequisites installation completed.'
 }
 
 
@@ -974,8 +937,8 @@ create_device_rsa_certs() {
     -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
   echo "✅ RSA Cert generation has been completed."
 
-  #echo "Copying RSA Certs in dev-repo"
-  #cp device-private.key device-public.crt "$HOME/dev-repo/docker-compose/config/"
+									   
+																				  
 }
 
 create_device_ecdsa_certs() {
@@ -998,8 +961,8 @@ create_device_ecdsa_certs() {
     -subj "/C=IN/ST=GGN/L=Sector 48/O=Margo/CN=margo-device"
   echo "✅ ECDSA Cert generation has been completed."
 
-  #echo "Copying ECDSA Certs in dev-repo"
-  #cp device-ecdsa.key device-ecdsa.crt "$HOME/dev-repo/docker-compose/config/"
+										 
+																			   
 }
 
 
@@ -1012,12 +975,11 @@ show_menu() {
   echo "5) Device-agent-Start(k3s-device)"
   echo "6) Device-agent-Stop(k3s-device)"
   echo "7) Device-agent-Status"
-  echo "8) otel-collector-promtail-installation"
-  echo "9) otel-collector-promtail-uninstallation"
-  echo "10) add-container-registry-mirror-to-k3s"
-  echo "11) cleanup-residual"
-  echo "12) create_device_rsa_certs"
-  echo "13) create_device_ecdsa_certs"
+  echo "8) OTEL-collector-promtail-installation"
+  echo "9) OTEL-collector-promtail-uninstallation"
+  echo "10) cleanup-residual"
+  echo "11) create_device_rsa_certs"
+  echo "12) create_device_ecdsa_certs"
   read -rp "Enter choice [1-13]: " choice
   case $choice in
     1) install_prerequisites;;
@@ -1029,10 +991,9 @@ show_menu() {
     7) show_status ;;
     8) install_otel_collector_promtail ;;
     9) uninstall_otel_collector_promtail ;;
-    10) add_container_registry_mirror_to_k3s;;
-    11) cleanup_residual;;
-    12) create_device_rsa_certs ;;
-    13) create_device_ecdsa_certs ;;
+    10) cleanup_residual;;
+    11) create_device_rsa_certs ;;
+    12) create_device_ecdsa_certs ;;
     *) echo "Invalid choice" ;;
   esac
 }

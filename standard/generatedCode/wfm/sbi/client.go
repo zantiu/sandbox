@@ -13,8 +13,9 @@ import (
 	"net/url"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/oapi-codegen/runtime"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -90,42 +91,41 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// PostClientClientIdCapabilitiesWithBody request with any body
-	PostClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetApiV1ClientsClientIdBundlesDigest request
+	GetApiV1ClientsClientIdBundlesDigest(ctx context.Context, clientId string, digest string, params *GetApiV1ClientsClientIdBundlesDigestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostClientClientIdCapabilities(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostApiV1ClientsClientIdCapabilitiesWithBody request with any body
+	PostApiV1ClientsClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PutClientClientIdCapabilitiesWithBody request with any body
-	PutClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostApiV1ClientsClientIdCapabilities(ctx context.Context, clientId string, body PostApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PutClientClientIdCapabilities(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PutApiV1ClientsClientIdCapabilitiesWithBody request with any body
+	PutApiV1ClientsClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostClientClientIdDeploymentDeploymentIdStatusWithBody request with any body
-	PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PutApiV1ClientsClientIdCapabilities(ctx context.Context, clientId string, body PutApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBody request with any body
+	PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// StateWithBody request with any body
-	StateWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostApiV1ClientsClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId string, body PostApiV1ClientsClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	State(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetApiV1ClientsClientIdDeployments request
+	GetApiV1ClientsClientIdDeployments(ctx context.Context, clientId string, params *GetApiV1ClientsClientIdDeploymentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// PostOnboardingWithBody request with any body
-	PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetApiV1ClientsClientIdDeploymentsDeploymentIdDigest request
+	GetApiV1ClientsClientIdDeploymentsDeploymentIdDigest(ctx context.Context, clientId string, deploymentId string, digest string, params *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostOnboarding(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostApiV1OnboardingWithBody request with any body
+	PostApiV1OnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetOnboardingRootCA request
-	GetOnboardingRootCA(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostApiV1Onboarding(ctx context.Context, body PostApiV1OnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ProcessWithBody request with any body
-	ProcessWithBody(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	Process(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetApiV1OnboardingCertificate request
+	GetApiV1OnboardingCertificate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostClientClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
+func (c *Client) GetApiV1ClientsClientIdBundlesDigest(ctx context.Context, clientId string, digest string, params *GetApiV1ClientsClientIdBundlesDigestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiV1ClientsClientIdBundlesDigestRequest(c.Server, clientId, digest, params)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func (c *Client) PostClientClientIdCapabilitiesWithBody(ctx context.Context, cli
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostClientClientIdCapabilities(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostClientClientIdCapabilitiesRequest(c.Server, clientId, body)
+func (c *Client) PostApiV1ClientsClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1ClientsClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +148,8 @@ func (c *Client) PostClientClientIdCapabilities(ctx context.Context, clientId st
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutClientClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutClientClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
+func (c *Client) PostApiV1ClientsClientIdCapabilities(ctx context.Context, clientId string, body PostApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1ClientsClientIdCapabilitiesRequest(c.Server, clientId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,8 @@ func (c *Client) PutClientClientIdCapabilitiesWithBody(ctx context.Context, clie
 	return c.Client.Do(req)
 }
 
-func (c *Client) PutClientClientIdCapabilities(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutClientClientIdCapabilitiesRequest(c.Server, clientId, body)
+func (c *Client) PutApiV1ClientsClientIdCapabilitiesWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutApiV1ClientsClientIdCapabilitiesRequestWithBody(c.Server, clientId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +172,8 @@ func (c *Client) PutClientClientIdCapabilities(ctx context.Context, clientId str
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(c.Server, clientId, deploymentId, contentType, body)
+func (c *Client) PutApiV1ClientsClientIdCapabilities(ctx context.Context, clientId string, body PutApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutApiV1ClientsClientIdCapabilitiesRequest(c.Server, clientId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +184,8 @@ func (c *Client) PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostClientClientIdDeploymentDeploymentIdStatusRequest(c.Server, clientId, deploymentId, body)
+func (c *Client) PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBody(ctx context.Context, clientId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequestWithBody(c.Server, clientId, deploymentId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -196,8 +196,8 @@ func (c *Client) PostClientClientIdDeploymentDeploymentIdStatus(ctx context.Cont
 	return c.Client.Do(req)
 }
 
-func (c *Client) StateWithBody(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequestWithBody(c.Server, clientId, contentType, body)
+func (c *Client) PostApiV1ClientsClientIdDeploymentDeploymentIdStatus(ctx context.Context, clientId string, deploymentId string, body PostApiV1ClientsClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequest(c.Server, clientId, deploymentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +208,8 @@ func (c *Client) StateWithBody(ctx context.Context, clientId string, contentType
 	return c.Client.Do(req)
 }
 
-func (c *Client) State(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewStateRequest(c.Server, clientId, body)
+func (c *Client) GetApiV1ClientsClientIdDeployments(ctx context.Context, clientId string, params *GetApiV1ClientsClientIdDeploymentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiV1ClientsClientIdDeploymentsRequest(c.Server, clientId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +220,8 @@ func (c *Client) State(ctx context.Context, clientId string, body StateJSONReque
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostOnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostOnboardingRequestWithBody(c.Server, contentType, body)
+func (c *Client) GetApiV1ClientsClientIdDeploymentsDeploymentIdDigest(ctx context.Context, clientId string, deploymentId string, digest string, params *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestRequest(c.Server, clientId, deploymentId, digest, params)
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +232,8 @@ func (c *Client) PostOnboardingWithBody(ctx context.Context, contentType string,
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostOnboarding(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostOnboardingRequest(c.Server, body)
+func (c *Client) PostApiV1OnboardingWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1OnboardingRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -244,8 +244,8 @@ func (c *Client) PostOnboarding(ctx context.Context, body PostOnboardingJSONRequ
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetOnboardingRootCA(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetOnboardingRootCARequest(c.Server)
+func (c *Client) PostApiV1Onboarding(ctx context.Context, body PostApiV1OnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiV1OnboardingRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +256,8 @@ func (c *Client) GetOnboardingRootCA(ctx context.Context, reqEditors ...RequestE
 	return c.Client.Do(req)
 }
 
-func (c *Client) ProcessWithBody(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewProcessRequestWithBody(c.Server, params, contentType, body)
+func (c *Client) GetApiV1OnboardingCertificate(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiV1OnboardingCertificateRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -268,31 +268,75 @@ func (c *Client) ProcessWithBody(ctx context.Context, params *ProcessParams, con
 	return c.Client.Do(req)
 }
 
-func (c *Client) Process(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewProcessRequest(c.Server, params, body)
+// NewGetApiV1ClientsClientIdBundlesDigestRequest generates requests for GetApiV1ClientsClientIdBundlesDigest
+func NewGetApiV1ClientsClientIdBundlesDigestRequest(server string, clientId string, digest string, params *GetApiV1ClientsClientIdBundlesDigestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "digest", runtime.ParamLocationPath, digest)
+	if err != nil {
 		return nil, err
 	}
-	return c.Client.Do(req)
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/bundles/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.IfNoneMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithLocation("simple", false, "If-None-Match", runtime.ParamLocationHeader, *params.IfNoneMatch)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-None-Match", headerParam0)
+		}
+
+	}
+
+	return req, nil
 }
 
-// NewPostClientClientIdCapabilitiesRequest calls the generic PostClientClientIdCapabilities builder with application/json body
-func NewPostClientClientIdCapabilitiesRequest(server string, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
+// NewPostApiV1ClientsClientIdCapabilitiesRequest calls the generic PostApiV1ClientsClientIdCapabilities builder with application/json body
+func NewPostApiV1ClientsClientIdCapabilitiesRequest(server string, clientId string, body PostApiV1ClientsClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostClientClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
+	return NewPostApiV1ClientsClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
 }
 
-// NewPostClientClientIdCapabilitiesRequestWithBody generates requests for PostClientClientIdCapabilities with any type of body
-func NewPostClientClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostApiV1ClientsClientIdCapabilitiesRequestWithBody generates requests for PostApiV1ClientsClientIdCapabilities with any type of body
+func NewPostApiV1ClientsClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -307,7 +351,7 @@ func NewPostClientClientIdCapabilitiesRequestWithBody(server string, clientId st
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/client/%s/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -327,19 +371,19 @@ func NewPostClientClientIdCapabilitiesRequestWithBody(server string, clientId st
 	return req, nil
 }
 
-// NewPutClientClientIdCapabilitiesRequest calls the generic PutClientClientIdCapabilities builder with application/json body
-func NewPutClientClientIdCapabilitiesRequest(server string, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
+// NewPutApiV1ClientsClientIdCapabilitiesRequest calls the generic PutApiV1ClientsClientIdCapabilities builder with application/json body
+func NewPutApiV1ClientsClientIdCapabilitiesRequest(server string, clientId string, body PutApiV1ClientsClientIdCapabilitiesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPutClientClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
+	return NewPutApiV1ClientsClientIdCapabilitiesRequestWithBody(server, clientId, "application/json", bodyReader)
 }
 
-// NewPutClientClientIdCapabilitiesRequestWithBody generates requests for PutClientClientIdCapabilities with any type of body
-func NewPutClientClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewPutApiV1ClientsClientIdCapabilitiesRequestWithBody generates requests for PutApiV1ClientsClientIdCapabilities with any type of body
+func NewPutApiV1ClientsClientIdCapabilitiesRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -354,7 +398,7 @@ func NewPutClientClientIdCapabilitiesRequestWithBody(server string, clientId str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/client/%s/capabilities", pathParam0)
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/capabilities", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -374,19 +418,19 @@ func NewPutClientClientIdCapabilitiesRequestWithBody(server string, clientId str
 	return req, nil
 }
 
-// NewPostClientClientIdDeploymentDeploymentIdStatusRequest calls the generic PostClientClientIdDeploymentDeploymentIdStatus builder with application/json body
-func NewPostClientClientIdDeploymentDeploymentIdStatusRequest(server string, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody) (*http.Request, error) {
+// NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequest calls the generic PostApiV1ClientsClientIdDeploymentDeploymentIdStatus builder with application/json body
+func NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequest(server string, clientId string, deploymentId string, body PostApiV1ClientsClientIdDeploymentDeploymentIdStatusJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server, clientId, deploymentId, "application/json", bodyReader)
+	return NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequestWithBody(server, clientId, deploymentId, "application/json", bodyReader)
 }
 
-// NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody generates requests for PostClientClientIdDeploymentDeploymentIdStatus with any type of body
-func NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server string, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+// NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequestWithBody generates requests for PostApiV1ClientsClientIdDeploymentDeploymentIdStatus with any type of body
+func NewPostApiV1ClientsClientIdDeploymentDeploymentIdStatusRequestWithBody(server string, clientId string, deploymentId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -408,7 +452,7 @@ func NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server str
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/client/%s/deployment/%s/status", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/deployment/%s/status", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -428,19 +472,8 @@ func NewPostClientClientIdDeploymentDeploymentIdStatusRequestWithBody(server str
 	return req, nil
 }
 
-// NewStateRequest calls the generic State builder with application/json body
-func NewStateRequest(server string, clientId string, body StateJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewStateRequestWithBody(server, clientId, "application/json", bodyReader)
-}
-
-// NewStateRequestWithBody generates requests for State with any type of body
-func NewStateRequestWithBody(server string, clientId string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGetApiV1ClientsClientIdDeploymentsRequest generates requests for GetApiV1ClientsClientIdDeployments
+func NewGetApiV1ClientsClientIdDeploymentsRequest(server string, clientId string, params *GetApiV1ClientsClientIdDeploymentsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -455,76 +488,7 @@ func NewStateRequestWithBody(server string, clientId string, contentType string,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/client/%s/wfm/state", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPostOnboardingRequest calls the generic PostOnboarding builder with application/json body
-func NewPostOnboardingRequest(server string, body PostOnboardingJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewPostOnboardingRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewPostOnboardingRequestWithBody generates requests for PostOnboarding with any type of body
-func NewPostOnboardingRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/onboarding")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetOnboardingRootCARequest generates requests for GetOnboardingRootCA
-func NewGetOnboardingRootCARequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/onboarding/rootCA")
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/deployments", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -539,30 +503,66 @@ func NewGetOnboardingRootCARequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
+	if params != nil {
+
+		if params.IfNoneMatch != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithLocation("simple", false, "If-None-Match", runtime.ParamLocationHeader, *params.IfNoneMatch)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("If-None-Match", headerParam0)
+		}
+
+		if params.Accept != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithLocation("simple", false, "Accept", runtime.ParamLocationHeader, *params.Accept)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Accept", headerParam1)
+		}
+
+	}
+
 	return req, nil
 }
 
-// NewProcessRequest calls the generic Process builder with application/json body
-func NewProcessRequest(server string, params *ProcessParams, body ProcessJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
+// NewGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestRequest generates requests for GetApiV1ClientsClientIdDeploymentsDeploymentIdDigest
+func NewGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestRequest(server string, clientId string, deploymentId string, digest string, params *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "clientId", runtime.ParamLocationPath, clientId)
 	if err != nil {
 		return nil, err
 	}
-	bodyReader = bytes.NewReader(buf)
-	return NewProcessRequestWithBody(server, params, "application/json", bodyReader)
-}
 
-// NewProcessRequestWithBody generates requests for Process with any type of body
-func NewProcessRequestWithBody(server string, params *ProcessParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "deploymentId", runtime.ParamLocationPath, deploymentId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "digest", runtime.ParamLocationPath, digest)
+	if err != nil {
+		return nil, err
+	}
 
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/wfm/process")
+	operationPath := fmt.Sprintf("/api/v1/clients/%s/deployments/%s/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -572,26 +572,68 @@ func NewProcessRequestWithBody(server string, params *ProcessParams, contentType
 		return nil, err
 	}
 
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	if params != nil {
-		queryValues := queryURL.Query()
 
-		if params.RpcId != nil {
+		if params.IfNoneMatch != nil {
+			var headerParam0 string
 
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "rpcId", runtime.ParamLocationQuery, *params.RpcId); err != nil {
+			headerParam0, err = runtime.StyleParamWithLocation("simple", false, "If-None-Match", runtime.ParamLocationHeader, *params.IfNoneMatch)
+			if err != nil {
 				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
 			}
 
+			req.Header.Set("If-None-Match", headerParam0)
 		}
 
-		queryURL.RawQuery = queryValues.Encode()
+		if params.AcceptEncoding != nil {
+			var headerParam1 string
+
+			headerParam1, err = runtime.StyleParamWithLocation("simple", false, "Accept-Encoding", runtime.ParamLocationHeader, *params.AcceptEncoding)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Accept-Encoding", headerParam1)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewPostApiV1OnboardingRequest calls the generic PostApiV1Onboarding builder with application/json body
+func NewPostApiV1OnboardingRequest(server string, body PostApiV1OnboardingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostApiV1OnboardingRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostApiV1OnboardingRequestWithBody generates requests for PostApiV1Onboarding with any type of body
+func NewPostApiV1OnboardingRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/onboarding")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
@@ -600,6 +642,33 @@ func NewProcessRequestWithBody(server string, params *ProcessParams, contentType
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetApiV1OnboardingCertificateRequest generates requests for GetApiV1OnboardingCertificate
+func NewGetApiV1OnboardingCertificateRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/onboarding/certificate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -647,50 +716,46 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// PostClientClientIdCapabilitiesWithBodyWithResponse request with any body
-	PostClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error)
+	// GetApiV1ClientsClientIdBundlesDigestWithResponse request
+	GetApiV1ClientsClientIdBundlesDigestWithResponse(ctx context.Context, clientId string, digest string, params *GetApiV1ClientsClientIdBundlesDigestParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdBundlesDigestResponse, error)
 
-	PostClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error)
+	// PostApiV1ClientsClientIdCapabilitiesWithBodyWithResponse request with any body
+	PostApiV1ClientsClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdCapabilitiesResponse, error)
 
-	// PutClientClientIdCapabilitiesWithBodyWithResponse request with any body
-	PutClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error)
+	PostApiV1ClientsClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdCapabilitiesResponse, error)
 
-	PutClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error)
+	// PutApiV1ClientsClientIdCapabilitiesWithBodyWithResponse request with any body
+	PutApiV1ClientsClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutApiV1ClientsClientIdCapabilitiesResponse, error)
 
-	// PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with any body
-	PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error)
+	PutApiV1ClientsClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutApiV1ClientsClientIdCapabilitiesResponse, error)
 
-	PostClientClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error)
+	// PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with any body
+	PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse, error)
 
-	// StateWithBodyWithResponse request with any body
-	StateWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error)
+	PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId string, body PostApiV1ClientsClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse, error)
 
-	StateWithResponse(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error)
+	// GetApiV1ClientsClientIdDeploymentsWithResponse request
+	GetApiV1ClientsClientIdDeploymentsWithResponse(ctx context.Context, clientId string, params *GetApiV1ClientsClientIdDeploymentsParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdDeploymentsResponse, error)
 
-	// PostOnboardingWithBodyWithResponse request with any body
-	PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error)
+	// GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestWithResponse request
+	GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestWithResponse(ctx context.Context, clientId string, deploymentId string, digest string, params *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse, error)
 
-	PostOnboardingWithResponse(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error)
+	// PostApiV1OnboardingWithBodyWithResponse request with any body
+	PostApiV1OnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1OnboardingResponse, error)
 
-	// GetOnboardingRootCAWithResponse request
-	GetOnboardingRootCAWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOnboardingRootCAResponse, error)
+	PostApiV1OnboardingWithResponse(ctx context.Context, body PostApiV1OnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1OnboardingResponse, error)
 
-	// ProcessWithBodyWithResponse request with any body
-	ProcessWithBodyWithResponse(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ProcessResponse, error)
-
-	ProcessWithResponse(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*ProcessResponse, error)
+	// GetApiV1OnboardingCertificateWithResponse request
+	GetApiV1OnboardingCertificateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiV1OnboardingCertificateResponse, error)
 }
 
-type PostClientClientIdCapabilitiesResponse struct {
+type GetApiV1ClientsClientIdBundlesDigestResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *Error
-	JSON404      *Error
-	JSON500      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r PostClientClientIdCapabilitiesResponse) Status() string {
+func (r GetApiV1ClientsClientIdBundlesDigestResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -698,23 +763,20 @@ func (r PostClientClientIdCapabilitiesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostClientClientIdCapabilitiesResponse) StatusCode() int {
+func (r GetApiV1ClientsClientIdBundlesDigestResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PutClientClientIdCapabilitiesResponse struct {
+type PostApiV1ClientsClientIdCapabilitiesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *Error
-	JSON404      *Error
-	JSON500      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r PutClientClientIdCapabilitiesResponse) Status() string {
+func (r PostApiV1ClientsClientIdCapabilitiesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -722,23 +784,20 @@ func (r PutClientClientIdCapabilitiesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PutClientClientIdCapabilitiesResponse) StatusCode() int {
+func (r PostApiV1ClientsClientIdCapabilitiesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostClientClientIdDeploymentDeploymentIdStatusResponse struct {
+type PutApiV1ClientsClientIdCapabilitiesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON400      *Error
-	JSON404      *Error
-	JSON500      *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) Status() string {
+func (r PutApiV1ClientsClientIdCapabilitiesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -746,22 +805,20 @@ func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) Status() string 
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostClientClientIdDeploymentDeploymentIdStatusResponse) StatusCode() int {
+func (r PutApiV1ClientsClientIdCapabilitiesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type StateResponse struct {
+type PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *DesiredAppStates
-	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r StateResponse) Status() string {
+func (r PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -769,24 +826,21 @@ func (r StateResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r StateResponse) StatusCode() int {
+func (r PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type PostOnboardingResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *OnboardingResponse
-	JSON400      *Error
-	JSON409      *Error
-	JSON500      *Error
+type GetApiV1ClientsClientIdDeploymentsResponse struct {
+	Body                                 []byte
+	HTTPResponse                         *http.Response
+	ApplicationvndMargoManifestV1JSON200 *UnsignedAppStateManifest
 }
 
 // Status returns HTTPResponse.Status
-func (r PostOnboardingResponse) Status() string {
+func (r GetApiV1ClientsClientIdDeploymentsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -794,25 +848,76 @@ func (r PostOnboardingResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r PostOnboardingResponse) StatusCode() int {
+func (r GetApiV1ClientsClientIdDeploymentsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type GetOnboardingRootCAResponse struct {
+type GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	YAML200      *string
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostApiV1OnboardingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *struct {
+		ClientId *string `json:"client_id,omitempty"`
+	}
+	JSON400 *struct {
+		Error *string `json:"error,omitempty"`
+	}
+	JSON403 *struct {
+		Error *string `json:"error,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r PostApiV1OnboardingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostApiV1OnboardingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApiV1OnboardingCertificateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *struct {
-		// Certificate Base64-encoded certificate
+		// Certificate Base64-encoded certificate text
 		Certificate *string `json:"certificate,omitempty"`
 	}
-	JSON500 *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r GetOnboardingRootCAResponse) Status() string {
+func (r GetApiV1OnboardingCertificateResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -820,356 +925,288 @@ func (r GetOnboardingRootCAResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetOnboardingRootCAResponse) StatusCode() int {
+func (r GetApiV1OnboardingCertificateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type ProcessResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *PrivatePayload
-	JSONDefault  *Error
-}
-
-// Status returns HTTPResponse.Status
-func (r ProcessResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ProcessResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// PostClientClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PostClientClientIdCapabilitiesResponse
-func (c *ClientWithResponses) PostClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error) {
-	rsp, err := c.PostClientClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
+// GetApiV1ClientsClientIdBundlesDigestWithResponse request returning *GetApiV1ClientsClientIdBundlesDigestResponse
+func (c *ClientWithResponses) GetApiV1ClientsClientIdBundlesDigestWithResponse(ctx context.Context, clientId string, digest string, params *GetApiV1ClientsClientIdBundlesDigestParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdBundlesDigestResponse, error) {
+	rsp, err := c.GetApiV1ClientsClientIdBundlesDigest(ctx, clientId, digest, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostClientClientIdCapabilitiesResponse(rsp)
+	return ParseGetApiV1ClientsClientIdBundlesDigestResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdCapabilitiesResponse, error) {
-	rsp, err := c.PostClientClientIdCapabilities(ctx, clientId, body, reqEditors...)
+// PostApiV1ClientsClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PostApiV1ClientsClientIdCapabilitiesResponse
+func (c *ClientWithResponses) PostApiV1ClientsClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PostApiV1ClientsClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostClientClientIdCapabilitiesResponse(rsp)
+	return ParsePostApiV1ClientsClientIdCapabilitiesResponse(rsp)
 }
 
-// PutClientClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PutClientClientIdCapabilitiesResponse
-func (c *ClientWithResponses) PutClientClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error) {
-	rsp, err := c.PutClientClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostApiV1ClientsClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PostApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PostApiV1ClientsClientIdCapabilities(ctx, clientId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutClientClientIdCapabilitiesResponse(rsp)
+	return ParsePostApiV1ClientsClientIdCapabilitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) PutClientClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutClientClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutClientClientIdCapabilitiesResponse, error) {
-	rsp, err := c.PutClientClientIdCapabilities(ctx, clientId, body, reqEditors...)
+// PutApiV1ClientsClientIdCapabilitiesWithBodyWithResponse request with arbitrary body returning *PutApiV1ClientsClientIdCapabilitiesResponse
+func (c *ClientWithResponses) PutApiV1ClientsClientIdCapabilitiesWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutApiV1ClientsClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PutApiV1ClientsClientIdCapabilitiesWithBody(ctx, clientId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePutClientClientIdCapabilitiesResponse(rsp)
+	return ParsePutApiV1ClientsClientIdCapabilitiesResponse(rsp)
 }
 
-// PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with arbitrary body returning *PostClientClientIdDeploymentDeploymentIdStatusResponse
-func (c *ClientWithResponses) PostClientClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
-	rsp, err := c.PostClientClientIdDeploymentDeploymentIdStatusWithBody(ctx, clientId, deploymentId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PutApiV1ClientsClientIdCapabilitiesWithResponse(ctx context.Context, clientId string, body PutApiV1ClientsClientIdCapabilitiesJSONRequestBody, reqEditors ...RequestEditorFn) (*PutApiV1ClientsClientIdCapabilitiesResponse, error) {
+	rsp, err := c.PutApiV1ClientsClientIdCapabilities(ctx, clientId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp)
+	return ParsePutApiV1ClientsClientIdCapabilitiesResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostClientClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId openapi_types.UUID, body PostClientClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
-	rsp, err := c.PostClientClientIdDeploymentDeploymentIdStatus(ctx, clientId, deploymentId, body, reqEditors...)
+// PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBodyWithResponse request with arbitrary body returning *PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse
+func (c *ClientWithResponses) PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBodyWithResponse(ctx context.Context, clientId string, deploymentId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse, error) {
+	rsp, err := c.PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithBody(ctx, clientId, deploymentId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp)
+	return ParsePostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse(rsp)
 }
 
-// StateWithBodyWithResponse request with arbitrary body returning *StateResponse
-func (c *ClientWithResponses) StateWithBodyWithResponse(ctx context.Context, clientId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.StateWithBody(ctx, clientId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithResponse(ctx context.Context, clientId string, deploymentId string, body PostApiV1ClientsClientIdDeploymentDeploymentIdStatusJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse, error) {
+	rsp, err := c.PostApiV1ClientsClientIdDeploymentDeploymentIdStatus(ctx, clientId, deploymentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseStateResponse(rsp)
+	return ParsePostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse(rsp)
 }
 
-func (c *ClientWithResponses) StateWithResponse(ctx context.Context, clientId string, body StateJSONRequestBody, reqEditors ...RequestEditorFn) (*StateResponse, error) {
-	rsp, err := c.State(ctx, clientId, body, reqEditors...)
+// GetApiV1ClientsClientIdDeploymentsWithResponse request returning *GetApiV1ClientsClientIdDeploymentsResponse
+func (c *ClientWithResponses) GetApiV1ClientsClientIdDeploymentsWithResponse(ctx context.Context, clientId string, params *GetApiV1ClientsClientIdDeploymentsParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdDeploymentsResponse, error) {
+	rsp, err := c.GetApiV1ClientsClientIdDeployments(ctx, clientId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseStateResponse(rsp)
+	return ParseGetApiV1ClientsClientIdDeploymentsResponse(rsp)
 }
 
-// PostOnboardingWithBodyWithResponse request with arbitrary body returning *PostOnboardingResponse
-func (c *ClientWithResponses) PostOnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error) {
-	rsp, err := c.PostOnboardingWithBody(ctx, contentType, body, reqEditors...)
+// GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestWithResponse request returning *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse
+func (c *ClientWithResponses) GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestWithResponse(ctx context.Context, clientId string, deploymentId string, digest string, params *GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestParams, reqEditors ...RequestEditorFn) (*GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse, error) {
+	rsp, err := c.GetApiV1ClientsClientIdDeploymentsDeploymentIdDigest(ctx, clientId, deploymentId, digest, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostOnboardingResponse(rsp)
+	return ParseGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostOnboardingWithResponse(ctx context.Context, body PostOnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostOnboardingResponse, error) {
-	rsp, err := c.PostOnboarding(ctx, body, reqEditors...)
+// PostApiV1OnboardingWithBodyWithResponse request with arbitrary body returning *PostApiV1OnboardingResponse
+func (c *ClientWithResponses) PostApiV1OnboardingWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiV1OnboardingResponse, error) {
+	rsp, err := c.PostApiV1OnboardingWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParsePostOnboardingResponse(rsp)
+	return ParsePostApiV1OnboardingResponse(rsp)
 }
 
-// GetOnboardingRootCAWithResponse request returning *GetOnboardingRootCAResponse
-func (c *ClientWithResponses) GetOnboardingRootCAWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOnboardingRootCAResponse, error) {
-	rsp, err := c.GetOnboardingRootCA(ctx, reqEditors...)
+func (c *ClientWithResponses) PostApiV1OnboardingWithResponse(ctx context.Context, body PostApiV1OnboardingJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiV1OnboardingResponse, error) {
+	rsp, err := c.PostApiV1Onboarding(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetOnboardingRootCAResponse(rsp)
+	return ParsePostApiV1OnboardingResponse(rsp)
 }
 
-// ProcessWithBodyWithResponse request with arbitrary body returning *ProcessResponse
-func (c *ClientWithResponses) ProcessWithBodyWithResponse(ctx context.Context, params *ProcessParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ProcessResponse, error) {
-	rsp, err := c.ProcessWithBody(ctx, params, contentType, body, reqEditors...)
+// GetApiV1OnboardingCertificateWithResponse request returning *GetApiV1OnboardingCertificateResponse
+func (c *ClientWithResponses) GetApiV1OnboardingCertificateWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiV1OnboardingCertificateResponse, error) {
+	rsp, err := c.GetApiV1OnboardingCertificate(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseProcessResponse(rsp)
+	return ParseGetApiV1OnboardingCertificateResponse(rsp)
 }
 
-func (c *ClientWithResponses) ProcessWithResponse(ctx context.Context, params *ProcessParams, body ProcessJSONRequestBody, reqEditors ...RequestEditorFn) (*ProcessResponse, error) {
-	rsp, err := c.Process(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseProcessResponse(rsp)
-}
-
-// ParsePostClientClientIdCapabilitiesResponse parses an HTTP response from a PostClientClientIdCapabilitiesWithResponse call
-func ParsePostClientClientIdCapabilitiesResponse(rsp *http.Response) (*PostClientClientIdCapabilitiesResponse, error) {
+// ParseGetApiV1ClientsClientIdBundlesDigestResponse parses an HTTP response from a GetApiV1ClientsClientIdBundlesDigestWithResponse call
+func ParseGetApiV1ClientsClientIdBundlesDigestResponse(rsp *http.Response) (*GetApiV1ClientsClientIdBundlesDigestResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostClientClientIdCapabilitiesResponse{
+	response := &GetApiV1ClientsClientIdBundlesDigestResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
 	}
 
 	return response, nil
 }
 
-// ParsePutClientClientIdCapabilitiesResponse parses an HTTP response from a PutClientClientIdCapabilitiesWithResponse call
-func ParsePutClientClientIdCapabilitiesResponse(rsp *http.Response) (*PutClientClientIdCapabilitiesResponse, error) {
+// ParsePostApiV1ClientsClientIdCapabilitiesResponse parses an HTTP response from a PostApiV1ClientsClientIdCapabilitiesWithResponse call
+func ParsePostApiV1ClientsClientIdCapabilitiesResponse(rsp *http.Response) (*PostApiV1ClientsClientIdCapabilitiesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PutClientClientIdCapabilitiesResponse{
+	response := &PostApiV1ClientsClientIdCapabilitiesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
 	}
 
 	return response, nil
 }
 
-// ParsePostClientClientIdDeploymentDeploymentIdStatusResponse parses an HTTP response from a PostClientClientIdDeploymentDeploymentIdStatusWithResponse call
-func ParsePostClientClientIdDeploymentDeploymentIdStatusResponse(rsp *http.Response) (*PostClientClientIdDeploymentDeploymentIdStatusResponse, error) {
+// ParsePutApiV1ClientsClientIdCapabilitiesResponse parses an HTTP response from a PutApiV1ClientsClientIdCapabilitiesWithResponse call
+func ParsePutApiV1ClientsClientIdCapabilitiesResponse(rsp *http.Response) (*PutApiV1ClientsClientIdCapabilitiesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostClientClientIdDeploymentDeploymentIdStatusResponse{
+	response := &PutApiV1ClientsClientIdCapabilitiesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
 	}
 
 	return response, nil
 }
 
-// ParseStateResponse parses an HTTP response from a StateWithResponse call
-func ParseStateResponse(rsp *http.Response) (*StateResponse, error) {
+// ParsePostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse parses an HTTP response from a PostApiV1ClientsClientIdDeploymentDeploymentIdStatusWithResponse call
+func ParsePostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse(rsp *http.Response) (*PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &StateResponse{
+	response := &PostApiV1ClientsClientIdDeploymentDeploymentIdStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetApiV1ClientsClientIdDeploymentsResponse parses an HTTP response from a GetApiV1ClientsClientIdDeploymentsWithResponse call
+func ParseGetApiV1ClientsClientIdDeploymentsResponse(rsp *http.Response) (*GetApiV1ClientsClientIdDeploymentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiV1ClientsClientIdDeploymentsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DesiredAppStates
+		var dest UnsignedAppStateManifest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
+		response.ApplicationvndMargoManifestV1JSON200 = &dest
 
 	}
 
 	return response, nil
 }
 
-// ParsePostOnboardingResponse parses an HTTP response from a PostOnboardingWithResponse call
-func ParsePostOnboardingResponse(rsp *http.Response) (*PostOnboardingResponse, error) {
+// ParseGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse parses an HTTP response from a GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestWithResponse call
+func ParseGetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse(rsp *http.Response) (*GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostOnboardingResponse{
+	response := &GetApiV1ClientsClientIdDeploymentsDeploymentIdDigestResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OnboardingResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "yaml") && rsp.StatusCode == 200:
+		var dest string
+		if err := yaml.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
+		response.YAML200 = &dest
 
 	}
 
 	return response, nil
 }
 
-// ParseGetOnboardingRootCAResponse parses an HTTP response from a GetOnboardingRootCAWithResponse call
-func ParseGetOnboardingRootCAResponse(rsp *http.Response) (*GetOnboardingRootCAResponse, error) {
+// ParsePostApiV1OnboardingResponse parses an HTTP response from a PostApiV1OnboardingWithResponse call
+func ParsePostApiV1OnboardingResponse(rsp *http.Response) (*PostApiV1OnboardingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetOnboardingRootCAResponse{
+	response := &PostApiV1OnboardingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest struct {
+			ClientId *string `json:"client_id,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Error *string `json:"error,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Error *string `json:"error,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiV1OnboardingCertificateResponse parses an HTTP response from a GetApiV1OnboardingCertificateWithResponse call
+func ParseGetApiV1OnboardingCertificateResponse(rsp *http.Response) (*GetApiV1OnboardingCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiV1OnboardingCertificateResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1177,53 +1214,13 @@ func ParseGetOnboardingRootCAResponse(rsp *http.Response) (*GetOnboardingRootCAR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			// Certificate Base64-encoded certificate
+			// Certificate Base64-encoded certificate text
 			Certificate *string `json:"certificate,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseProcessResponse parses an HTTP response from a ProcessWithResponse call
-func ParseProcessResponse(rsp *http.Response) (*ProcessResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ProcessResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest PrivatePayload
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
 
 	}
 
