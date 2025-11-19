@@ -1602,8 +1602,6 @@ install_prerequisites() {
   #setup_keycloak            
   #update_keycloak_config      
   
-  setup_harbor
-  build_custom_otel_container_images
  
   setup_gogs_directories
   start_gogs
@@ -1689,8 +1687,9 @@ start_symphony_api_container(){
     
     # Run the container
     echo "🚀 Starting Symphony API container..."
+
     docker run -dit --name symphony-api-container \
-		--network host \				
+        --network host \
         -p 8082:8082 \
         -e LOG_LEVEL=Debug \
         -v "$HOME/symphony/api/certificates:/certificates" \
