@@ -458,23 +458,31 @@ build_start_device_agent_k3s_service() {
 	
 }
 
-
 stop_device_agent_kubernetes() {
   echo "Stopping device-agent..."
   cd "$HOME/dev-repo"
 
-  # Ask user if they want to delete PVC 
+  # Ask user about PVC deletion FIRST (before Helm uninstall)
+  DELETE_PVC=false
   read -p "Delete persistent data (PVC)? This will require re-onboarding. [y/N]: " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Deleting PVC..."
-    kubectl delete pvc device-agent-data -n default 2>/dev/null || echo "No PVC found"
-    echo "✅ PVC deleted - device will re-onboard on next start"
+    DELETE_PVC=true
+    echo "⚠️ PVC will be deleted after uninstalling Helm release"
   else
-    echo "ℹ️ PVC preserved - device will resume with existing ID on next start"
+    echo "ℹ️ Attempting to preserve PVC..."
+    
+    # Add Helm annotation to prevent PVC deletion during uninstall
+    if kubectl get pvc device-agent-data -n default >/dev/null 2>&1; then
+      kubectl annotate pvc device-agent-data -n default \
+        "helm.sh/resource-policy=keep" \
+        --overwrite 2>/dev/null && echo "✅ PVC annotated for preservation" || echo "⚠️ Could not annotate PVC"
+    else
+      echo "⚠️ PVC not found, nothing to preserve"
+    fi
   fi
   
-  # Check if Helm release exists
+  # Check if Helm release exists and uninstall
   if helm list -A | grep -q "device-agent"; then
     echo "Uninstalling device-agent Helm release..."
     helm uninstall device-agent --namespace default
@@ -490,19 +498,40 @@ stop_device_agent_kubernetes() {
     kubectl delete deployment device-agent-deploy -n default 2>/dev/null || echo "No deployment found"
   fi
   
-  # Clean up ServiceAccount and RBAC resources 
+  # Clean up ServiceAccount and RBAC resources
   echo "Cleaning up ServiceAccount and RBAC resources..."
   kubectl delete serviceaccount device-agent-sa -n default 2>/dev/null || echo "No serviceaccount found"
   kubectl delete clusterrole device-agent-role 2>/dev/null || echo "No clusterrole found"
   kubectl delete clusterrolebinding device-agent-binding 2>/dev/null || echo "No clusterrolebinding found"
   
-	
-  # Clean up ConfigMaps and Secrets 
+  # Clean up ConfigMaps and Secrets
   echo "Cleaning up configmaps and secrets..."
   kubectl delete configmap device-agent-cm -n default 2>/dev/null || echo "No configmap found"
   kubectl delete secret device-agent-certs -n default 2>/dev/null || echo "No secret found"
   
+  # NOW handle PVC based on user choice
+  if [ "$DELETE_PVC" = true ]; then
+    echo "Deleting PVC as requested..."
+    kubectl delete pvc device-agent-data -n default 2>/dev/null || echo "No PVC found"
+    echo "✅ PVC deleted - device will re-onboard on next start"
+  else
+    # Verify PVC was preserved
+    if kubectl get pvc device-agent-data -n default >/dev/null 2>&1; then
+      echo "✅ PVC preserved successfully - device will resume with existing ID on next start"
+      kubectl get pvc device-agent-data -n default
+      
+      # Remove the keep annotation for next deployment
+      kubectl annotate pvc device-agent-data -n default \
+        "helm.sh/resource-policy-" \
+        2>/dev/null || true
+    else
+      echo "⚠️ PVC was not preserved (may have been deleted by Helm)"
+      echo "   Ensure PVC template has 'helm.sh/resource-policy: keep' annotation"
+    fi
+  fi
+  
   # Verify cleanup
+  echo ""
   echo "Verifying cleanup..."
   if kubectl get pods -n default 2>/dev/null | grep -q "device-agent"; then
     echo "⚠️ Some device-agent pods may still be terminating"
@@ -513,18 +542,17 @@ stop_device_agent_kubernetes() {
   
   # Show remaining resources
   echo ""
-  echo "Remaining device-agent resources (should be empty):"
-  kubectl get all,pvc,sa,cm,secrets -n default 2>/dev/null | grep device-agent || echo "✅ No device-agent resources found in namespace"
+  echo "Remaining device-agent resources:"
+  kubectl get all,pvc,sa,cm,secrets -n default 2>/dev/null | grep device-agent || echo "✅ No device-agent resources found (except possibly PVC if preserved)"
   
   # Check for remaining RBAC resources
   echo ""
-  echo "Remaining RBAC resources (should be empty):"
+  echo "Remaining RBAC resources:"
   kubectl get clusterroles,clusterrolebindings 2>/dev/null | grep device-agent || echo "✅ No device-agent RBAC resources found"
   
   echo ""
   echo "✅ Device-agent cleanup complete"
 }
-
 
 
 
