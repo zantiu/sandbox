@@ -334,19 +334,19 @@ build_start_device_agent_k3s_service() {
     echo "Importing image to k3s cluster..."
     docker save -o device-agent.tar margo.org/device-agent:latest
     
-    # Import to k3s cluster
+						   
     if command -v k3s >/dev/null 2>&1; then
       k3s ctr -n k8s.io image import device-agent.tar
       echo "✅ Image imported to k3s cluster"
     elif command -v ctr >/dev/null 2>&1; then
       ctr -n k8s.io image import device-agent.tar
-      echo "✅ Image imported to k8s cluster"
+      echo "✅ Image imported to k3s cluster"
     else
       echo "❌ Neither k3s nor ctr command found"
       return 1
     fi
     
-    # Clean up tar file
+					   
     rm -f device-agent.tar
     
     # Step 3: Navigate to helmchart directory
@@ -356,8 +356,7 @@ build_start_device_agent_k3s_service() {
       return 1
     fi
     
-    
-    # Step 4: Copy config files (ServiceAccount approach - no kubeconfig secret needed)
+    # Step 4: Copy config files
     update_agent_sbi_url
     
     echo "Copying configuration files..."
@@ -370,19 +369,16 @@ build_start_device_agent_k3s_service() {
       echo "❌ Failed to copy configuration files"
       return 1
     fi
-	
-	enable_kubernetes_runtime
-	
-	   # Step 5: Create secrets using kubectl create secret 
-	
-  if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ]; then
+    
+    enable_kubernetes_runtime
+    
+    # Step 5: Create secrets 
+    if [ -d "$HOME/certs" ] && [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ] && [ -f "$HOME/certs/device-ecdsa.crt" ] && [ -f "$HOME/certs/device-ecdsa.key" ]; then
         echo "Creating TLS secrets..."
-		
-      # Delete existing secret if it exists
-        kubectl delete secret device-agent-device-agent--certs --namespace=default 2>/dev/null || true
-		
-        # Create the secret directly (this handles base64 encoding automatically)
-       kubectl create secret generic device-agent-device-agent--certs \
+   							 
+        kubectl delete secret device-agent-certs --namespace=default 2>/dev/null || true
+        
+        kubectl create secret generic device-agent-certs \
             --from-file=device-private.key="$HOME/certs/device-private.key" \
             --from-file=device-public.crt="$HOME/certs/device-public.crt" \
             --from-file=device-ecdsa.key="$HOME/certs/device-ecdsa.key" \
@@ -399,97 +395,87 @@ build_start_device_agent_k3s_service() {
     else
         echo "⚠️ Certificates not found in $HOME/certs, skipping TLS secret creation"
     fi
-	
-					   
-    # Step 6: Deploy using Helm
-
-    # Clean up existing resources
+    
+														
+    # Step 6: Clean up old resources 
     echo "Cleaning up any existing resources..."
-    kubectl delete clusterrole device-agent-device-agent-role 2>/dev/null || true
-    kubectl delete clusterrolebinding device-agent-device-agent-binding 2>/dev/null || true
+    kubectl delete clusterrole device-agent-role 2>/dev/null || true
+    kubectl delete clusterrolebinding device-agent-binding 2>/dev/null || true
     
     helm uninstall device-agent -n default 2>/dev/null || true
     
-    # Wait for resources to be fully removed
+											
     sleep 5
 
-    # Install helm chart with modified values
-    echo "Installing new device-agent deployment..."
+    # Step 7: Install with Helm 
+    echo "Installing device-agent with persistent storage..."
     helm install device-agent . \
         --set serviceAccount.create=true \
-        --set serviceAccount.name=device-agent-sa \
         --set secrets.create=false \
-        --set secrets.existingSecret=device-agent-device-agent--certs \
+        --set secrets.existingSecret=device-agent-certs \
+        --set persistence.enabled=true \
+        --set persistence.size=1Gi \
         --debug \
         --wait
 
-        if [ $? -eq 0 ]; then
-        echo "✅ Helm installation successful"
-    else
+    if [ $? -ne 0 ]; then
+																	   
+		
         echo "❌ Helm installation failed"
         return 1
     fi
-  
-  #STEP 7: Fix RBAC permissions
-    if [ $? -eq 0 ]; then
-      echo "🔧 Applying RBAC permissions fix..."
-      
-      # Force update ClusterRole with secrets permissions
-      kubectl patch clusterrole device-agent-device-agent-role --type='json' -p='[
-        {
-          "op": "add",
-          "path": "/rules/-",
-          "value": {
-            "apiGroups": [""],
-            "resources": ["secrets", "configmaps"],
-            "verbs": ["create", "get", "list", "update", "patch", "delete"]
-          }
-        },
-        {
-          "op": "replace",
-          "path": "/rules/1/verbs",
-          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
-        },
-        {
-          "op": "replace",
-          "path": "/rules/0/verbs", 
-          "value": ["get", "list", "watch", "create", "update", "patch", "delete"]
-        }
-      ]' 2>/dev/null || echo "⚠️ ClusterRole patch failed, trying alternative method..."
-      
-      # Alternative: Create namespace-scoped RoleBinding for secrets
-      kubectl create rolebinding device-agent-secrets-access \
-        --clusterrole=admin \
-        --serviceaccount=device-agent:device-agent-device-agent-sa \
-        --namespace=device-agent 2>/dev/null || echo "RoleBinding already exists"
-      
-      # Verify permissions
-      echo "🔍 Verifying RBAC permissions..."
-      if kubectl auth can-i create secrets --as=system:serviceaccount:device-agent:device-agent-device-agent-sa -n default | grep -q "yes"; then
-        echo "✅ RBAC permissions applied successfully"
-      else
-        echo "⚠️ RBAC permissions may need manual verification"
-      fi
-      
-      echo "✅ Device-agent deployed successfully on Kubernetes with ServiceAccount"
-      
-      # Verify deployment
-      echo "Verifying deployment..."
-      kubectl get pods -n default
-      kubectl get serviceaccount -n default
-      
+    
+    echo "✅ Helm installation successful with persistent storage"
+    
+    # Step 8: Verify deployment (NO PATCHING NEEDED!)
+    echo "🔍 Verifying deployment..."
+    
+    # Verify RBAC permissions 
+    if kubectl auth can-i create secrets --as=system:serviceaccount:default:device-agent-sa -n default | grep -q "yes"; then
+      echo "✅ RBAC permissions verified"
     else
-      echo "❌ Failed to deploy device-agent"
-      return 1
+      echo "⚠️ RBAC permissions may need manual verification"
     fi
+    
+    # Verify PVC (FIXED NAME)
+												 
+    if kubectl get pvc -n default | grep -q "device-agent-data"; then
+      echo "✅ Persistent volume claim created successfully"
+      kubectl get pvc -n default | grep device-agent
+    else
+      echo "⚠️ PVC not found, checking for errors..."
+      kubectl get events -n default --sort-by='.lastTimestamp' | tail -10
+    fi
+    
+    echo "✅ Device-agent deployed successfully"
+    
+    # Show deployment status
+    echo ""
+    echo "Deployment Summary:"
+    kubectl get pods -n default | grep device-agent
+    kubectl get serviceaccount -n default | grep device-agent
+    kubectl get pvc -n default | grep device-agent
+	
 }
+
 
 stop_device_agent_kubernetes() {
   echo "Stopping device-agent..."
   cd "$HOME/dev-repo"
+
+  # Ask user if they want to delete PVC 
+  read -p "Delete persistent data (PVC)? This will require re-onboarding. [y/N]: " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Deleting PVC..."
+    kubectl delete pvc device-agent-data -n default 2>/dev/null || echo "No PVC found"
+    echo "✅ PVC deleted - device will re-onboard on next start"
+  else
+    echo "ℹ️ PVC preserved - device will resume with existing ID on next start"
+  fi
   
   # Check if Helm release exists
-  if helm list -A| grep -q "device-agent"; then
+  if helm list -A | grep -q "device-agent"; then
     echo "Uninstalling device-agent Helm release..."
     helm uninstall device-agent --namespace default
     
@@ -501,40 +487,42 @@ stop_device_agent_kubernetes() {
     fi
   else
     echo "No device-agent Helm release found, trying direct kubectl deletion..."
-    kubectl delete deployment device-agent-device-agent-deploy -n default  2>/dev/null || echo "No deployment found"
+    kubectl delete deployment device-agent-deploy -n default 2>/dev/null || echo "No deployment found"
   fi
   
-  # Clean up ServiceAccount and RBAC resources
+  # Clean up ServiceAccount and RBAC resources 
   echo "Cleaning up ServiceAccount and RBAC resources..."
-  kubectl delete serviceaccount device-agent-device-agent-sa -n default 2>/dev/null || echo "No serviceaccount found"
-  kubectl delete clusterrole device-agent-device-agent-role 2>/dev/null || echo "No clusterrole found"
-  kubectl delete clusterrolebinding device-agent-device-agent-binding 2>/dev/null || echo "No clusterrolebinding found"
+  kubectl delete serviceaccount device-agent-sa -n default 2>/dev/null || echo "No serviceaccount found"
+  kubectl delete clusterrole device-agent-role 2>/dev/null || echo "No clusterrole found"
+  kubectl delete clusterrolebinding device-agent-binding 2>/dev/null || echo "No clusterrolebinding found"
   
-  # Clean up ConfigMaps
-  echo "Cleaning up configmaps..."
-  kubectl delete configmap device-agent-device-agent-cm -n default 2>/dev/null || echo "No configmap found"
-  
-  # Remove all remaining resources in namespace
-  kubectl delete secrets --all -n default 2>/dev/null || echo "No secrets to delete"
-  kubectl delete configmaps --all -n default 2>/dev/null || echo "No additional configmaps to delete"
+	
+  # Clean up ConfigMaps and Secrets 
+  echo "Cleaning up configmaps and secrets..."
+  kubectl delete configmap device-agent-cm -n default 2>/dev/null || echo "No configmap found"
+  kubectl delete secret device-agent-certs -n default 2>/dev/null || echo "No secret found"
   
   # Verify cleanup
   echo "Verifying cleanup..."
   if kubectl get pods -n default 2>/dev/null | grep -q "device-agent"; then
     echo "⚠️ Some device-agent pods may still be terminating"
-    kubectl get pods -n default
+    kubectl get pods -n default | grep device-agent
   else
-    echo "✅ Device-agent stopped successfully"
+    echo "✅ All device-agent pods stopped"
   fi
   
-  # Show remaining resources in namespace
-  echo "Checking for remaining resources..."
-  kubectl get all,secrets,configmaps,serviceaccounts -n default 2>/dev/null || echo "Namespace may not exist or is empty"
+  # Show remaining resources
+  echo ""
+  echo "Remaining device-agent resources (should be empty):"
+  kubectl get all,pvc,sa,cm,secrets -n default 2>/dev/null | grep device-agent || echo "✅ No device-agent resources found in namespace"
   
   # Check for remaining RBAC resources
-  echo "Checking for remaining RBAC resources..."
-  kubectl get clusterroles | grep device-agent || echo "No device-agent clusterroles found"
-  kubectl get clusterrolebindings | grep device-agent || echo "No device-agent clusterrolebindings found"
+  echo ""
+  echo "Remaining RBAC resources (should be empty):"
+  kubectl get clusterroles,clusterrolebindings 2>/dev/null | grep device-agent || echo "✅ No device-agent RBAC resources found"
+  
+  echo ""
+  echo "✅ Device-agent cleanup complete"
 }
 
 
