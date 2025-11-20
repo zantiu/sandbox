@@ -1723,7 +1723,25 @@ stop_symphony() {
   else
     echo 'ℹ️ Symphony API container not found'
   fi
+  
+  # Prompt user to delete Redis data
+  echo ""
+  echo "⚠️  Warning: Deleting Redis data will require device re-onboarding"
+  read -p "Do you want to delete Redis data? (y/n): " delete_redis
+  
+  if [[ "$delete_redis" =~ ^[Yy]$ ]]; then
+    echo "Flushing Redis data..."
+    if redis-cli flushall; then
+      echo '✅ Redis data deleted successfully'
+      echo 'ℹ️ Device re-onboarding will be required'
+    else
+      echo '❌ Failed to delete Redis data'
+    fi
+  else
+    echo 'ℹ️ Redis data preserved'
+  fi
 }
+
 
 
 # Collect certificate information
@@ -1884,7 +1902,7 @@ show_menu() {
   echo "4) Symphony: Stop"
   echo "5) ObeservabiliyStack: Start"
   echo "6) ObeservabiliyStack: Stop"
-  read -p "Enter choice [1-7]: " choice
+  read -p "Enter choice [1-6]: " choice
   case $choice in
     1) install_prerequisites ;;
     2) uninstall_prerequisites ;;
@@ -1892,7 +1910,6 @@ show_menu() {
     4) stop_symphony ;;
     5) observability_stack_install ;;
     6) observability_stack_uninstall ;;
-    
     *) echo "⚠️ Invalid choice"; exit 1 ;;
   esac
 }
