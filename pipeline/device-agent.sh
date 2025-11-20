@@ -310,7 +310,25 @@ stop_device_agent_service_docker() {
   echo "Stopping device-agent..."
   cd "$HOME/dev-repo/docker-compose"
   docker compose down
+  
+  # Prompt user to delete /data folder
+  echo ""
+  echo "⚠️  Warning: Deleting /data folder will require device re-onboarding"
+  read -p "Do you want to delete data folder at $HOME/dev-repo/docker-compose/data? (y/n): " delete_data
+  
+  if [[ "$delete_data" =~ ^[Yy]$ ]]; then
+    echo "Deleting data folder..."
+    if rm -rf "$HOME/dev-repo/docker-compose/data"; then
+      echo '✅ Data folder deleted successfully'
+      echo 'ℹ️ Device re-onboarding will be required'
+    else
+      echo '❌ Failed to delete data folder'
+    fi
+  else
+    echo 'ℹ️ Data folder preserved'
+  fi
 }
+
 
 build_start_device_agent_k3s_service() {
     cd "$HOME/dev-repo"
@@ -996,7 +1014,7 @@ show_menu() {
   echo "10) cleanup-residual"
   echo "11) create_device_rsa_certs"
   echo "12) create_device_ecdsa_certs"
-  read -rp "Enter choice [1-13]: " choice
+  read -rp "Enter choice [1-12]: " choice
   case $choice in
     1) install_prerequisites;;
     2) uninstall_prerequisites;;

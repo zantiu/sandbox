@@ -7,7 +7,7 @@ This guide helps you get started with the WFM CLI script to interact with the Wo
 Needs to be run on the WFM VM
 ```bash
 chmod +x wfm-cli.sh
-./wfm-cli.sh
+sudo -E bash ./wfm-cli.sh
 ```
 
 This launches an interactive menu with options:
@@ -17,7 +17,7 @@ This launches an interactive menu with options:
 
 ### Command Line Mode
 ```bash
-./wfm-cli.sh <command>
+sudo -E bash ./wfm-cli.sh <command>
 ```
 Available commands:
 - `list-packages` - List all app packages
