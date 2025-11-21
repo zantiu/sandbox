@@ -19,7 +19,7 @@ dev-repo/
 ├── .vscode/        # VS Code configuration
 ├── helmchart       # Helmchart files to run device-agent as pod
 ├── LICENSE         # Project license
-├── non-standard    # Sandbox enabling components (components that are not defined in MARGO, but needed for a complete PoC)
+├── non-standard    # Sandbox enabling components (components that are not defined in MARGO, but needed for a complete Code-first Sandbox)
 ├── pipeline        # Automation scripts for build, deployment and run.
 ├── poc             # MARGO reference implementations and code for device-agent
 ├── README.md       # Main markdown file for whole project which links to other .md files
@@ -122,7 +122,7 @@ go test -cover ./...
 
 1. **Shared functionality** → Add to `shared-lib/`
 2. **API changes from Official MARGO Spec** → Update `standard/` specifications
-2. **API changes needed for PoC but not defined in MARGO spec** → Update `non-standard/` specifications
+2. **API changes needed for Code-first Sandbox but not defined in MARGO spec** → Update `non-standard/` specifications
 3. **Implementation of the standard and non-standard features** → Implement in `poc/`
 4. **Testing utilities** → Add to `tools/`
 

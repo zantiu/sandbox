@@ -1,7 +1,7 @@
 # Device Agent
 
 A Margo-compliant device agent for managing workloads on edge devices. The agent provides deployment, monitoring, and lifecycle management of applications across Kubernetes (Helm) and Docker Compose environments.
-Note: This is a PoC and follows the standards and SUPs defined within Margo, please check the official docs.
+Note: This is a Code-first Sandbox and follows the standards and SUPs defined within Margo, please check the official docs.
 
 ## Table of Contents
 
@@ -814,4 +814,4 @@ runtimes:
 
 ---
 
-**Note**: This agent is part of the Margo PoC. For complete documentation and API specifications, refer to the main Margo documentation and reach out to the stakeholders.
+**Note**: This agent is part of the Margo Code-first Sandbox. For complete documentation and API specifications, refer to the main Margo documentation and reach out to the stakeholders.
