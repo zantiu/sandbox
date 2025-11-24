@@ -1,4 +1,3 @@
-```markdown
 # Setting Up the Code First Sandbox - Simple Guide
 
 ## What You'll Need
@@ -420,4 +419,4 @@ If something doesn't work:
 2. Verify environment variables are set correctly
 3. Make sure the ca-cert.pem file was copied correctly
 4. Check the logs using the commands in "Check Everything is Working" section
-` ` `
+
