@@ -1,8 +1,9 @@
+##### [Back To Main](../../../README.md)
 # Device Agent
 
-An edge device agent used by the Margo platform to manage application workloads, report device capabilities, and synchronize desired vs actual state with the central orchestrator.
+An edge device agent used by the Margo platform to manage application workloads, report device capabilities, and synchronize desired vs actual state with the WFM.
 
-This repository contains a poc implementation that supports multiple runtimes (Helm for Kubernetes and Docker Compose) and is designed for easy extension (for example, adding other runtimes). The README below is focused, current, and organized for both users and contributors.
+This repository contains a code-first-sandbox implementation that supports multiple runtimes (Helm for Kubernetes and Docker Compose) and is designed for easy extension (for example, adding other runtimes).
 
 ## Contents
 
@@ -19,7 +20,7 @@ This repository contains a poc implementation that supports multiple runtimes (H
 
 The Device Agent runs on edge devices and provides these core responsibilities:
 
-- Onboarding and authentication with the Margo orchestrator
+- Onboarding and authentication with the Margo compliant WFM
 - Reporting device capabilities (hardware, interfaces)
 - Managing application workloads (Helm charts for Kubernetes runtime, Docker Compose for Docker runtime)
 - Monitoring deployed workloads and reporting status changes in the deployments
@@ -33,12 +34,12 @@ Key components (see source):
 
 - `main.go` — application bootstrap, component wiring and lifecycle management
 - `database/database.go` — lightweight in-memory DB with persistence and event hooks
-- `stateSync.go` — reconciles desired vs actual state with the orchestrator
+- `onboarding.go` — device client registration, credentials and token management
+- `device/capabilities.go` — capability discovery and reporting
+- `stateSync.go` — reconciles desired vs actual state with the WFM
 - `deployment.go` — deploy/update/remove workloads through runtime clients
 - `monitor.go` — polls or subscribes to runtime state and emits status updates
-- `onboarding.go` — device client registration, credentials and token management
-- `status.go` — status reporting API calls to the orchestrator
-- `device/capabilities.go` — capability discovery and reporting
+- `status.go` — status reporting API calls to the WFM
 
 Runtimes supported out of the box:
 
@@ -116,6 +117,7 @@ wfm:
       keyRef:
         path: "./config/device-private.key" # this should be the path to the private key pem file
 
+    # NOTE: The oauth workflow is not yet defined in Margo spec, hence keep this disabled
     # the auth info is auto-fetched by the agent when it gets onboarded
     # but if you, for any reason, want to specify the oauth info, then you can pass that info over here 
     authHelper:
@@ -137,10 +139,10 @@ stateSeeking:
   interval: 15
 
 # the agent architecture is kept in a way that it is capable of managing more than one runtimes
-# but one client with multiple devices is not defined by Margo yet. For example: what would be the identification
-# for the client and the device. Will WFM be aware of the client and devices? Etc...
+# but one client with multiple devices is not defined by Margo yet, as it comes with its own complexities,
+# for example: how would the client know which device should the application be deployed to? etc...  
 # If this is needed please reach out to the Margo group and follow the formal approach of Margo for SUPs.
-# For now, always keep one runtime in this section, and comment all other
+# For now, always keep one runtime in this section, and comment all others
 runtimes:
   - type: KUBERNETES
     kubernetes:
@@ -150,15 +152,14 @@ runtimes:
       url: unix:///var/run/docker.sock
 
 # Note: Auto-discovery of device capabilities is not defined and hence not implemented yet,
-# hence you are supposed to provide the details
-# in the file.
+# as a result you are supposed to provide the details in the file.
 # Path to the capabilities file (required).
 capabilities:
   readFromFile: ./config/capabilities.json
 
 ```
 
-Device capabilities are JSON documents describing hardware, and resources. Place a file at the configured path or if you want then you can implement your own provider that posts capabilities to the orchestrator.
+Device capabilities are JSON documents describing hardware, and resources. Place a file at the configured path or if you want then you can implement your own provider that posts capabilities to the WFM.
 
 ## Runtimes & features
 
@@ -166,12 +167,12 @@ Supported workloads and notable features:
 
 - Helm (Kubernetes) — full lifecycle management for Helm v3 charts, values injection, repo handling, release naming linked to deployment IDs
 - Docker Compose — deploy/remove Compose projects, environment injection, project names correlated to deployment IDs
-- (Extensible) — the runtime adapter pattern makes adding Podman or other runtimes straightforward
+- (Extensible) — the runtime adapter pattern makes adding other runtimes straightforward
 
 Operational features:
 
 - State synchronization: periodic and event-driven modes, with reconciliation and conflict handling
-- Monitoring & health-checks: continuous monitoring and status reporting back to the orchestrator
+- Monitoring & health-checks: continuous monitoring and status reporting back to the WFM
 - Persistence: in-memory DB with optional on-disk persistence for state
 - Error handling: structured errors and retry classification
 
@@ -222,7 +223,7 @@ When you add runtime clients, also add small integration or smoke tests where fe
 
 #### Development Extension Example: Adding Podman Runtime Support
 
-The following example tries to extending the device agent to support Podman as a new container runtime,
+The following example tries to extend the device agent to support Podman as a new container runtime,
 this is just exemplary code. : )
 
 #### Step 1: Add Configuration Support
@@ -271,7 +272,7 @@ type PodmanClient struct {
 
 Quick checks
 
-- Orchestrator unreachable: verify `wfm.sbiUrl` and that the network path is accessible (curl the health endpoint)
+- WFM unreachable: verify `wfm.sbiUrl` and that the network path is accessible. Try telnet to the WFM IP and Port. If it works, then try `curl` to the endpoints.
 - Docker socket permissions: ensure the container or user has access to `/var/run/docker.sock` or run the agent as a user in the `docker` group
 - Kubernetes issues: verify `kubeconfig` and that `kubectl` can access the cluster
 - Capabilities file: validate JSON with `jq` before use
@@ -287,6 +288,8 @@ Debugging tips
 - Inspect the in-memory DB persistence file under `data/` to see the last known state
 
 
-Security
+## Security
 
-- TLS based connection is used while connecting with the orchestrator.
+- **TLS Verification**: The client can verify server TLS certificates when connecting to WFM. Configure this using the `tlsHelper` settings in the configuration file.
+- **Plain HTTP (Not Recommended)**: For development or testing, the client supports unencrypted HTTP. Set `wfm.sbiUrl` to `http://` and `tlsHelper.enabled` to `false`. **Warning**: Only use HTTP in trusted networks.
+- **Request Signing**: The client signs requests by default for enhanced security. To disable this feature, set `requestSigner.enabled` to `false`. **Warning**: Note that request signing is defined in Official Margo spec. Disable this when in development or debugging phase.
