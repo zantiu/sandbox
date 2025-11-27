@@ -6,12 +6,12 @@ set -e
 # ----------------------------
 
 #--- Github Settings to pull the code (can be overridden via env)
-GITHUB_USER="${GITHUB_USER:-}"  # Set via env or leave empty
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"  # Set via env or leave empty
+GITHUB_USER="${GITHUB_USER:-}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 #--- branch details (can be overridden via env)
-SYMPHONY_BRANCH="${SYMPHONY_BRANCH:-margo-dev-sprint-6}"
-DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-dev-sprint-6}"
+SYMPHONY_BRANCH="${SYMPHONY_BRANCH:-sup/app-registry-on-oci}"
+DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-sup/app-registry-on-oci}"
 
 #--- harbor settings (can be overridden via env)
 EXPOSED_HARBOR_IP="${EXPOSED_HARBOR_IP:-127.0.0.1}"
@@ -21,21 +21,17 @@ EXPOSED_HARBOR_PORT="${EXPOSED_HARBOR_PORT:-8081}"
 EXPOSED_SYMPHONY_IP="${EXPOSED_SYMPHONY_IP:-127.0.0.1}"
 EXPOSED_SYMPHONY_PORT="${EXPOSED_SYMPHONY_PORT:-8082}"
 
-#--  device node IP (can be overridden via env) for prometheus to scrape metrics 
+#--- device node IP (can be overridden via env) for prometheus to scrape metrics 
 DEVICE_NODE_IP="${DEVICE_NODE_IP:-127.0.0.1}"
 
-#--- keycloak settings (can be overridden via env)
-EXPOSED_KEYCLOAK_IP="${EXPOSED_KEYCLOAK_IP:-127.0.0.1}"
-EXPOSED_KEYCLOAK_PORT="${EXPOSED_KEYCLOAK_PORT:-8083}"
-
-#--- gogs settings (can be overridden via env)
-EXPOSED_GOGS_IP="${EXPOSED_GOGS_IP:-127.0.0.1}"
-EXPOSED_GOGS_PORT="${EXPOSED_GOGS_PORT:-8084}"
 
 #--- Registry settings (can be overridden via env)
 REGISTRY_URL="${REGISTRY_URL:-http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}}"
 REGISTRY_USER="${REGISTRY_USER:-admin}"
-REGISTRY_PASS="${REGISTRY_PASS:-Harbor12345}"							
+REGISTRY_PASS="${REGISTRY_PASS:-Harbor12345}"
+
+# OCI Registry organization/namespace
+OCI_ORGANIZATION="${OCI_ORGANIZATION:-library}"
 
 # variables for observability stack
 NAMESPACE_OBSERVABILITY="observability"
@@ -47,12 +43,11 @@ LOKI_RELEASE="loki"
 # the directory to generate and store ssl certs in
 CERT_DIR="$HOME/symphony/api/certificates"
 
+
 # ----------------------------
 # Utility Functions
 # ----------------------------
 
-
-# Add these missing functions
 info() {
     echo "ℹ️  $1"
 }
@@ -73,7 +68,6 @@ validate_passwordless_sudo() {
   echo "Validating passwordless for user: $username"
   echo "==============================================="
   
-  # Test 1: Basic test
   echo -n "Test 1 - Basic access: "
   if sudo -n true 2>/dev/null; then
       echo "✓ PASS"
@@ -82,7 +76,6 @@ validate_passwordless_sudo() {
       exit_code=1
   fi
   
-  # Test 2: Specific command test
   echo -n "Test 2 - Command execution: "
   if sudo -n whoami >/dev/null 2>&1; then
       echo "✓ PASS"
@@ -91,7 +84,6 @@ validate_passwordless_sudo() {
       exit_code=1
   fi
   
-  # Test 3: File access test
   echo -n "Test 3 - File access: "
   if sudo -n test -r /etc/shadow 2>/dev/null; then
       echo "✓ PASS"
@@ -100,7 +92,6 @@ validate_passwordless_sudo() {
       exit_code=1
   fi
   
-  # Test 4: Configuration verification
   echo -n "Test 4 - Config verification: "
   if grep -q "$username.*NOPASSWD\|%.*NOPASSWD" /etc/sudoers /etc/sudoers.d/* 2>/dev/null; then
       echo "✓ PASS"
@@ -119,6 +110,7 @@ validate_passwordless_sudo() {
   return $exit_code
 }
 
+
 # ----------------------------
 # Installation Functions
 # ----------------------------
@@ -128,7 +120,7 @@ install_basic_utilities() {
   HELM_TAR="helm-v${HELM_VERSION}-linux-amd64.tar.gz"
   HELM_BIN_DIR="/usr/local/bin"
 
-  apt update && apt install -y curl dos2unix build-essential gcc libc6-dev
+  apt update && apt install -y curl dos2unix build-essential gcc libc6-dev jq
   install_helm
 }
 
@@ -248,6 +240,28 @@ install_rust() {
   source $HOME/.cargo/env
 }
 
+
+install_oras() {
+  echo "Installing ORAS CLI..."
+  
+  if command -v oras >/dev/null 2>&1; then
+    echo "✅ ORAS is already installed."
+    oras version
+    return 0
+  fi
+  
+  cd /tmp
+  ORAS_VERSION="1.1.0"
+  wget "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+  tar -xzf "oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+  sudo mv oras /usr/local/bin/
+  rm "oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+  
+  echo "✅ ORAS installed successfully"
+  oras version
+}
+
+
 # ----------------------------
 # Repository Functions
 # ----------------------------
@@ -273,25 +287,7 @@ clone_dev_repo() {
 # ----------------------------
 # Service Setup Functions
 # ----------------------------
-setup_keycloak() {
-  if docker ps --format '{{.Names}}' | grep -q keycloak; then
-    echo 'Keycloak is already running, skipping startup.'
-  else
-    echo 'Starting Keycloak...'
-    cd $HOME/dev-repo/pipeline/keycloak
-    chmod +x init.sh
-    docker compose up -d
-    sleep 60
-    docker ps | grep keycloak || echo 'Keycloak did not start properly'
-  fi
-}
 
-update_keycloak_config() {
-  cd $HOME
-  echo "Updating keycloak URL in symphony-api-margo.json..."
-  sed -i "s|\"keycloakURL\": *\"http://[^\"]*\"|\"keycloakURL\": \"http://"$EXPOSED_KEYCLOAK_IP":$EXPOSED_KEYCLOAK_PORT\"|" "$HOME/symphony/api/symphony-api-margo.json"
-  echo "Updated keycloak URL in symphony-api-margo.json"
-}
 
 setup_harbor() {
   if docker ps --format '{{.Names}}' | grep -q harbor; then
@@ -309,192 +305,225 @@ setup_harbor() {
   fi
 }
 
-setup_gogs_directories() {
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs"
-  DATA_DIR="$GOGS_BASE_DIR/data"
-  LOGS_DIR="$GOGS_BASE_DIR/logs"
-  APP_INI_PATH="$GOGS_BASE_DIR/app.ini"
-  GOGS_IP="$EXPOSED_GOGS_IP"
-  GOGS_PORT=$EXPOSED_GOGS_PORT
+
+
+# ----------------------------
+# OCI Application Package Push Functions (NEW - replaces Git push)
+# ----------------------------
+
+push_nextcloud_to_oci() {
+  echo "📦 Pushing Nextcloud application package to OCI Registry..."
   
-  rm -rf "$DATA_DIR" "$LOGS_DIR"
-  mkdir -p "$GOGS_BASE_DIR" "$DATA_DIR" "$LOGS_DIR"
-  chmod -R 777 "$DATA_DIR" "$LOGS_DIR"
-  # Fix line endings + permissions for entrypoint
-  # chmod +x "$GOGS_BASE_DIR/entrypoint.sh"
-  # Update template with remote GOGS_IP details
-  # Use printf to build the replacement strings safely
-  DOMAIN_LINE=$(printf "DOMAIN              = %s" "$GOGS_IP")
-  HTTP_PORT_LINE=$(printf "HTTP_PORT        = %s" "$GOGS_PORT")
-  EXTERNAL_URL_LINE=$(printf "EXTERNAL_URL  = http://%s:%s/" "$GOGS_IP" "$GOGS_PORT")
-
-  sed -i 's/\r$//' "$APP_INI_PATH"
-  sed -i "s/^DOMAIN.*/$DOMAIN_LINE/" "$APP_INI_PATH"
-  sed -i "s/^HTTP_PORT.*/$HTTP_PORT_LINE/" "$APP_INI_PATH"
-  sed -i "s|^EXTERNAL_URL.*|$EXTERNAL_URL_LINE|" "$APP_INI_PATH"
-  # chown 1000:1000 "$APP_INI_PATH"
-
-  echo 'Final runtime app.ini:'
-  grep -E 'DOMAIN|HTTP_PORT|EXTERNAL_URL' "$APP_INI_PATH"
-}
-
-start_gogs() {
-  echo 'Starting Gogs container...'
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs/"
-  cd "$GOGS_BASE_DIR"
-  sudo docker compose down
-  sudo docker compose build --no-cache gogs
-  sudo docker compose -f docker-compose.yml up -d
-}
-
-wait_for_gogs() {
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs/"
-  cd "$GOGS_BASE_DIR"
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  for i in {1..32}; do
-    if curl -s http://$GOGS_IP:$GOGS_PORT | grep -q "Gogs"; then
-      echo "Gogs is up!";
-      break;
-    fi;
-    sleep 2;
-  done
-}
-
-create_gogs_admin() {
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs/"
-  cd "$GOGS_BASE_DIR"
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  GOGS_CONTAINER=$(docker ps --filter "name=gogs" --format "{{.Names}}" | head -n 1)
-  if [ -z "$GOGS_CONTAINER" ]; then
-    echo "Gogs container not found! Exiting."
-    exit 1
+  local app_dir="$HOME/dev-repo/poc/tests/artefacts/nextcloud-compose/margo-package"
+  local repository="${OCI_ORGANIZATION}/nextcloud-compose-app"
+  local tag="latest"
+  
+  cd "$app_dir" || { echo "❌ Nextcloud package dir missing"; return 1; }
+  
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http
+  
+  if [ ! -f "margo.yaml" ]; then
+    echo "❌ margo.yaml not found in $app_dir"
+    return 1
   fi
-
-  docker exec -u git "$GOGS_CONTAINER" /app/gogs/gogs admin create-user \
-    --name gogsadmin \
-    --password admin123 \
-    --email you@example.com \
-    --admin || echo "User might already exist, skipping..."
-}
-
-create_gogs_token() {
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs/"
-  cd "$GOGS_BASE_DIR"
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  TOKEN_NAME="autogen-$(date +%s)"
-  TOKEN_RESP=$(curl -s -X POST -u 'gogsadmin:admin123' -H 'Content-Type: application/json' -d "{\"name\": \"$TOKEN_NAME\"}" "http://$GOGS_IP:$GOGS_PORT/api/v1/users/gogsadmin/tokens")
-  echo "TOKEN RESP $TOKEN_RESP"
-  TOKEN=$(echo ${TOKEN_RESP} | jq -r '.sha1')
-  export GOGS_TOKEN=$TOKEN
-}
-
-create_gogs_repositories() {
-  # Create nextcloud repo
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs/"
-  cd "$GOGS_BASE_DIR"
-
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  echo "GOGS TOKEN: $GOGS_TOKEN"
-  curl -s -o /tmp/resp.json -w '\nHTTP %{http_code}\n' \
-    -H "Authorization: token $GOGS_TOKEN" \
-    -H 'Content-Type: application/json' \
-    -d '{"name":"nextcloud","private":false}' \
-    "http://$GOGS_IP:$GOGS_PORT/api/v1/user/repos"
-  cat /tmp/resp.json
-
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  curl -s -o /tmp/resp.json -w '\nHTTP %{http_code}\n' \
-    -H "Authorization: token $GOGS_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"nginx","private":false}' \
-    "http://$GOGS_IP:$GOGS_PORT/api/v1/user/repos"
-  cat /tmp/resp.json
-
-  # Create nextcloud repo
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  curl -s -o /tmp/resp.json -w '\nHTTP %{http_code}\n' \
-    -H "Authorization: token $GOGS_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"otel","private":false}' \
-    http://$GOGS_IP:$GOGS_PORT/api/v1/user/repos
-  cat /tmp/resp.json
-
-  # Create nextcloud repo
-  GOGS_IP=$EXPOSED_GOGS_IP
-  GOGS_PORT=$EXPOSED_GOGS_PORT
-  curl -s -o /tmp/resp.json -w '\nHTTP %{http_code}\n' \
-    -H "Authorization: token $GOGS_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d '{"name":"custom-otel","private":false}' \
-    http://$GOGS_IP:$GOGS_PORT/api/v1/user/repos
-  cat /tmp/resp.json
-}
-
-push_nextcloud_files() {
-  cd "$HOME/dev-repo/poc/tests/artefacts/nextcloud-compose/margo-package" || { echo '❌ Nextcloud dir missing'; exit 1; }
-  [ ! -d .git ] && git init && \
-    git config user.name 'gogsadmin' && \
-    git config user.email 'admin.admin@gogs.com'
-  git remote remove origin 2>/dev/null || true
-  git remote add origin "http://gogsadmin:${GOGS_TOKEN}@${EXPOSED_GOGS_IP}:${EXPOSED_GOGS_PORT}/gogsadmin/nextcloud.git"
-  git add margo.yaml resources/ 2>/dev/null || true
-  if ! git diff --cached --quiet; then
-    git commit -m 'Initial commit with Nextcloud files'
+  
+  local files=("margo.yaml:application/vnd.margo.app.description.v1+yaml")
+  
+  if [ -d "resources" ] && [ "$(ls -A resources 2>/dev/null)" ]; then
+    while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        files+=("$file:application/octet-stream")
+      fi
+    done < <(find resources -type f 2>/dev/null)
   fi
-  git branch -m master
-  git push -u origin master --force
+  
+  echo "Pushing files: ${files[@]}"
+  oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --artifact-type "application/vnd.margo.app.v1+json" \
+    --plain-http \
+    "${files[@]}"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Nextcloud package pushed to OCI Registry"
+    echo "📍 Location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
+  else
+    echo "❌ Failed to push Nextcloud package"
+    return 1
+  fi
 }
 
-push_nginx_files() {
-  cd "$HOME/dev-repo/poc/tests/artefacts/nginx-helm/margo-package" || { echo '❌ nginx-helm dir missing'; exit 1; }
-  [ ! -d .git ] && git init && \
-    git config user.name 'gogsadmin' && \
-    git config user.email 'admin.admin@gogs.com'
-  git remote remove origin 2>/dev/null || true
-  git remote add origin "http://gogsadmin:${GOGS_TOKEN}@${EXPOSED_GOGS_IP}:${EXPOSED_GOGS_PORT}/gogsadmin/nginx.git"
-  git add margo.yaml resources/ 2>/dev/null || true
-  if ! git diff --cached --quiet; then
-    git commit -m 'Initial commit with nginx-helm files'
+
+
+push_nginx_to_oci() {
+  echo "📦 Pushing Nginx application package to OCI Registry..."
+  
+  local app_dir="$HOME/dev-repo/poc/tests/artefacts/nginx-helm/margo-package"
+  local repository="${OCI_ORGANIZATION}/nginx-helm-app"
+  local tag="latest"
+  
+  cd "$app_dir" || { echo "❌ Nginx package dir missing"; return 1; }
+  
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http
+  
+  if [ ! -f "margo.yaml" ]; then
+    echo "❌ margo.yaml not found in $app_dir"
+    return 1
   fi
-  git branch -m master
-  git push -u origin master --force
+  
+  local files=("margo.yaml:application/vnd.margo.app.description.v1+yaml")
+  
+  if [ -d "resources" ] && [ "$(ls -A resources 2>/dev/null)" ]; then
+    while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        files+=("$file:application/octet-stream")
+      fi
+    done < <(find resources -type f 2>/dev/null)
+  fi
+  
+  echo "Pushing files: ${files[@]}"
+  oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --artifact-type "application/vnd.margo.app.v1+json" \
+    --plain-http \
+    "${files[@]}"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Nginx package pushed to OCI Registry"
+    echo "📍 Location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
+  else
+    echo "❌ Failed to push Nginx package"
+    return 1
+  fi
 }
 
-push_otel_files() {
-  cd "$HOME/dev-repo/poc/tests/artefacts/open-telemetry-demo-helm/margo-package" || { echo '❌ OTEL dir missing'; exit 1; }
-  [ ! -d .git ] && git init && \
-    git config user.name 'gogsadmin' && \
-    git config user.email 'admin.admin@gogs.com'
-  git remote remove origin 2>/dev/null || true
-  git remote add origin "http://gogsadmin:${GOGS_TOKEN}@${EXPOSED_GOGS_IP}:${EXPOSED_GOGS_PORT}/gogsadmin/otel.git"
-  git add margo.yaml resources/ 2>/dev/null || true
-  if ! git diff --cached --quiet; then
-    git commit -m 'Initial commit with OTEL files'
+
+
+push_otel_to_oci() {
+  echo "📦 Pushing OTEL application package to OCI Registry..."
+  
+  local app_dir="$HOME/dev-repo/poc/tests/artefacts/open-telemetry-demo-helm/margo-package"
+  local repository="${OCI_ORGANIZATION}/otel-demo-app"
+  local tag="latest"
+  
+  cd "$app_dir" || { echo "❌ OTEL package dir missing"; return 1; }
+  
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http
+  
+  if [ ! -f "margo.yaml" ]; then
+    echo "❌ margo.yaml not found in $app_dir"
+    return 1
   fi
-  git branch -m master
-  git push -u origin master --force
+  
+  local files=("margo.yaml:application/vnd.margo.app.description.v1+yaml")
+  
+  if [ -d "resources" ] && [ "$(ls -A resources 2>/dev/null)" ]; then
+    while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        files+=("$file:application/octet-stream")
+      fi
+    done < <(find resources -type f 2>/dev/null)
+  fi
+  
+  echo "Pushing files: ${files[@]}"
+  oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --artifact-type "application/vnd.margo.app.v1+json" \
+    --plain-http \
+    "${files[@]}"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ OTEL package pushed to OCI Registry"
+    echo "📍 Location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
+  else
+    echo "❌ Failed to push OTEL package"
+    return 1
+  fi
 }
 
-push_custom_otel_files() {
-  cd "$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/margo-package" || { echo '❌ Custom OTEL dir missing'; exit 1; }
-  [ ! -d .git ] && git init && \
-    git config user.name 'gogsadmin' && \
-    git config user.email 'admin.admin@gogs.com'
-  git remote remove origin 2>/dev/null || true
-  git remote add origin "http://gogsadmin:${GOGS_TOKEN}@${EXPOSED_GOGS_IP}:${EXPOSED_GOGS_PORT}/gogsadmin/custom-otel.git"
-  git add margo.yaml resources/ 2>/dev/null || true
-  if ! git diff --cached --quiet; then
-    git commit -m 'Initial commit with Custom OTEL files'
+
+push_custom_otel_to_oci() {
+  echo "📦 Pushing Custom OTEL application package to OCI Registry..."
+  
+  local app_dir="$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/margo-package"
+  local repository="${OCI_ORGANIZATION}/custom-otel-helm-app"
+  local tag="latest"
+  
+  cd "$app_dir" || { echo "❌ Custom OTEL package dir missing"; return 1; }
+  
+  # Login to Harbor OCI Registry
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http
+  
+  # Check if margo.yaml exists
+  if [ ! -f "margo.yaml" ]; then
+    echo "❌ margo.yaml not found in $app_dir"
+    return 1
   fi
-  git branch -m master
-  git push -u origin master --force
+  
+  # Build file list for ORAS - start with margo.yaml
+  local files=("margo.yaml:application/vnd.margo.app.description.v1+yaml")
+  
+  # Add resource files if directory exists and has files
+  if [ -d "resources" ] && [ "$(ls -A resources 2>/dev/null)" ]; then
+    while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        files+=("$file:application/octet-stream")
+      fi
+    done < <(find resources -type f 2>/dev/null)
+  fi
+  
+  # Push to OCI Registry with Margo-specific artifact type
+  echo "Pushing files: ${files[@]}"
+  oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --artifact-type "application/vnd.margo.app.v1+json" \
+    --plain-http \
+    "${files[@]}"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Custom OTEL package pushed to OCI Registry"
+    echo "📍 Location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
+  else
+    echo "❌ Failed to push Custom OTEL package"
+    return 1
+  fi
 }
+
+
+
+# ----------------------------
+# OCI Registry Helper Functions (Optional but useful)
+# ----------------------------
+
+list_oci_app_packages() {
+  echo "📋 Listing application packages in OCI Registry..."
+  
+  # Login to Harbor
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http  # Changed from --insecure
+  
+  # List repositories using Harbor API
+  echo "Querying Harbor API for repositories..."
+  curl -s -u "${REGISTRY_USER}:${REGISTRY_PASS}" \
+    "http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/api/v2.0/projects/${OCI_ORGANIZATION}/repositories" \
+    --insecure 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo "⚠️ Failed to list repositories"
+}
+
+verify_oci_package() {
+  local repository="$1"
+  local tag="${2:-latest}"
+  
+  echo "🔍 Verifying OCI package: ${repository}:${tag}..."
+  
+  # Login to Harbor
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http  # Changed from --insecure
+  
+  # Get manifest
+  oras manifest fetch "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --plain-http 2>/dev/null | jq '.' || echo "❌ Failed to fetch manifest"  # Changed from --insecure
+}
+
 
 # ----------------------------
 # Symphony Build Functions
@@ -1001,68 +1030,28 @@ EOF
 # ----------------------------
 uninstall_prerequisites() {
   echo "Running complete uninstallation in reverse chronological order..."
-  
-  # Step 1: Stop Symphony API (Last thing that would be running)
-  # stop_symphony_api_process
-  
-  # Step 2: Remove Symphony binaries and builds
+   
+  # Step 1: Remove Symphony binaries and builds
   cleanup_symphony_builds
-  
-  # Step 3: Remove Git repositories and pushed files
-  cleanup_app_supplier_git_repositories
-  
-  # Step 4: Remove Gogs repositories
-  remove_gogs_repositories
-  
-  # Step 5: Remove Gogs admin user and token
-  cleanup_gogs_admin
-  
-  # Step 6: Stop and remove Gogs container
-  stop_gogs_service
-  
-  # Step 7: Cleanup Gogs directories and configuration
-  cleanup_gogs_directories
-  
-  # Step 8: Revert Keycloak configuration
-  revert_keycloak_config
-  
-  # Step 9: Stop and remove Keycloak
-  stop_keycloak_service
-
-  # Step 10: Stop and remove Keycloak
-  stop_harbor_service
-  
-  # Step 11: Remove cloned repositories
+    
+  # Step 2: Remove cloned repositories
   remove_cloned_repositories
   
-  # Step 12: Uninstall Rust
+  # Step 3: Uninstall Rust
   uninstall_rust
   
-  # Step 13: Uninstall Docker and Docker Compose
+  # Step 4: Uninstall Docker and Docker Compose
   uninstall_docker_compose
   
-  # Step 14: Uninstall Go
+  # Step 5: Uninstall Go
   uninstall_go
   
-  # Step 15: Remove basic utilities and cleanup
+  # Step 6: Remove basic utilities and cleanup
   cleanup_basic_utilities
   
   echo "Complete uninstallation finished"
 }
 
-# Individual uninstall functions
-stop_symphony_api_process() {
-  echo "1. Stopping Symphony API process..."
-  PID=$(ps -ef | grep '[s]ymphony-api-margo.json' | awk '{print $2}')
-  if [ -n "$PID" ]; then
-    kill -9 $PID && echo "✅ Symphony API stopped (PID: $PID)"
-  else
-    echo "ℹ️ Symphony API was not running"
-  fi
-  
-  # Remove log file
-  [ -f "$HOME/symphony-api.log" ] && rm -f "$HOME/symphony-api.log" && echo "✅ Removed symphony-api.log"
-}
 
 cleanup_symphony_builds() {
   echo "2. Cleaning up Symphony builds..."
@@ -1084,117 +1073,6 @@ cleanup_symphony_builds() {
   if command -v go >/dev/null 2>&1; then
     go clean -cache -modcache 2>/dev/null && echo "✅ Cleaned Go build cache"
   fi
-}
-
-cleanup_app_supplier_git_repositories() {
-  echo "3. Cleaning up app supplier's Git repositories..."
-  
-  # Clean up pushed file directories
-  local dirs=(
-    "$HOME/dev-repo/poc/tests/artefacts/nextcloud-compose"
-    "$HOME/dev-repo/poc/tests/artefacts/nginx-helm"
-    "$HOME/dev-repo/poc/tests/artefacts/open-telemetry-demo-helm"
-    "$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app"
-  )
-  
-  for dir in "${dirs[@]}"; do
-    if [ -d "$dir/.git" ]; then
-      cd "$dir" && git remote remove origin 2>/dev/null && echo "✅ Removed git remote from $(basename $dir)"
-      rm -rf "$dir/.git" && echo "✅ Removed .git directory from $(basename $dir)"
-    fi
-  done
-}
-
-remove_gogs_repositories() {
-  echo "4. Removing Gogs repositories..."
-  
-  if [ -n "$GOGS_TOKEN" ] && [ -n "$EXPOSED_GOGS_IP" ]; then
-    local repos=("nextcloud" "nginx" "otel" "custom-otel")
-    GOGS_IP=$EXPOSED_GOGS_IP
-    GOGS_PORT=$EXPOSED_GOGS_PORT
-    
-    for repo in "${repos[@]}"; do
-      echo "Attempting to delete repository: $repo"
-      curl -s -X DELETE \
-        -H "Authorization: token $GOGS_TOKEN" \
-        "http://$GOGS_IP:$GOGS_PORT/api/v1/repos/gogsadmin/$repo" && \
-        echo "✅ Deleted repository: $repo" || \
-        echo "⚠️ Failed to delete repository: $repo"
-    done
-  else
-    echo "⚠️ Cannot delete Gogs repositories - missing token or host"
-  fi
-}
-
-cleanup_gogs_admin() {
-  echo "5. Cleaning up Gogs admin user..."
-  
-  GOGS_CONTAINER=$(docker ps --filter "name=gogs" --format "{{.Names}}" | head -n 1)
-  if [ -n "$GOGS_CONTAINER" ]; then
-    echo "⚠️ Gogs admin user 'gogsadmin' should be manually removed if needed"
-  fi
-  
-  # Clear token from environment
-  unset GOGS_TOKEN
-  echo "✅ Cleared GOGS_TOKEN from environment"
-}
-
-stop_gogs_service() {
-  echo "6. Stopping and removing Gogs service..."
-  
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs"
-  if [ -d "$GOGS_BASE_DIR" ]; then
-    cd "$GOGS_BASE_DIR"
-    docker compose down --remove-orphans --volumes 2>/dev/null && echo "✅ Stopped Gogs containers"
-    
-    # Remove Gogs images
-    # docker images | grep gogs | awk '{print $3}' | xargs -r docker rmi -f && echo "✅ Removed Gogs images"
-  fi
-}
-
-cleanup_gogs_directories() {
-  echo "7. Cleaning up Gogs directories..."
-  
-  GOGS_BASE_DIR="$HOME/dev-repo/pipeline/gogs"
-  DATA_DIR="$GOGS_BASE_DIR/data"
-  LOGS_DIR="$GOGS_BASE_DIR/logs"
-  
-  # Remove data and logs
-  [ -d "$DATA_DIR" ] && rm -rf "$DATA_DIR" && echo "✅ Removed Gogs data directory"
-  [ -d "$LOGS_DIR" ] && rm -rf "$LOGS_DIR" && echo "✅ Removed Gogs logs directory"
-  
-  # Restore original app.ini if backup exists
-  if [ -f "$GOGS_BASE_DIR/app.ini.backup" ]; then
-    mv "$GOGS_BASE_DIR/app.ini.backup" "$GOGS_BASE_DIR/app.ini" && echo "✅ Restored original app.ini"
-  fi
-}
-
-revert_keycloak_config() {
-  echo "8. Reverting Keycloak configuration..."
-  
-  # Restore original symphony-api-margo.json if backup exists
-  if [ -f "$HOME/symphony/api/symphony-api-margo.json.backup" ]; then
-    mv "$HOME/symphony/api/symphony-api-margo.json.backup" "$HOME/symphony/api/symphony-api-margo.json" && \
-    echo "✅ Restored original symphony-api-margo.json"
-  else
-    echo "⚠️ No backup found for symphony-api-margo.json"
-  fi
-}
-
-stop_keycloak_service() {
-  echo "9. Stopping and removing Keycloak service..."
-  
-  # Stop Keycloak container
-  if docker ps --format '{{.Names}}' | grep -q keycloak; then
-    docker stop keycloak && echo "✅ Stopped Keycloak container"
-    docker rm keycloak && echo "✅ Removed Keycloak container"
-  fi
-  
-  # Remove Keycloak compose directory
-  [ -d "$HOME/dev-repo/pipeline/keycloak" ] && rm -rf "$HOME/dev-repo/pipeline/keycloak" && echo "✅ Removed Keycloak compose directory"
-  
-  # Remove Keycloak images
-  # docker images | grep keycloak | awk '{print $3}' | xargs -r docker rmi -f && echo "✅ Removed Keycloak images"
 }
 
 stop_harbor_service() {
@@ -1287,9 +1165,7 @@ cleanup_basic_utilities() {
   rm -f /tmp/go.tar.gz /tmp/resp.json /tmp/headers.txt get-docker.sh 2>/dev/null && echo "✅ Removed temporary files"
   
   # Clear exported variables
-  unset GOGS_TOKEN GITHUB_USER GITHUB_TOKEN SYMPHONY_BRANCH DEV_REPO_BRANCH
   unset EXPOSED_HARBOR_IP EXPOSED_HARBOR_PORT EXPOSED_SYMPHONY_IP EXPOSED_SYMPHONY_PORT
-  unset EXPOSED_KEYCLOAK_IP EXPOSED_KEYCLOAK_PORT EXPOSED_GOGS_IP EXPOSED_GOGS_PORT
   
   # Note: Not removing curl as it might be needed by system
   echo "⚠️ Basic utilities (curl) left installed as they may be system dependencies"
@@ -1398,74 +1274,41 @@ build_custom_otel_container_images() {
   echo "Preparing Helm chart..."
   cd "$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/code"
   
-  # Increment chart version
+  # Read existing chart version 
   CHART_FILE="$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/code/helm/Chart.yaml"
-  CURRENT_VERSION=$(grep "^version:" "$CHART_FILE" | awk '{print $2}')
+  CHART_VERSION=$(grep "^version:" "$CHART_FILE" | awk '{print $2}')
   
-  # Increment patch version (e.g., 0.1.0 -> 0.1.1)
-  IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-  NEW_VERSION="${major}.${minor}.$((patch + 1))"
-  
-  echo "Incrementing chart version: $CURRENT_VERSION -> $NEW_VERSION"
-  sed -i "s/^version:.*/version: $NEW_VERSION/" "$CHART_FILE"
+  echo "Using existing chart version: $CHART_VERSION"
   
   # Replace placeholders in values.yaml
   echo "Replacing placeholders in values.yaml..."
   sed -i "s|{{REPOSITORY}}|$OTEL_APP_CONTAINER_URL|g" "$deploy_file" 2>/dev/null || true
   sed -i "s|{{TAG}}|$tag|g" "$deploy_file" 2>/dev/null || true
   
-	
-  # Package and push chart
-  echo "Packaging Helm chart version $NEW_VERSION..."
+  # Package and push chart with existing version
+  echo "Packaging Helm chart version $CHART_VERSION..."
   helm package helm/
   
   echo "Pushing chart to Harbor..."
-  helm push "custom-otel-helm-${NEW_VERSION}.tgz" "oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library" --plain-http
+  helm push "custom-otel-helm-${CHART_VERSION}.tgz" "oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library" --plain-http
   
-  # Update margo.yaml in package directory
+  # Update margo.yaml in package directory with placeholders
   HELM_REPOSITORY="oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm"
-  HELM_REVISION="$NEW_VERSION"
+  HELM_REVISION="$CHART_VERSION"
   helm_deploy_file="$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/margo-package/margo.yaml"
 
-  echo "Updating margo.yaml with chart version $NEW_VERSION..."
-											
-								   
+  echo "Updating margo.yaml with chart version $CHART_VERSION..."
+  
+  # Only replace placeholders if they exist, don't modify existing values
   sed -i "s|{{HELM_REPOSITORY}}|$HELM_REPOSITORY|g" "$helm_deploy_file" 2>/dev/null || true
   sed -i "s|{{HELM_REVISION}}|$HELM_REVISION|g" "$helm_deploy_file" 2>/dev/null || true
   
-  # Also update any existing hardcoded versions in margo.yaml
-  sed -i "s|revision: [0-9]\+\.[0-9]\+\.[0-9]\+|revision: $NEW_VERSION|g" "$helm_deploy_file" 2>/dev/null || true
-  sed -i "s|revision: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"|revision: \"$NEW_VERSION\"|g" "$helm_deploy_file" 2>/dev/null || true
-  
-  echo "✅ Custom otel chart version $NEW_VERSION successfully pushed to Harbor"
-  echo "📦 Chart: oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm:$NEW_VERSION"
-  echo "🔄 Updated margo.yaml to reference version $NEW_VERSION"
-  
-  #  Update instance.yaml template in Symphony CLI
-  instance_template="$HOME/symphony/cli/templates/margo/custom-otel-helm/instance.yaml"
-  if [ -f "$instance_template" ]; then
-    echo "📝 Updating instance.yaml template with version $NEW_VERSION..."
-    
-    # Update revision field (handles both quoted and unquoted versions)
-    sed -i "s|revision: [0-9]\+\.[0-9]\+\.[0-9]\+|revision: $NEW_VERSION|g" "$instance_template"
-    sed -i "s|revision: \"[0-9]\+\.[0-9]\+\.[0-9]\+\"|revision: \"$NEW_VERSION\"|g" "$instance_template"
-    
-    # Also update repository if it exists
-    sed -i "s|repository: oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library$|repository: oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm|g" "$instance_template"
-    
-    echo "✅ Updated instance.yaml template to version $NEW_VERSION"
-  else
-    echo "⚠️ Warning: instance.yaml template not found at $instance_template"
-    echo "   You may need to manually update the template or create deployments using packages"
-  fi
-
-  # Push updated margo.yaml to Gogs
-  echo "📤 Pushing updated margo.yaml to Gogs..."
-  push_custom_otel_files
-  
-  echo "✅ Build and push complete! "
+  echo "✅ Custom otel chart version $CHART_VERSION successfully pushed to Harbor"
+  echo "📦 Chart: oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm:$CHART_VERSION"
+  echo "🔄 Updated margo.yaml to reference version $CHART_VERSION"
   
 }
+
 
 
 
@@ -1595,42 +1438,35 @@ install_prerequisites() {
   add_insecure_registry_to_daemon
   setup_k3s
   install_redis
+  install_oras  # NEW: Install ORAS for OCI operations
   
   clone_symphony_repo
   clone_dev_repo
   add_container_registry_mirror_to_k3s
-  #setup_keycloak            
-  #update_keycloak_config      
   
- 
-  setup_gogs_directories
-  start_gogs
-  wait_for_gogs
-  create_gogs_admin
-  create_gogs_token
-  create_gogs_repositories
+   
   setup_harbor
-  build_custom_otel_container_images			  
-  push_nextcloud_files
-  push_nginx_files
- 
-  echo "setup completed"
+  build_custom_otel_container_images
+  
+  # NEW: Push application packages to OCI Registry instead of Git
+  echo "📦 Pushing application packages to OCI Registry..."
+  push_nextcloud_to_oci
+  push_nginx_to_oci
+  push_otel_to_oci
+  push_custom_otel_to_oci
+  
+  echo "✅ Setup completed - Application packages now in OCI Registry!"
+  echo "✅ Workload Fleet Manager pre-requisites installation finished."
 }
+
 
 start_symphony() {
   echo "Starting Symphony API server on..."
   export PATH="$PATH:/usr/local/go/bin";
   # Build phase
-
- 
- 
- 
- 
   build_maestro_cli   # this is required for WFM CLI operations
   # verify_symphony_api
   enable_tls_in_symphony_api
-  # uncomment to run the symphony api as a binary
-  # start_symphony_api
   start_symphony_api_container
 }
 
