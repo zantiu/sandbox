@@ -315,7 +315,7 @@ push_nextcloud_to_oci() {
   echo "📦 Pushing Nextcloud application package to OCI Registry..."
   
   local app_dir="$HOME/dev-repo/poc/tests/artefacts/nextcloud-compose/margo-package"
-  local repository="${OCI_ORGANIZATION}/nextcloud-compose-app"
+  local repository="${OCI_ORGANIZATION}/nextcloud-compose-app-package"
   local tag="latest"
   
   cd "$app_dir" || { echo "❌ Nextcloud package dir missing"; return 1; }
@@ -359,7 +359,7 @@ push_nginx_to_oci() {
   echo "📦 Pushing Nginx application package to OCI Registry..."
   
   local app_dir="$HOME/dev-repo/poc/tests/artefacts/nginx-helm/margo-package"
-  local repository="${OCI_ORGANIZATION}/nginx-helm-app"
+  local repository="${OCI_ORGANIZATION}/nginx-helm-app-package"
   local tag="latest"
   
   cd "$app_dir" || { echo "❌ Nginx package dir missing"; return 1; }
@@ -403,7 +403,7 @@ push_otel_to_oci() {
   echo "📦 Pushing OTEL application package to OCI Registry..."
   
   local app_dir="$HOME/dev-repo/poc/tests/artefacts/open-telemetry-demo-helm/margo-package"
-  local repository="${OCI_ORGANIZATION}/otel-demo-app"
+  local repository="${OCI_ORGANIZATION}/otel-demo-app-package"
   local tag="latest"
   
   cd "$app_dir" || { echo "❌ OTEL package dir missing"; return 1; }
@@ -446,7 +446,7 @@ push_custom_otel_to_oci() {
   echo "📦 Pushing Custom OTEL application package to OCI Registry..."
   
   local app_dir="$HOME/dev-repo/poc/tests/artefacts/custom-otel-helm-app/margo-package"
-  local repository="${OCI_ORGANIZATION}/custom-otel-helm-app"
+  local repository="${OCI_ORGANIZATION}/custom-otel-helm-app-package"
   local tag="latest"
   
   cd "$app_dir" || { echo "❌ Custom OTEL package dir missing"; return 1; }
@@ -1473,7 +1473,7 @@ start_symphony() {
 start_symphony_api_container(){
 
     cd "$HOME/symphony/api"
-	echo "Building Symphony API container..."																			   
+	  echo "Building Symphony API container..."																			   
     
     # Check for required environment variables
     if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
@@ -1490,7 +1490,7 @@ start_symphony_api_container(){
     echo "Stopping and removing existing symphony-api-container if present..."
     docker stop symphony-api-container 2>/dev/null || true
     docker rm symphony-api-container 2>/dev/null || true
-	pkill -f "symphony-api" 2>/dev/null || true										   
+	  pkill -f "symphony-api" 2>/dev/null || true										   
     
     # Check if image already exists
     if docker image inspect margo-symphony-api:latest >/dev/null 2>&1; then
