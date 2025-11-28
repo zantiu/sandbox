@@ -114,45 +114,49 @@ list_all() {
 # ----------------------------
 get_package_upload_request_file_path() {
   local choice="$1"
+  
+  # Use host:port only (strip http://)
+  REGISTRY_HOST="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
+  
   case $choice in
     1) 
-      OCI_REPO="${REGISTRY_URL}/${OCI_ORGANIZATION}/custom-otel-helm-app:latest"
       original_pkg_file="$HOME/symphony/cli/templates/margo/custom-otel-helm/package.yaml"
       pkg_file="$HOME/symphony/cli/templates/margo/custom-otel-helm/package.yaml.copy"
       cp -f ${original_pkg_file} ${pkg_file} 
-      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
-      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/custom-otel-helm-app|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/custom-otel-helm-app-package|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
-
       echo $pkg_file ;;
+      
     2)
-      OCI_REPO="${REGISTRY_URL}/${OCI_ORGANIZATION}/nginx-helm-app:latest"
       original_pkg_file="$HOME/symphony/cli/templates/margo/nginx-helm/package.yaml"
       pkg_file="$HOME/symphony/cli/templates/margo/nginx-helm/package.yaml.copy"
       cp -f ${original_pkg_file} ${pkg_file}
-      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
-      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nginx-helm-app|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nginx-helm-app-package|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
       echo $pkg_file ;;
+      
     3)
-      OCI_REPO="${REGISTRY_URL}/${OCI_ORGANIZATION}/nextcloud-compose-app:latest"
       original_pkg_file="$HOME/symphony/cli/templates/margo/nextcloud-compose/package.yaml"
       pkg_file="$HOME/symphony/cli/templates/margo/nextcloud-compose/package.yaml.copy"
       cp -f ${original_pkg_file} ${pkg_file}
-      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
-      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nextcloud-compose-app|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nextcloud-compose-app-package|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
       echo $pkg_file ;;
+      
     *) 
       echo "" ;;
   esac
 }
+
 
 
 get_package_name() {
