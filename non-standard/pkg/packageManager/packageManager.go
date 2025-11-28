@@ -241,16 +241,17 @@ func (pm *PackageManager) LoadPackageFromOci(registryUrl, repository, tag string
         return "", nil, fmt.Errorf("failed to create temporary directory: %w", err)
     }
 
-    // Construct OCI reference
-    reference := fmt.Sprintf("%s/%s:%s", registryUrl, repository, tag)
+    // Strip http:// or https:// from registryUrl for ORAS compatibility
+    cleanRegistryUrl := strings.TrimPrefix(registryUrl, "http://")
+    cleanRegistryUrl = strings.TrimPrefix(cleanRegistryUrl, "https://")
     
-    // Build ORAS pull command
-    args := []string{"pull", reference, "--plain-http"}
+    // Construct OCI reference (without protocol)
+    reference := fmt.Sprintf("%s/%s:%s", cleanRegistryUrl, repository, tag)
     
     // Add authentication if provided
     if username != "" && passwordOrToken != "" {
-        // Login first
-        loginCmd := exec.Command("oras", "login", registryUrl,
+        // Login first (use clean registry URL)
+        loginCmd := exec.Command("oras", "login", cleanRegistryUrl,
             "-u", username,
             "-p", passwordOrToken,
             "--plain-http")
@@ -261,7 +262,7 @@ func (pm *PackageManager) LoadPackageFromOci(registryUrl, repository, tag string
     }
     
     // Pull artifact to temp directory
-    pullCmd := exec.Command("oras", args...)
+    pullCmd := exec.Command("oras", "pull", reference, "--plain-http")
     pullCmd.Dir = tempDir
     output, err := pullCmd.CombinedOutput()
     if err != nil {
@@ -278,6 +279,7 @@ func (pm *PackageManager) LoadPackageFromOci(registryUrl, repository, tag string
 
     return tempDir, appPackage, nil
 }
+
 
 
 
