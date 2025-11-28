@@ -104,8 +104,7 @@ On each VM, you need to configure environment variables (settings that tell the 
 3. **Set Up Storage and Code Repository**
    
    This happens automatically in Step 2 - it creates:
-   - **Harbor**: For storing application container images and Helm charts as OCI-compliant manifests
-   - **Gogs**: For storing application vendors' application packages
+   - **Harbor**: For storing application container images, Helm charts as OCI-compliant manifests and application vendors' MARGO compliant application packages.
 
 4. **Start the Workload Fleet Manager**
    ```bash
