@@ -3,10 +3,11 @@ package packageManager
 import (
 	"archive/tar"
 	"compress/gzip"
-	"context"
+	//"context"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 	"github.com/margo/dev-repo/non-standard/generatedCode/wfm/nbi"
 	"github.com/margo/dev-repo/non-standard/pkg/models"
 	"github.com/margo/dev-repo/shared-lib/git"
-	"github.com/margo/dev-repo/shared-lib/oci"
+	//"github.com/margo/dev-repo/shared-lib/oci"
 	"gopkg.in/yaml.v3"
 )
 
@@ -177,60 +178,108 @@ func (pm *PackageManager) LoadPackageFromGit(url, branchName, subPath string, au
 //   - Returns error if artifact extraction fails
 //   - Returns error if package loading from extracted directory fails
 //   - Returns error if margo.yaml file is missing or invalid in the artifact
+// func (pm *PackageManager) LoadPackageFromOci(registryUrl, repository, tag string, username, passwordOrToken string, insecure bool, timeout time.Duration) (pkgPath string, pkg *models.AppPkg, err error) {
+// 	// Initialize OCI client with authentication
+// 	var ociClient *oci.Client
+// 	if username != "" && passwordOrToken != "" {
+// 		ociClient, err = oci.NewClient(&oci.Config{
+// 			Registry: registryUrl,
+// 			Username: username,
+// 			Password: passwordOrToken,
+// 			Insecure: insecure,
+// 			Timeout:  timeout,
+// 		})
+// 	} else {
+// 		ociClient, err = oci.NewClient(&oci.Config{
+// 			Registry: registryUrl,
+// 			Insecure: insecure,
+// 			Timeout:  timeout,
+// 		})
+// 	}
+
+// 	if err != nil {
+// 		return "", nil, fmt.Errorf("failed to initialize OCI client: %w", err)
+// 	}
+
+// 	// Construct full reference with tag
+// 	reference := fmt.Sprintf("%s/%s:%s", registryUrl, repository, tag)
+
+// 	// Pull the image/artifact from OCI registry
+// 	image, _, err := ociClient.PullImage(context.Background(), reference)
+// 	if err != nil {
+// 		return "", nil, fmt.Errorf("failed to pull OCI artifact from %s: %w", reference, err)
+// 	}
+
+// 	// Create temporary directory for extraction
+// 	tempDir, err := os.MkdirTemp("", "margo-oci-pkg-*")
+// 	if err != nil {
+// 		return "", nil, fmt.Errorf("failed to create temporary directory: %w", err)
+// 	}
+
+// 	// Extract image layers to temporary directory
+// 	if err := extractImageToDir(image, tempDir); err != nil {
+// 		os.RemoveAll(tempDir)
+// 		return "", nil, fmt.Errorf("failed to extract OCI artifact: %w", err)
+// 	}
+
+// 	// Load package from extracted directory
+// 	appPackage, err := pm.LoadPackageFromDir(tempDir)
+// 	if err != nil {
+// 		// Clean up on failure
+// 		os.RemoveAll(tempDir)
+// 		return "", nil, fmt.Errorf("failed to load package from extracted OCI artifact: %w", err)
+// 	}
+
+// 	return tempDir, appPackage, nil
+// }
+
+// LoadPackageFromOci loads an application package from an OCI registry. USING ORAS CLI.
 func (pm *PackageManager) LoadPackageFromOci(registryUrl, repository, tag string, username, passwordOrToken string, insecure bool, timeout time.Duration) (pkgPath string, pkg *models.AppPkg, err error) {
-	// Initialize OCI client with authentication
-	var ociClient *oci.Client
-	if username != "" && passwordOrToken != "" {
-		ociClient, err = oci.NewClient(&oci.Config{
-			Registry: registryUrl,
-			Username: username,
-			Password: passwordOrToken,
-			Insecure: insecure,
-			Timeout:  timeout,
-		})
-	} else {
-		ociClient, err = oci.NewClient(&oci.Config{
-			Registry: registryUrl,
-			Insecure: insecure,
-			Timeout:  timeout,
-		})
-	}
+    // Create temporary directory for extraction
+    tempDir, err := os.MkdirTemp("", "margo-oci-pkg-*")
+    if err != nil {
+        return "", nil, fmt.Errorf("failed to create temporary directory: %w", err)
+    }
 
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to initialize OCI client: %w", err)
-	}
+    // Construct OCI reference
+    reference := fmt.Sprintf("%s/%s:%s", registryUrl, repository, tag)
+    
+    // Build ORAS pull command
+    args := []string{"pull", reference, "--plain-http"}
+    
+    // Add authentication if provided
+    if username != "" && passwordOrToken != "" {
+        // Login first
+        loginCmd := exec.Command("oras", "login", registryUrl,
+            "-u", username,
+            "-p", passwordOrToken,
+            "--plain-http")
+        if err := loginCmd.Run(); err != nil {
+            os.RemoveAll(tempDir)
+            return "", nil, fmt.Errorf("failed to login to OCI registry: %w", err)
+        }
+    }
+    
+    // Pull artifact to temp directory
+    pullCmd := exec.Command("oras", args...)
+    pullCmd.Dir = tempDir
+    output, err := pullCmd.CombinedOutput()
+    if err != nil {
+        os.RemoveAll(tempDir)
+        return "", nil, fmt.Errorf("failed to pull OCI artifact: %w, output: %s", err, string(output))
+    }
 
-	// Construct full reference with tag
-	reference := fmt.Sprintf("%s/%s:%s", registryUrl, repository, tag)
+    // Load package from extracted directory
+    appPackage, err := pm.LoadPackageFromDir(tempDir)
+    if err != nil {
+        os.RemoveAll(tempDir)
+        return "", nil, fmt.Errorf("failed to load package from extracted OCI artifact: %w", err)
+    }
 
-	// Pull the image/artifact from OCI registry
-	image, _, err := ociClient.PullImage(context.Background(), reference)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to pull OCI artifact from %s: %w", reference, err)
-	}
-
-	// Create temporary directory for extraction
-	tempDir, err := os.MkdirTemp("", "margo-oci-pkg-*")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-
-	// Extract image layers to temporary directory
-	if err := extractImageToDir(image, tempDir); err != nil {
-		os.RemoveAll(tempDir)
-		return "", nil, fmt.Errorf("failed to extract OCI artifact: %w", err)
-	}
-
-	// Load package from extracted directory
-	appPackage, err := pm.LoadPackageFromDir(tempDir)
-	if err != nil {
-		// Clean up on failure
-		os.RemoveAll(tempDir)
-		return "", nil, fmt.Errorf("failed to load package from extracted OCI artifact: %w", err)
-	}
-
-	return tempDir, appPackage, nil
+    return tempDir, appPackage, nil
 }
+
+
 
 // extractImageToDir extracts all layers of an OCI image to a directory.
 //

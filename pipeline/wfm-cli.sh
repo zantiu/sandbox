@@ -26,7 +26,7 @@ OCI_ORGANIZATION="${OCI_ORGANIZATION:-library}"
 # ----------------------------
 # Utility Functions
 # ----------------------------
-MAESTRO_CLI_PATH="$HOME/symphony/cli"
+MAESTRO_CLI_PATH="$HOME/symphony/cli"  
 
 install_basic_utilities() {
   apt install jq -y
@@ -123,6 +123,9 @@ get_package_upload_request_file_path() {
       sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/custom-otel-helm-app|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
+
       echo $pkg_file ;;
     2)
       OCI_REPO="${REGISTRY_URL}/${OCI_ORGANIZATION}/nginx-helm-app:latest"
@@ -132,6 +135,8 @@ get_package_upload_request_file_path() {
       sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nginx-helm-app|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
       echo $pkg_file ;;
     3)
       OCI_REPO="${REGISTRY_URL}/${OCI_ORGANIZATION}/nextcloud-compose-app:latest"
@@ -141,6 +146,8 @@ get_package_upload_request_file_path() {
       sed -i "s|{{REGISTRY_URL}}|${REGISTRY_URL}|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/nextcloud-compose-app|g" "$pkg_file" 2>/dev/null || true
       sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
+      sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
       echo $pkg_file ;;
     *) 
       echo "" ;;
