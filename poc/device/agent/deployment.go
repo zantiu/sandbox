@@ -422,36 +422,49 @@ func (dm *DeploymentManager) remove(ctx context.Context, deploymentId string) {
 }
 
 func (dm *DeploymentManager) removeHelm(ctx context.Context, deploymentId string, appDeployment sbi.AppDeploymentManifest) error {
-	component := appDeployment.Spec.DeploymentProfile.Components[0]
-	if helmComp, err := component.AsHelmApplicationDeploymentProfileComponent(); err == nil {
-		releaseName := fmt.Sprintf("%s-%s", helmComp.Name, deploymentId[:8])
-		dm.log.Infow("Removing Helm release", "releaseName", releaseName, "deploymentId", deploymentId)
+    // Check if Helm client is available
+    if dm.helmClient == nil {
+        dm.log.Warnw("Helm client not initialized, skipping Helm removal", "deploymentId", deploymentId)
+        return nil // Return nil to allow cleanup to continue
+    }
 
-		if err := dm.helmClient.UninstallChart(ctx, releaseName, ""); err != nil {
-			dm.log.Warnw("Failed to uninstall Helm chart", "releaseName", releaseName, "error", err)
-			return err
-		}
-	}
+    component := appDeployment.Spec.DeploymentProfile.Components[0]
+    if helmComp, err := component.AsHelmApplicationDeploymentProfileComponent(); err == nil {
+        releaseName := fmt.Sprintf("%s-%s", helmComp.Name, deploymentId[:8])
+        dm.log.Infow("Removing Helm release", "releaseName", releaseName, "deploymentId", deploymentId)
 
-	return nil
+        if err := dm.helmClient.UninstallChart(ctx, releaseName, ""); err != nil {
+            dm.log.Warnw("Failed to uninstall Helm chart", "releaseName", releaseName, "error", err)
+            return err
+        }
+    }
+
+    return nil
 }
 
 func (dm *DeploymentManager) removeCompose(ctx context.Context, deploymentId string, appDeployment sbi.AppDeploymentManifest) error {
-	component := appDeployment.Spec.DeploymentProfile.Components[0]
-	if composeComp, err := component.AsComposeApplicationDeploymentProfileComponent(); err == nil {
-		projectName := fmt.Sprintf("%s-%s", strings.ToLower(composeComp.Name), deploymentId[:8])
-		projectName = strings.ReplaceAll(projectName, "_", "-")
+    // Check if Compose client is available
+    if dm.composeClient == nil {
+        dm.log.Warnw("Docker Compose client not initialized, skipping Compose removal", "deploymentId", deploymentId)
+        return nil // Return nil to allow cleanup to continue
+    }
 
-		dm.log.Infow("Removing Docker Compose project", "projectName", projectName, "deploymentId", deploymentId)
+    component := appDeployment.Spec.DeploymentProfile.Components[0]
+    if composeComp, err := component.AsComposeApplicationDeploymentProfileComponent(); err == nil {
+        projectName := fmt.Sprintf("%s-%s", strings.ToLower(composeComp.Name), deploymentId[:8])
+        projectName = strings.ReplaceAll(projectName, "_", "-")
 
-		if err := dm.composeClient.RemoveCompose(ctx, projectName); err != nil {
-			dm.log.Warnw("Failed to remove Docker Compose project", "projectName", projectName, "error", err)
-			return err
-		}
-	}
+        dm.log.Infow("Removing Docker Compose project", "projectName", projectName, "deploymentId", deploymentId)
 
-	return nil
+        if err := dm.composeClient.RemoveCompose(ctx, projectName); err != nil {
+            dm.log.Warnw("Failed to remove Docker Compose project", "projectName", projectName, "error", err)
+            return err
+        }
+    }
+
+    return nil
 }
+
 
 // Helper function to convert parameters to environment variables
 func (dm *DeploymentManager) convertParametersToEnvVars(params map[string]interface{}, componentName string) map[string]string {
