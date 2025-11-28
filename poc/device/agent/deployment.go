@@ -175,55 +175,68 @@ func (dm *DeploymentManager) reconcileDeployment(deploymentId string) {
 }
 
 func (dm *DeploymentManager) deployOrUpdate(ctx context.Context, deploymentId string, desiredState database.AppDeploymentState) {
-	dm.database.SetPhase(deploymentId, "DEPLOYING", "Starting deployment")
+    dm.database.SetPhase(deploymentId, "DEPLOYING", "Starting deployment")
 
-	// Use the AppDeploymentManifest directly instead of converting
-	appDeployment := desiredState.AppDeploymentManifest
+	// Use the AppDeploymentManifest directly instead of converting															
+    appDeployment := desiredState.AppDeploymentManifest
 
-	// Get component
-	if len(appDeployment.Spec.DeploymentProfile.Components) == 0 {
-		// Set current state even on failure
-		failedState := desiredState
-		failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
-		dm.database.SetCurrentState(deploymentId, failedState)
-		dm.database.SetPhase(deploymentId, "FAILED", "No components found")
-		return
-	}
+	// Get component			 
+    if len(appDeployment.Spec.DeploymentProfile.Components) == 0 {
+		// Set current state even on failure							  
+        failedState := desiredState
+        failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
+        dm.database.SetCurrentState(deploymentId, failedState)
+        dm.database.SetPhase(deploymentId, "FAILED", "No components found")
+        return
+    }
 
-	// Determine deployment type and route accordingly
-	profileType := appDeployment.Spec.DeploymentProfile.Type
-	var err error
+												   
+    profileType := appDeployment.Spec.DeploymentProfile.Type
+    var err error
 
-	switch profileType {
-	case sbi.HelmV3:
-		err = dm.deployOrUpdateHelm(ctx, deploymentId, appDeployment)
-	case sbi.Compose:
-		err = dm.deployOrUpdateCompose(ctx, deploymentId, appDeployment)
-	default:
-		// Set current state on unsupported type
-		failedState := desiredState
-		failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
-		dm.database.SetCurrentState(deploymentId, failedState)
-		dm.database.SetPhase(deploymentId, "FAILED", fmt.Sprintf("Unsupported deployment type: %s", profileType))
-		return
-	}
+    switch profileType {
+    case sbi.HelmV3:
+        //  Check if Helm client is available
+        if dm.helmClient == nil {
+            err = fmt.Errorf("Helm client not initialized (device may not support Helm deployments)")
+        } else {
+            err = dm.deployOrUpdateHelm(ctx, deploymentId, appDeployment)
+        }
+        
+    case sbi.Compose:
+        // Check if Compose client is available
+        if dm.composeClient == nil {
+            err = fmt.Errorf("Docker Compose client not initialized (device may not support Compose deployments)")
+        } else {
+            err = dm.deployOrUpdateCompose(ctx, deploymentId, appDeployment)
+        }
+        
+    default:
+		// Set current state on unsupported type								  
+        failedState := desiredState
+        failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
+        dm.database.SetCurrentState(deploymentId, failedState)
+        dm.database.SetPhase(deploymentId, "FAILED", fmt.Sprintf("Unsupported deployment type: %s", profileType))
+        return
+    }
 
-	// Handle deployment errors properly
-	if err != nil {
-		failedState := desiredState
-		failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
-		dm.database.SetCurrentState(deploymentId, failedState)
-		dm.database.SetPhase(deploymentId, "FAILED", fmt.Sprintf("%s operation failed: %v", profileType, err))
-		return
-	}
+    // Handle deployment errors
+    if err != nil {
+        failedState := desiredState
+        failedState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateFailed
+        dm.database.SetCurrentState(deploymentId, failedState)
+        dm.database.SetPhase(deploymentId, "FAILED", fmt.Sprintf("%s operation failed: %v", profileType, err))
+        return
+    }
 
-	// Update current state on success
-	currentState := desiredState
-	currentState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateInstalled
-	dm.database.SetCurrentState(deploymentId, currentState)
-	dm.database.SetPhase(deploymentId, "RUNNING", "Deployment successful")
-	dm.log.Infow("Deployment successful", "appId", deploymentId)
+    // Success
+    currentState := desiredState
+    currentState.Status.Status.State = sbi.DeploymentStatusManifestStatusStateInstalled
+    dm.database.SetCurrentState(deploymentId, currentState)
+    dm.database.SetPhase(deploymentId, "RUNNING", "Deployment successful")
+    dm.log.Infow("Deployment successful", "appId", deploymentId)
 }
+
 
 func (dm *DeploymentManager) deployOrUpdateHelm(ctx context.Context, deploymentId string, appDeployment sbi.AppDeploymentManifest) error {
 	component := appDeployment.Spec.DeploymentProfile.Components[0]
