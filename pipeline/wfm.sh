@@ -56,60 +56,6 @@ success() {
     echo "✅ $1"
 }
 
-error() {
-    echo "❌ Error: $1" >&2
-    exit 1
-}
-
-validate_passwordless_sudo() {
-  local username="${1:-$(whoami)}"
-  local exit_code=0
-  
-  echo "Validating passwordless for user: $username"
-  echo "==============================================="
-  
-  echo -n "Test 1 - Basic access: "
-  if sudo -n true 2>/dev/null; then
-      echo "✓ PASS"
-  else
-      echo "✗ FAIL"
-      exit_code=1
-  fi
-  
-  echo -n "Test 2 - Command execution: "
-  if sudo -n whoami >/dev/null 2>&1; then
-      echo "✓ PASS"
-  else
-      echo "✗ FAIL"
-      exit_code=1
-  fi
-  
-  echo -n "Test 3 - File access: "
-  if sudo -n test -r /etc/shadow 2>/dev/null; then
-      echo "✓ PASS"
-  else
-      echo "✗ FAIL"
-      exit_code=1
-  fi
-  
-  echo -n "Test 4 - Config verification: "
-  if grep -q "$username.*NOPASSWD\|%.*NOPASSWD" /etc/sudoers /etc/sudoers.d/* 2>/dev/null; then
-      echo "✓ PASS"
-  else
-      echo "✗ FAIL"
-      exit_code=1
-  fi
-  
-  echo "==============================================="
-  if [ $exit_code -eq 0 ]; then
-      echo "✓ All tests passed - Passwordless is properly configured"
-  else
-      echo "✗ Some tests failed - Passwordless may not be fully configured"
-  fi
-  
-  return $exit_code
-}
-
 
 # ----------------------------
 # Installation Functions
@@ -230,14 +176,6 @@ install_docker_compose() {
       sleep 1
     fi
   done 
-}
-
-
-install_rust() {
-  cd "$HOME"
-  echo 'Installing Rust...';
-  curl --proto "=https" --tlsv1.2 -sSf "https://sh.rustup.rs" | sh -s -- -y;
-  source $HOME/.cargo/env
 }
 
 
@@ -492,81 +430,8 @@ push_custom_otel_to_oci() {
 
 
 # ----------------------------
-# OCI Registry Helper Functions (Optional but useful)
-# ----------------------------
-
-list_oci_app_packages() {
-  echo "📋 Listing application packages in OCI Registry..."
-  
-  # Login to Harbor
-  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
-    -u "$REGISTRY_USER" --password-stdin --plain-http  # Changed from --insecure
-  
-  # List repositories using Harbor API
-  echo "Querying Harbor API for repositories..."
-  curl -s -u "${REGISTRY_USER}:${REGISTRY_PASS}" \
-    "http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/api/v2.0/projects/${OCI_ORGANIZATION}/repositories" \
-    --insecure 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo "⚠️ Failed to list repositories"
-}
-
-verify_oci_package() {
-  local repository="$1"
-  local tag="${2:-latest}"
-  
-  echo "🔍 Verifying OCI package: ${repository}:${tag}..."
-  
-  # Login to Harbor
-  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
-    -u "$REGISTRY_USER" --password-stdin --plain-http  # Changed from --insecure
-  
-  # Get manifest
-  oras manifest fetch "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    --plain-http 2>/dev/null | jq '.' || echo "❌ Failed to fetch manifest"  # Changed from --insecure
-}
-
-
-# ----------------------------
-# Symphony Build Functions
-# ----------------------------
-build_symphony_api() {
-  echo 'Building Symphony API...'
-  cd "$HOME/symphony/api"
-  export PATH=$PATH:/usr/local/go/bin
-  go mod tidy
-  go build -o symphony-api .
-  echo 'Symphony API build completed'
-}
-
-build_symphony_ui() {
-  echo 'Building Symphony UI...'
-  cd "$HOME/symphony/api"
-  npm install
-  npm run build
-  echo 'Symphony UI build completed'
-}
-
-# ----------------------------
 # Build Functions
 # ----------------------------
-build_rust() {
-  source "$HOME/.cargo/env"; 
-  RUST_DIR="$HOME/symphony/api/pkg/apis/v1alpha1/providers/target/rust"; 
-  if [ -d "$RUST_DIR" ]; then 
-    cd "$RUST_DIR"; 
-    cargo build --release;
-  fi
-}
-
-build_symphony_api_server() {
- git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/";
-  go env -w GOPRIVATE="github.com/margo/*";
-  GO_DIR="$HOME/symphony/api";
-  if [ -d "$GO_DIR" ]; then
-    export LD_LIBRARY_PATH="$HOME/symphony/api/pkg/apis/v1alpha1/providers/target/rust/target/release";
-    cd "$GO_DIR";
-    go build -o symphony-api;
-  fi
-}
 
 build_maestro_cli() {
   CLI_DIR="$HOME/symphony/cli";
@@ -577,19 +442,6 @@ build_maestro_cli() {
   fi
 }
 
-verify_symphony_api() {
-  file "$HOME/symphony/api/symphony-api";
-  ls -l "$HOME/symphony/api/symphony-api";
-}
-
-start_symphony_api() {
-  cd "$HOME/symphony/api" || exit 1
-  echo 'Starting Symphony API...'
-  nohup ./symphony-api -c ./symphony-api-margo.json -l Debug > $HOME/symphony-api.log 2>&1 &
-  sleep 5
-  echo '--- Symphony API logs ---'
-  tail -n 50 $HOME/symphony-api.log
-}
 
 enable_tls_in_symphony_api() {
   cd $HOME
@@ -1054,7 +906,7 @@ uninstall_prerequisites() {
 
 
 cleanup_symphony_builds() {
-  echo "2. Cleaning up Symphony builds..."
+  echo "1. Cleaning up Symphony builds..."
   
   # Remove built binaries
   [ -f "$HOME/symphony/api/symphony-api" ] && rm -f "$HOME/symphony/api/symphony-api" && echo "✅ Removed symphony-api binary"
@@ -1075,25 +927,9 @@ cleanup_symphony_builds() {
   fi
 }
 
-stop_harbor_service() {
-  echo "10. Stopping and removing Harbor service..."
-  
-  # Stop Harbor container
-  if docker ps --format '{{.Names}}' | grep -q harbor; then
-    cd "$HOME/dev-repo/pipeline/harbor"
-    docker compose down --remove-orphans --volumes 2>/dev/null && echo "✅ Stopped Harbor containers"
-    sleep 10
-  fi
-  
-  # Remove Harbor compose directory
-  [ -d "$HOME/dev-repo/pipeline/harbor" ] && rm -rf "$HOME/dev-repo/pipeline/harbor" && echo "✅ Removed Harbor compose directory"
-  
-  # Remove Harbor images
-  # docker images | grep harbor | awk '{print $3}' | xargs -r docker rmi -f && echo "✅ Removed Harbor images"
-}
 
 remove_cloned_repositories() {
-  echo "10. Removing cloned repositories..."
+  echo "2. Removing cloned repositories..."
   
   # Remove dev-repo
   [ -d "$HOME/dev-repo" ] && sudo rm -rf "$HOME/dev-repo" && echo "✅ Removed dev-repo"
@@ -1103,7 +939,7 @@ remove_cloned_repositories() {
 }
 
 uninstall_rust() {
-  echo "11. Uninstalling Rust..."
+  echo "3. Uninstalling Rust..."
   
   if [ -d "$HOME/.cargo" ]; then
     # Remove Rust installation
@@ -1122,7 +958,7 @@ uninstall_rust() {
 }
 
 uninstall_docker_compose() {
-  echo "12. Uninstalling Docker and Docker Compose..."
+  echo "4. Uninstalling Docker and Docker Compose..."
   
   # Stop Docker daemon
   systemctl stop docker 2>/dev/null && echo "✅ Stopped Docker daemon"
@@ -1141,7 +977,7 @@ uninstall_docker_compose() {
 }
 
 uninstall_go() {
-  echo "13. Uninstalling Go..."
+  echo "5. Uninstalling Go..."
   
   # Remove Go installation
   [ -d "/usr/local/go" ] && rm -rf "/usr/local/go" && echo "✅ Removed Go from /usr/local/go"
@@ -1159,7 +995,7 @@ uninstall_go() {
 }
 
 cleanup_basic_utilities() {
-  echo "14. Final cleanup of basic utilities..."
+  echo "6. Final cleanup of basic utilities..."
   
   # Remove temporary files
   rm -f /tmp/go.tar.gz /tmp/resp.json /tmp/headers.txt get-docker.sh 2>/dev/null && echo "✅ Removed temporary files"
@@ -1175,85 +1011,6 @@ cleanup_basic_utilities() {
   echo "🔄 Please restart your shell or run 'source ~/.bashrc' to apply PATH changes"
 }
 
-download_nextcloud_container_images_from_external() {
-  echo "Downloading Nextcloud container images from external repo..."
-  
-  # Pull images from external registries
-  docker pull nextcloud:apache
-  docker pull redis:alpine
-  docker pull mariadb:10.5
-
-  # Docker retag them to be pushed to harbor registry
-  docker tag nextcloud:apache "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/nextcloud:apache"
-  docker tag redis:alpine "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/redis:alpine"
-  docker tag mariadb:10.5 "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/mariadb:10.5"
-
-  # Docker login to the harbor registry
-  echo "Logging into Harbor registry..."
-  docker login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" -u admin -p Harbor12345
-
-  # Docker push them to the harbor registry
-  echo "Pushing Nextcloud images to Harbor..."
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/nextcloud:apache"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/redis:alpine"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/mariadb:10.5"
-  
-  echo "✅ Nextcloud images successfully pushed to Harbor"
-}
-
-download_nginx_container_images_from_external() {
-  echo "Downloading Nginx ingress controller images from external source..."
-  
-  # Pull images from registry.k8s.io
-  docker pull registry.k8s.io/ingress-nginx/controller:v1.13.2
-  docker pull registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.2
-  docker pull registry.k8s.io/defaultbackend-amd64:1.5
-
-  # Docker retag them to be pushed to harbor registry
-  docker tag registry.k8s.io/ingress-nginx/controller:v1.13.2 "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-controller:v1.13.2"
-  docker tag registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.2 "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-kube-webhook-certgen:v1.6.2"
-  docker tag registry.k8s.io/defaultbackend-amd64:1.5 "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/defaultbackend-amd64:1.5"
-
-  # Docker login to the harbor registry (if not already logged in)
-  echo "Ensuring Harbor registry login..."
-  docker login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" -u admin -p Harbor12345
-
-  # Docker push them to the harbor registry
-  echo "Pushing Nginx ingress images to Harbor..."
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-controller:v1.13.2"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-kube-webhook-certgen:v1.6.2"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/defaultbackend-amd64:1.5"
-  
-  echo "✅ Nginx ingress images successfully pushed to Harbor"
-}
-
-download_otel_container_images_from_external() {
-  echo "Downloading Otel images from external source..."
-  
-  # Pull images from registry.k8s.io
-  docker pull ghcr.io/open-telemetry/demo:latest
-  docker pull otel/opentelemetry-collector-contrib:latest
-  docker pull ghcr.io/open-feature/flagd:v0.12.8
-  docker pull valkey/valkey:7.2-alpine
-
-  # Docker retag them to be pushed to harbor registry
-  docker tag ghcr.io/open-telemetry/demo:latest "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/otel-demo:latest"
-  docker tag otel/opentelemetry-collector-contrib:latest "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/otel-contrib:latest"
-  docker tag ghcr.io/open-feature/flagd:v0.12.8 "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/flagd:v0.12.8"  
-  docker tag valkey/valkey:7.2-alpine "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/valkey:7.2-alpine"
-
-  # Docker login to the harbor registry (if not already logged in)
-  echo "Ensuring Harbor registry login..."
-  docker login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" -u admin -p Harbor12345
-
-  # Docker push them to the harbor registry
-  echo "Pushing otel images to Harbor..."
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/otel-demo:latest"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/otel-contrib:latest"
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/flagd:v0.12.8"  
-  docker push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/valkey:7.2-alpine" 
-  echo "✅ otel images successfully pushed to Harbor"
-}
 
 build_custom_otel_container_images() {
   echo "Building/Downloading Custom Otel images..."
@@ -1309,30 +1066,6 @@ build_custom_otel_container_images() {
   
 }
 
-
-
-
-
-# Optional: Cleanup function to remove local images after pushing
-cleanup_local_images() {
-  echo "Cleaning up local images..."
-  
-  # Remove original images
-  docker rmi nextcloud:apache redis:alpine mariadb:10.5 2>/dev/null || true
-  docker rmi registry.k8s.io/ingress-nginx/controller:v1.13.2 2>/dev/null || true
-  docker rmi registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.2 2>/dev/null || true
-  docker rmi registry.k8s.io/defaultbackend-amd64:1.5 2>/dev/null || true
-  
-  # Remove retagged images
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/nextcloud:apache" 2>/dev/null || true
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/redis:alpine" 2>/dev/null || true
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/mariadb:10.5" 2>/dev/null || true
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-controller:v1.13.2" 2>/dev/null || true
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/ingress-nginx-kube-webhook-certgen:v1.6.2" 2>/dev/null || true
-  docker rmi "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/defaultbackend-amd64:1.5" 2>/dev/null || true
-  
-  echo "✅ Local images cleaned up"
-}
 
 # Alternative simpler version without jq dependency
 add_insecure_registry_to_daemon() {
@@ -1464,7 +1197,7 @@ start_symphony() {
   echo "Starting Symphony API server on..."
   export PATH="$PATH:/usr/local/go/bin";
   # Build phase
-  build_maestro_cli   # this is required for WFM CLI operations
+  build_maestro_cli   
   # verify_symphony_api
   enable_tls_in_symphony_api
   start_symphony_api_container
@@ -1582,16 +1315,7 @@ stop_symphony() {
 
 # Collect certificate information
 collect_certs_info() {
-    # read -p "Common Name (FQDN): " CN
-    # read -p "Country (2 letters, default: US): " C
-    # read -p "State (default: CA): " ST
-    # read -p "City (default: San Francisco): " L
-    # read -p "Organization (default: MyCompany): " O
-    # read -p "Email (default: admin@example.com): " EMAIL
-    # read -p "Validity days (default: 365): " DAYS
-    # read -p "Additional domains (comma-separated, optional): " SAN_DOMAINS
-    # read -p "Additional IPs (comma-separated, optional): " SAN_IPS
-
+    echo "Collecting certificate information..."
     CN="${EXPOSED_SYMPHONY_IP:-localhost}"
     C="IN"
     ST="GGN"
@@ -1601,15 +1325,7 @@ collect_certs_info() {
     DAYS="365"
     SAN_DOMAINS="${EXPOSED_SYMPHONY_IP:-localhost}"
     SAN_IPS="${EXPOSED_SYMPHONY_IP:-localhost}"
-    
-    # # Set defaults
-    # C=${C:-IN}
-    # ST=${ST:-GGN}
-    # L=${L:-"Some ABC Location"}
-    # O=${O:-Margo}
-    # EMAIL=${EMAIL:-admin@example.com}
-    # DAYS=${DAYS:-365}
-    
+       
     echo "Using certificate defaults with CN: $CN"
 }
 
