@@ -897,10 +897,13 @@ uninstall_prerequisites() {
   
   # Step 5: Uninstall Go
   uninstall_go
+
+  # Step 6: Stop harbor service
+  stop_harbor_service
   
-  # Step 6: Remove basic utilities and cleanup
+  # Step 7: Remove basic utilities and cleanup
   cleanup_basic_utilities
-  
+ 
   echo "Complete uninstallation finished"
 }
 
@@ -994,8 +997,25 @@ uninstall_go() {
   echo "✅ Removed Go installation and environment variables"
 }
 
+stop_harbor_service() {
+  echo "6. Stopping and removing Harbor service..."
+
+  # Stop Harbor container
+  if docker ps --format '{{.Names}}' | grep -q harbor; then
+    cd "$HOME/dev-repo/pipeline/harbor"
+    docker compose down --remove-orphans --volumes 2>/dev/null && echo "✅ Stopped Harbor containers"
+    sleep 10
+  fi
+
+  # Remove Harbor compose directory
+  [ -d "$HOME/dev-repo/pipeline/harbor" ] && rm -rf "$HOME/dev-repo/pipeline/harbor" && echo "✅ Removed Harbor compose directory"
+
+  # Remove Harbor images
+  # docker images | grep harbor | awk '{print $3}' | xargs -r docker rmi -f && echo "✅ Removed Harbor images"
+}
+
 cleanup_basic_utilities() {
-  echo "6. Final cleanup of basic utilities..."
+  echo "7. Final cleanup of basic utilities..."
   
   # Remove temporary files
   rm -f /tmp/go.tar.gz /tmp/resp.json /tmp/headers.txt get-docker.sh 2>/dev/null && echo "✅ Removed temporary files"
