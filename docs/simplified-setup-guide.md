@@ -288,10 +288,7 @@ sudo -E bash ./device-agent.sh
 
    **For K3s Device VM:**
    ```bash
-   # First, find the pod name
-   kubectl get pods -n default | grep device-agent
-   
-   # Then view the logs (replace <pod-name> with actual pod name from above)
+   # View the logs (replace <pod-name> with actual pod name from above using #7)
    kubectl logs -f <pod-name> -n default
    ```
    Example: `kubectl logs -f device-agent-deploy-7d8f9c5b6-xyz12 -n default`
