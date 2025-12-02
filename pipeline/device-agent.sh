@@ -241,6 +241,65 @@ setup_k3s() {
   verify_k3s_status
   setup_kubeconfig
 }
+
+install_vim() {
+  echo "[INFO] Checking if Vim editor is installed..."
+  if command -v vim >/dev/null 2>&1; then
+    echo "[INFO] Vim is already installed."
+    return
+  fi
+
+  echo "[INFO] Installing Vim..."
+  if command -v apt >/dev/null 2>&1; then
+    sudo apt update -y
+    sudo apt install -y vim
+  else
+    sudo yum install -y vim || sudo dnf install -y vim
+  fi
+
+  echo "[SUCCESS] Vim installed and ready to use."
+}
+
+
+install_and_enable_ssh() {
+  echo "[INFO] Checking OS type..."
+  
+  # Detect package manager
+  if command -v apt >/dev/null 2>&1; then
+    OS="debian"
+    echo $OS
+  elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
+    OS="rhel"
+    echo $OS
+  else
+    echo "[ERROR] Unsupported OS. Only Debian/Ubuntu & RHEL/CentOS supported."
+    return 1
+  fi
+
+  echo "[INFO] Installing OpenSSH Server..."
+  if [ "$OS" = "debian" ]; then
+    sudo apt update -y
+    sudo apt install -y openssh-server
+  else
+    sudo yum install -y openssh-server || sudo dnf install -y openssh-server
+  fi
+
+  echo "[INFO] Enabling and starting SSH service..."
+  UNIT=$(systemctl list-unit-files | awk '/^ssh\.service/ {print "ssh"} /^sshd\.service/ {print "sshd"}' | head -n1)
+
+  if [ -z "$UNIT" ]; then
+    echo "[ERROR] SSH service unit not found."
+    return 1
+  fi
+
+  sudo systemctl enable "$UNIT"
+  sudo systemctl restart "$UNIT"
+
+  echo "[INFO] Verifying SSH status:"
+  sudo sudo systemctl status ssh --no-pager || sudo systemctl status sshd
+  echo "[SUCCESS] SSH service installed and running."
+}
+
 #-----------------------------------------------------------------
 # Device Agent Runtime Configuration update based on Docker or K8s
 #-----------------------------------------------------------------
@@ -727,6 +786,8 @@ install_prerequisites() {
   echo "Installing prerequisites: k3s and others ..."
   validate_pre_required_vars
   install_go
+  install_vim
+  install_and_enable_ssh
   install_basic_utilities
   install_docker_compose_v2 
   clone_dev_repo
