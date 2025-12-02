@@ -1237,6 +1237,8 @@ start_symphony_api_container(){
         return 1
     fi
     
+    git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/";
+    go env -w GOPRIVATE="github.com/margo/*";
     echo "Using GitHub credentials for user: $GITHUB_USER"
 
     # Stop and remove existing container if present
