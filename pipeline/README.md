@@ -5,7 +5,7 @@ Scripts to set up a complete WFM environment with Symphony API, device agents, a
 
 ## 📋 Prerequisites
 
-- [ Ubuntu/Debian-based VM requirements](../docs/deploy.md#vm-requirements)
+- Version ubuntu-24.04.3-desktop-amd64 [ Ubuntu/Debian-based VM requirements](../docs/deploy.md#vm-requirements) 
 - Internet connectivity.
 - GitHub account with access to [MARGO Development Repository](https://github.com/margo/dev-repo) and [Forked Symphony Repository](https://github.com/margo/symphony) under margo organization.
 - GitHub personal access token (GITHUB_TOKEN).
