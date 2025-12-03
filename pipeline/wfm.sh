@@ -21,8 +21,10 @@ EXPOSED_HARBOR_PORT="${EXPOSED_HARBOR_PORT:-8081}"
 EXPOSED_SYMPHONY_IP="${EXPOSED_SYMPHONY_IP:-127.0.0.1}"
 EXPOSED_SYMPHONY_PORT="${EXPOSED_SYMPHONY_PORT:-8082}"
 
-#--- device node IP (can be overridden via env) for prometheus to scrape metrics 
-DEVICE_NODE_IP="${DEVICE_NODE_IP:-127.0.0.1}"
+#--- device node IPs (can be overridden via env) for prometheus to scrape metrics
+# Format: "IP1:PORT1,IP2:PORT2" or just "IP1,IP2" (defaults to port 30999 for k3s)
+DEVICE_NODE_IPS="${DEVICE_NODE_IPS:-127.0.0.1:30999}"
+
 
 
 #--- Registry settings (can be overridden via env)
@@ -534,7 +536,32 @@ create_observability_namespace() {
 
 install_prometheus() {
   cd "$HOME/dev-repo/pipeline/observability"
-  echo "📡 Setting up Prometheus to expose metrics for OTEL Collector..."
+  echo "📡 Setting up Prometheus to scrape metrics from multiple devices..."
+
+  # Parse DEVICE_NODE_IPS and build targets array
+  TARGETS_ARRAY="["
+  if [ -n "$DEVICE_NODE_IPS" ]; then
+    IFS=',' read -ra DEVICES <<< "$DEVICE_NODE_IPS"
+    
+    for i in "${!DEVICES[@]}"; do
+      device=$(echo "${DEVICES[$i]}" | xargs)
+      
+      # Check if port is specified
+      if [[ "$device" == *":"* ]]; then
+        TARGET="'${device}'"
+      else
+        TARGET="'${device}:30999'"
+      fi
+      
+      # Add comma separator except for last item
+      if [ $i -eq $((${#DEVICES[@]} - 1)) ]; then
+        TARGETS_ARRAY="${TARGETS_ARRAY}${TARGET}"
+      else
+        TARGETS_ARRAY="${TARGETS_ARRAY}${TARGET}, "
+      fi
+    done
+  fi
+  TARGETS_ARRAY="${TARGETS_ARRAY}]"
 
   cat <<EOF > prometheus-values.yaml
 server:
@@ -553,7 +580,7 @@ server:
       scrape_configs:
         - job_name: 'otel-collector'
           static_configs:
-            - targets: ['${DEVICE_NODE_IP}:30999']
+            - targets: ${TARGETS_ARRAY}
 EOF
 
   helm repo remove prometheus-community || true
@@ -566,14 +593,15 @@ EOF
 
   echo "✅ Prometheus setup complete!"
   echo "📊 Prometheus UI: NodePort 30900"
-  echo "📡 Metrics exposed at ${DEVICE_NODE_IP}:30999"
+  echo "📡 Monitoring devices: $DEVICE_NODE_IPS"
 
   patch_prometheus_configmap
 }
 
+
 patch_prometheus_configmap() {
   cd "$HOME/dev-repo/pipeline/observability"
-  echo "🛠 Applying Prometheus ConfigMap with DEVICE_NODE_IP..."
+  echo "🛠 Applying Prometheus ConfigMap with device targets..."
 
   CM_SOURCE="collector-scrape-cm-change.txt"
   CM_TARGET="collector-scrape-cm-change.yaml"
@@ -583,7 +611,35 @@ patch_prometheus_configmap() {
     exit 1
   fi
 
-  sed "s|__DEVICE_NODE_IP__|${DEVICE_NODE_IP}|g" "$CM_SOURCE" > "$CM_TARGET"
+  # Build targets array from DEVICE_NODE_IPS
+  TARGETS_ARRAY="["
+  if [ -n "$DEVICE_NODE_IPS" ]; then
+    IFS=',' read -ra DEVICES <<< "$DEVICE_NODE_IPS"
+    
+    for i in "${!DEVICES[@]}"; do
+      device=$(echo "${DEVICES[$i]}" | xargs)
+      
+      # Check if port is specified
+      if [[ "$device" == *":"* ]]; then
+        TARGET="'${device}'"
+      else
+        TARGET="'${device}:30999'"
+      fi
+      
+      # Add comma separator except for last item
+      if [ $i -eq $((${#DEVICES[@]} - 1)) ]; then
+        TARGETS_ARRAY="${TARGETS_ARRAY}${TARGET}"
+      else
+        TARGETS_ARRAY="${TARGETS_ARRAY}${TARGET}, "
+      fi
+    done
+  fi
+  TARGETS_ARRAY="${TARGETS_ARRAY}]"
+
+  echo "📡 Device targets: $TARGETS_ARRAY"
+  
+  # Replace placeholder with targets array
+  sed "s|__DEVICE_TARGETS__|${TARGETS_ARRAY}|g" "$CM_SOURCE" > "$CM_TARGET"
 
   echo "📄 Applying ConfigMap with force replace..."
   
@@ -608,6 +664,7 @@ patch_prometheus_configmap() {
   rm -f "$CM_TARGET"
   echo "✅ ConfigMap applied and temporary file removed."
 }
+
 
 
 install_loki() {

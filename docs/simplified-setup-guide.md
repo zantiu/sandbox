@@ -690,6 +690,10 @@ If you want to remove everything and start over:
    sudo -E bash ./wfm.sh  # Type 2 and press Enter - Option 2: PreRequisites Cleanup
    sudo -E bash ./wfm.sh  # Type 6 and press Enter - Option 6: ObservabilityStack Stop
    ```
+3. **Remove Symphony image.(Recommended - Only when you want to verify new features from Margo branch/tag, Not to be done for every clean-up)**
+   ```bash
+   docker rmi margo-symphony-api:latest
+   ```
 
 ### On Device VMs:
 
@@ -705,6 +709,11 @@ If you want to remove everything and start over:
    sudo -E bash ./device-agent.sh  # Type 9 - otel-collector-promtail-uninstallation
    sudo -E bash ./device-agent.sh  # Type 10 - cleanup-residual
    ```
+3. **Remove Device Agent image.(Recommended - Only when you want to verify new features from Margo branch/tag, Not to be done for every clean-up)**
+   ```bash
+   docker rmi margo.org/device-agent:latest
+   ```
+   
 
 ---
 

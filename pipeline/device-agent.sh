@@ -18,6 +18,9 @@ DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-dev-sprint-6}"
 WFM_IP="${WFM_IP:-127.0.0.1}"
 WFM_PORT="${WFM_PORT:-8082}"
 
+# Device type configuration (can be overridden via env)
+DEVICE_TYPE="${DEVICE_TYPE:-k3s}"  # Options: "k3s" or "docker"
+
 #--- Registry settings (can be overridden via env)
 REGISTRY_URL="${REGISTRY_URL:-http://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}}"
 REGISTRY_USER="${REGISTRY_USER:-admin}"
@@ -52,19 +55,23 @@ validate_start_required_vars() {
 # Go Installation Functions
 # ----------------------------
 install_basic_utilities() {
-  # apt update && apt install curl -y
   sudo apt update -y
-  sudo apt install -y curl git
-  echo "Installation complete: curl and git are installed."
+  sudo apt install -y curl git dos2unix build-essential gcc libc6-dev
+  echo "Installation complete: curl, git, and build tools installed."
 
-  INSTALL_HELM_V3_15_1=true
-  HELM_VERSION="3.15.1"
-  HELM_TAR="helm-v${HELM_VERSION}-linux-amd64.tar.gz"
-  HELM_BIN_DIR="/usr/local/bin"
-
-  apt update && apt install -y curl dos2unix build-essential gcc libc6-dev
-  install_helm
+  # Only install Helm for k3s device type
+  if [ "$DEVICE_TYPE" = "k3s" ]; then
+    INSTALL_HELM_V3_15_1=true
+    HELM_VERSION="3.15.1"
+    HELM_TAR="helm-v${HELM_VERSION}-linux-amd64.tar.gz"
+    HELM_BIN_DIR="/usr/local/bin"
+    install_helm
+    echo "✅ Helm installed for k3s device"
+  else
+    echo "ℹ️ Skipping Helm installation for docker device type"
+  fi
 }
+
 
 install_docker_compose_v2() {
 
@@ -128,30 +135,6 @@ install_helm() {
         rm "${HELM_TAR}"
         rm -rf linux-amd64/
     fi
-  fi
-}
-
-configure_helm_registries() {
-  echo "Configuring Helm registry authentication..."
-  
-  # Login to ghcr.io if GitHub credentials are available
-  if [ -n "$GITHUB_USER" ] && [ -n "$GITHUB_TOKEN" ]; then
-    echo "Authenticating Helm with GitHub Container Registry..."
-    echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_USER" --password-stdin
-    
-    if [ $? -eq 0 ]; then
-      echo "✅ Helm authenticated with ghcr.io"
-    else
-      echo "⚠️ Failed to authenticate with ghcr.io (continuing anyway)"
-    fi
-  else
-    echo "⚠️ GitHub credentials not set, skipping ghcr.io authentication"
-    echo "   Set GITHUB_USER and GITHUB_TOKEN to enable external registry access"
-  fi
-  
-  # Verify Helm config was created
-  if [ -f "$HOME/.config/helm/registry/config.json" ]; then
-    echo "✅ Helm registry config created at $HOME/.config/helm/registry/config.json"
   fi
 }
 
@@ -499,18 +482,7 @@ build_start_device_agent_k3s_service() {
         echo "⚠️ Certificates not found in $HOME/certs, skipping TLS secret creation"
     fi
 
-    # Step 5.1: Create Helm registry config secret (For ghcr.io access)
-    if [ -f "$HOME/.config/helm/registry/config.json" ]; then
-        echo "Creating Helm registry config secret..."
-        kubectl delete secret helm-registry-config --namespace=default 2>/dev/null || true
-        
-        kubectl create secret generic helm-registry-config \
-            --from-file=config.json="$HOME/.config/helm/registry/config.json" \
-            --namespace=default
-        
-        echo "✅ Helm registry config secret created"
-    fi
-    
+     
 														
     # Step 6: Clean up old resources 
     echo "Cleaning up any existing resources..."
@@ -791,9 +763,12 @@ install_prerequisites() {
   install_basic_utilities
   install_docker_compose_v2 
   clone_dev_repo
-  setup_k3s
-  add_container_registry_mirror_to_k3s
-  configure_helm_registries
+  # Only install k3s for k3s device type
+  if [ "$DEVICE_TYPE" = "k3s" ]; then
+    setup_k3s
+    add_container_registry_mirror_to_k3s
+  fi
+  
   echo 'prerequisites installation completed.'
 }
 
@@ -1022,6 +997,149 @@ create_observability_namespace() {
     fi
 }
 
+install_otel_collector_promtail_docker() {
+  echo "Installing OTEL Collector and Promtail as Docker containers..."
+  cd "$HOME/dev-repo/pipeline/observability" || { echo '❌ observability dir missing'; exit 1; }
+  
+  # Create docker-compose.yml for observability stack
+  cat <<EOF > docker-compose-observability.yml
+version: '3.8'
+
+services:
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    network_mode: host
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel/config.yml
+    command: --config=/etc/otel/config.yml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8899:8899"   # Prometheus metrics
+    restart: unless-stopped
+    network_mode: host
+EOF
+
+  # Create Promtail config
+  cat <<EOF > promtail-config.yml
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://${WFM_IP}:32100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: dockerlogs
+          __path__: /var/lib/docker/containers/*/*.log
+EOF
+
+  # Create OTEL Collector config
+  cat <<EOF > otel-collector-config.yml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      filesystem:
+      load:
+      network:
+      processes:
+      paging:
+
+exporters:
+  otlp:
+    endpoint: ${WFM_IP}:30417
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: "0.0.0.0:8899"
+
+  debug:
+    verbosity: detailed
+
+processors:
+  batch: {}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp, debug]
+
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [batch]
+      exporters: [prometheus, debug]
+EOF
+
+  # Start the observability stack
+  docker compose -f docker-compose-observability.yml up -d
+  
+  echo "✅ OTEL Collector and Promtail installed as Docker containers"
+  echo "📡 OTLP gRPC: localhost:4317"
+  echo "📡 OTLP HTTP: localhost:4318"
+  echo "📊 Prometheus metrics: localhost:8899"
+}
+
+install_otel_collector_promtail_wrapper() {
+  if [ "$DEVICE_TYPE" = "k3s" ]; then
+    install_otel_collector_promtail  # Existing k8s-based installation
+  else
+    install_otel_collector_promtail_docker  # New Docker-based installation
+  fi
+}
+
+uninstall_otel_collector_promtail_wrapper() {
+  if [ "$DEVICE_TYPE" = "k3s" ]; then
+    uninstall_otel_collector_promtail  # Existing k8s-based uninstallation
+  else
+    uninstall_otel_collector_promtail_docker  # New Docker-based uninstallation
+  fi
+}
+
+uninstall_otel_collector_promtail_docker() {
+  echo "🧹 Uninstalling Promtail and OTEL Collector containers..."
+  cd "$HOME/dev-repo/pipeline/observability" || { echo '❌ observability dir missing'; exit 1; }
+  
+  if [ -f "docker-compose-observability.yml" ]; then
+    docker compose -f docker-compose-observability.yml down
+    rm -f docker-compose-observability.yml promtail-config.yml otel-collector-config.yml
+  fi
+  
+  echo "✅ Cleanup complete."
+}
+
 
 install_otel_collector_promtail() {
   echo "Installing OTEL Collector and Promtail..."
@@ -1123,8 +1241,8 @@ show_menu() {
     5) start_device_agent_kubernetes ;;
     6) stop_device_agent_kubernetes ;;
     7) show_status ;;
-    8) install_otel_collector_promtail ;;
-    9) uninstall_otel_collector_promtail ;;
+    8) install_otel_collector_promtail_wrapper ;;
+    9) uninstall_otel_collector_promtail_wrapper ;;
     10) cleanup_residual;;
     11) create_device_rsa_certs ;;
     12) create_device_ecdsa_certs ;;
