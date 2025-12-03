@@ -10,8 +10,8 @@ GITHUB_USER="${GITHUB_USER:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 #--- branch details (can be overridden via env)
-SYMPHONY_BRANCH="${SYMPHONY_BRANCH:-sup/app-registry-on-oci}"
-DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-sup/app-registry-on-oci}"
+SYMPHONY_BRANCH="${SYMPHONY_BRANCH:-main}"
+DEV_REPO_BRANCH="${DEV_REPO_BRANCH:-main}"
 
 #--- harbor settings (can be overridden via env)
 EXPOSED_HARBOR_IP="${EXPOSED_HARBOR_IP:-127.0.0.1}"
