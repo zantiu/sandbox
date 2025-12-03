@@ -456,6 +456,22 @@ enable_tls_in_symphony_api() {
 }
 
 install_jaeger() {
+  # Check if Jaeger Helm release exists
+  if helm status $JAEGER_RELEASE -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1; then
+    echo "✅ Jaeger Helm release already installed, skipping..."
+    return 0
+  fi
+
+  # Check for orphaned Jaeger services (services exist but no Helm release)
+  if kubectl get svc jaeger-query -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1 || \
+     kubectl get svc jaeger-collector -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1; then
+    echo "⚠️  Found orphaned Jaeger services without Helm release"
+    echo "🧹 Cleaning up orphaned Jaeger resources..."
+    kubectl delete svc jaeger-query jaeger-collector -n "$NAMESPACE_OBSERVABILITY" --ignore-not-found=true
+    kubectl delete deployment,statefulset,pod -l app.kubernetes.io/instance=jaeger -n "$NAMESPACE_OBSERVABILITY" --ignore-not-found=true
+    sleep 5
+  fi
+
   echo "🔄 Refreshing Jaeger Helm repo..."
   helm repo remove jaegertracing || true
   helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
@@ -520,6 +536,7 @@ install_jaeger() {
   echo "📡 OTLP gRPC: Port 4317"
   echo "📡 OTLP HTTP: Port 4318"
 }
+
 
 # Function to create observability namespace
 create_observability_namespace() {
