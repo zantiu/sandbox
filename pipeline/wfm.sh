@@ -456,20 +456,10 @@ enable_tls_in_symphony_api() {
 }
 
 install_jaeger() {
-  # Check if Jaeger Helm release exists
+  # Check if Jaeger Helm release exists and is healthy
   if helm status $JAEGER_RELEASE -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1; then
-    echo "✅ Jaeger Helm release already installed, skipping..."
-    return 0
-  fi
-
-  # Check for orphaned Jaeger services (services exist but no Helm release)
-  if kubectl get svc jaeger-query -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1 || \
-     kubectl get svc jaeger-collector -n "$NAMESPACE_OBSERVABILITY" >/dev/null 2>&1; then
-    echo "⚠️  Found orphaned Jaeger services without Helm release"
-    echo "🧹 Cleaning up orphaned Jaeger resources..."
-    kubectl delete svc jaeger-query jaeger-collector -n "$NAMESPACE_OBSERVABILITY" --ignore-not-found=true
-    kubectl delete deployment,statefulset,pod -l app.kubernetes.io/instance=jaeger -n "$NAMESPACE_OBSERVABILITY" --ignore-not-found=true
-    sleep 5
+    echo "⚠️ Jaeger Helm release found, checking pod health..."
+     
   fi
 
   echo "🔄 Refreshing Jaeger Helm repo..."
@@ -477,8 +467,9 @@ install_jaeger() {
   helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
   helm repo update
 
-  echo "🚀 Installing Jaeger with OTLP and NodePort configuration..."
+  echo "🚀 Installing Jaeger v3.4.1 with OTLP and NodePort configuration..."
   helm install $JAEGER_RELEASE jaegertracing/jaeger \
+    --version 3.4.1 \
     --namespace $NAMESPACE_OBSERVABILITY \
     --set agent.enabled=false \
     --set collector.enabled=true \
@@ -605,6 +596,7 @@ EOF
   helm repo update
 
   helm install $PROM_RELEASE prometheus-community/prometheus \
+    --version 27.49.0 \
     --namespace $NAMESPACE_OBSERVABILITY \
     -f prometheus-values.yaml
 
@@ -724,7 +716,7 @@ backend:
   replicas: 0
 EOF
 
-  helm install $LOKI_RELEASE grafana/loki -f loki-values.yaml --namespace $NAMESPACE_OBSERVABILITY
+  helm install $LOKI_RELEASE grafana/loki --version 6.46.0 -f loki-values.yaml --namespace $NAMESPACE_OBSERVABILITY
 
   echo "🔧 Patching Loki service to expose via NodePort 32100..."
  sudo kubectl patch svc loki -n $NAMESPACE_OBSERVABILITY \
@@ -752,6 +744,7 @@ install_grafana() {
   helm repo update
 
   helm install $GRAFANA_RELEASE grafana/grafana \
+    --version 10.3.0 \
     --namespace $NAMESPACE_OBSERVABILITY \
     --set service.type=NodePort \
     --set service.nodePort=32000 \

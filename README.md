@@ -69,10 +69,11 @@ The repository is divided into three main parts. You can find more details here 
 | Component Type | Component Name | Version |
 |---|---|---|
 | Container Registry | Harbor | v2.13.2 |
-| Observability Stack | Prometheus | Latest |
-| Observability Stack | Grafana | Latest |
-| Observability Stack | Jaeger | Latest |
-| Observability Stack | Loki | Latest |
+| OCI Client | ORAS | 1.1.0
+| Observability Stack | Prometheus | prometheus-27.49.0 |
+| Observability Stack | Grafana | grafana-10.3.0 |
+| Observability Stack | Jaeger | jaeger-3.4.1 |
+| Observability Stack | Loki | loki-6.46.0 |
 | Observability Stack | OpenTelemetry Collector | Latest |
 | Observability Stack | Promtail | Latest |
 | Security & Authentication | OpenSSL | System default |
