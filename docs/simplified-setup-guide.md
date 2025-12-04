@@ -108,7 +108,7 @@ On each VM, you need to configure environment variables (settings that tell the 
 3. **Set Up Storage and Code Repository**
    
    This happens automatically in Step 2 - it creates:
-   - **Harbor**: For storing application container images, Helm charts as OCI-compliant manifests and application vendors' MARGO compliant application packages.
+   - **Harbor**: For storing application container images, Helm charts as OCI-compliant manifests and pre-built application vendors' MARGO compliant application packages.
 
 4. **Start the Workload Fleet Manager**
    ```bash
@@ -644,10 +644,7 @@ To view the monitoring dashboards, you need your WFM VM's IP address.
    |-------|-------|-------|
    | **Name** | `Prometheus` | Default name |
    | **URL** | `http://[WFM-VM-IP]:30900` | Replace `[WFM-VM-IP]` with your WFM IP<br>Example: `http://192.168.1.100:30900` |
-   | **Access** | `Server (default)` | Leave as default |
-   | **Scrape interval** | `15s` | Leave as default |
-   | **HTTP Method** | `POST` | Leave as default |
-   | **Save & Test** | Click button | Should show "Successfully queried the Prometheus API" |
+   | **Save & Test** | Scroll at bottom and Click button | Should show "Successfully queried the Prometheus API" |
 
    **Loki Data Source Configuration:**
 
@@ -655,14 +652,14 @@ To view the monitoring dashboards, you need your WFM VM's IP address.
    |-------|-------|-------|
    | **Name** | `Loki` | Default name |
    | **URL** | `http://[WFM-VM-IP]:32100` | Replace `[WFM-VM-IP]` with your WFM IP<br>Example: `http://192.168.1.100:32100` |
-   | **Save & Test** | Click button | Should show "Data source connected and labels found" |
+   | **Save & Test** | Scroll at bottom and Click button | Should show "Data source successfully connected." |
 
    **View Logs and Metrics:**
 
    | What to View | Steps |
    |--------------|-------|
    | **Metrics (Prometheus)** | 1. Click **Open Menu**(top left)  → **Explore**<br>2. Select **Prometheus** from data source dropdown<br>3. Enter a query (e.g., `up` to see all targets, select from metric dropdown, if you have installed pre-built  custom-otel-helm-app-package select **orders_processed_total** from metric dropdown)<br>4. Click **Run query**(top right)|
-   | **Logs (Loki)** | 1. Click **Open Menu**(top left) → **Explore**<br>2. Select **Loki** from data source dropdown<br>3. On **Label filters** select a label (e.g., `job`)<br>4. Select a label name (e.g., `default/custom-otel-helm`)<br>5. Click **Run query**(top right)
+   | **Logs (Loki)** | 1. Click **Open Menu**(top left) → **Explore**<br>2. Select **Loki** from data source dropdown<br>3. On **Label filters** select a label (e.g., `job`)<br>4. Select a label value(e.g., dockerlogs or  `default/custom-otel-helm` if otel-app installed)<br>5. Click **Run query**(top right)
   
    
    Detailed documentation for  [Observability verification](../pipeline/observability/README.md)
