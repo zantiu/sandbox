@@ -169,20 +169,14 @@ You need to copy a security file from the WFM VM to each Device VM.
 
 **Note:** Write down the IP address from Step 1 for use in the copy commands below.
 
-#### Step 2: Copy Certificate to Device VMs
 
-| Target VM | Preparation Command | Destination Path |
-|-----------|---------------------|------------------|
-| **Docker Device** | `mkdir -p $HOME/dev-repo/docker-compose/config` | `$HOME/dev-repo/docker-compose/config/` |
-| **K3s Device** | (Already exists from Step 3) | `$HOME/certs/` |
-
-#### Step 3: Copy Methods
+#### Step 2: Copy Methods
 
 **Option A - Using SCP (Recommended - Run from Device VMs)**
 
 | Target VM | Run From | SCP Command | Example |
 |-----------|----------|-------------|---------|
-| **Docker Device** | Docker Device VM | `sudo scp username@WFM-VM-IP:$(ssh username@WFM-VM-IP 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/dev-repo/docker-compose/config/` | `sudo scp azureuser@10.10.10.4:$(ssh azureuser@10.10.10.4 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/dev-repo/docker-compose/config/` |
+| **Docker Device** | Docker Device VM | `sudo scp username@WFM-VM-IP:$(ssh username@WFM-VM-IP 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/certs/` | `sudo scp azureuser@10.10.10.4:$(ssh azureuser@10.10.10.4 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/certs/` |
 | **K3s Device** | K3s Device VM | `sudo scp username@WFM-VM-IP:$(ssh username@WFM-VM-IP 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/certs/` | `sudo scp azureuser@10.10.10.4:$(ssh azureuser@10.10.10.4 'echo $HOME')/symphony/api/certificates/ca-cert.pem $HOME/certs/` |
 
 **Replace:**

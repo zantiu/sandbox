@@ -363,6 +363,9 @@ start_device_agent_docker_service() {
     echo "❌ device-start-failed: Required certificates missing in $HOME/certs (ca-cert.pem)"
         return 1 
   fi
+  
+  cp ../poc/device/agent/config/capabilities.json ./config/
+  cp ../poc/device/agent/config/config.yaml ./config/
 
   mkdir -p data
   enable_docker_runtime
@@ -873,10 +876,11 @@ EOF
   helm repo add grafana https://grafana.github.io/helm-charts
   helm repo update
 
-  helm install $PROMTAIL_RELEASE grafana/promtail -f promtail-values.yaml --namespace $NAMESPACE_OBSERVABILITY
+  helm install $PROMTAIL_RELEASE grafana/promtail --version 6.17.1 -f promtail-values.yaml --namespace $NAMESPACE_OBSERVABILITY
 
   echo "✅ Promtail installed and configured to push logs to Loki"
 }
+
 function install_otel_collector() {
   echo "📡 Installing OTEL Collector to send metrics and traces to WFM node..."
 
@@ -953,7 +957,7 @@ EOF
   helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
   helm repo update
 
-  helm install $OTEL_RELEASE open-telemetry/opentelemetry-collector -f otel-values.yaml --namespace $NAMESPACE_OBSERVABILITY
+  helm install $OTEL_RELEASE open-telemetry/opentelemetry-collector --version 0.140.0 -f otel-values.yaml --namespace $NAMESPACE_OBSERVABILITY
 
   echo "🔧 Patching OTEL Collector service to expose Prometheus metrics on NodePort 30999..."
   sudo kubectl patch svc otel-collector-opentelemetry-collector \
@@ -995,8 +999,12 @@ create_observability_namespace() {
 }
 
 install_otel_collector_promtail_docker() {
-  echo "Installing OTEL Collector and Promtail as Docker containers..."
+  echo "Installing OTEL Collector v0.140.0 and Promtail v2.9.10 as Docker containers..."
   cd "$HOME/dev-repo/pipeline/observability" || { echo '❌ observability dir missing'; exit 1; }
+  
+  # Fix Docker socket permissions for OTEL Collector access
+  echo "Setting Docker socket permissions..."
+  sudo chmod 666 /var/run/docker.sock
   
   # Create docker-compose.yml for observability stack
   cat <<EOF > docker-compose-observability.yml
@@ -1004,7 +1012,7 @@ version: '3.8'
 
 services:
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:2.9.10
     container_name: promtail
     volumes:
       - /var/log:/var/log:ro
@@ -1015,10 +1023,11 @@ services:
     network_mode: host
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.140.0
     container_name: otel-collector
     volumes:
       - ./otel-collector-config.yml:/etc/otel/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
     command: --config=/etc/otel/config.yml
     ports:
       - "4317:4317"   # OTLP gRPC
@@ -1026,6 +1035,8 @@ services:
       - "8899:8899"   # Prometheus metrics
     restart: unless-stopped
     network_mode: host
+    environment:
+      - HOST_IP=\${HOST_IP:-127.0.0.1}
 EOF
 
   # Create Promtail config
@@ -1050,9 +1061,10 @@ scrape_configs:
           __path__: /var/lib/docker/containers/*/*.log
 EOF
 
-  # Create OTEL Collector config
+  # Create OTEL Collector config with Docker stats and Jaeger export
   cat <<EOF > otel-collector-config.yml
 receivers:
+  # OTLP receiver for application traces/metrics
   otlp:
     protocols:
       http:
@@ -1060,6 +1072,7 @@ receivers:
       grpc:
         endpoint: 0.0.0.0:4317
 
+  # Host-level metrics
   hostmetrics:
     collection_interval: 30s
     scrapers:
@@ -1072,42 +1085,72 @@ receivers:
       processes:
       paging:
 
+  # Docker container metrics
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 10s
+    timeout: 5s
+
 exporters:
-  otlp:
-    endpoint: ${WFM_IP}:30417
+  # Send traces to Jaeger on WFM server
+  otlp/jaeger:
+    endpoint: ${WFM_IP}:4317
     tls:
       insecure: true
 
+  # Expose metrics for Prometheus scraping
   prometheus:
     endpoint: "0.0.0.0:8899"
 
+  # Debug output
   debug:
     verbosity: detailed
 
 processors:
-  batch: {}
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: device.type
+        value: docker
+        action: insert
+      - key: device.ip
+        value: \${HOST_IP}
+        action: insert
 
 service:
   pipelines:
+    # Traces pipeline - send to Jaeger
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp, debug]
+      processors: [batch, resource]
+      exporters: [otlp/jaeger, debug]
 
+    # Metrics pipeline - expose for Prometheus
     metrics:
-      receivers: [otlp, hostmetrics]
-      processors: [batch]
+      receivers: [otlp, hostmetrics, docker_stats]
+      processors: [batch, resource]
       exporters: [prometheus, debug]
 EOF
+
+  # Get host IP for resource attributes
+  HOST_IP=$(hostname -I | awk '{print $1}')
+  export HOST_IP
 
   # Start the observability stack
   docker compose -f docker-compose-observability.yml up -d
   
-  echo "✅ OTEL Collector and Promtail installed as Docker containers"
+  echo "✅ OTEL Collector v0.140.0 and Promtail v2.9.10 installed"
   echo "📡 OTLP gRPC: localhost:4317"
   echo "📡 OTLP HTTP: localhost:4318"
   echo "📊 Prometheus metrics: localhost:8899"
+  echo "🔍 Traces sent to Jaeger at: ${WFM_IP}:4317"
+  
 }
+
 
 install_otel_collector_promtail_wrapper() {
   if [ "$DEVICE_TYPE" = "k3s" ]; then
