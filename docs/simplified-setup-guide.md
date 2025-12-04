@@ -3,26 +3,38 @@
 
 ## What You'll Need
 
-**Three VMs (Virtual Machines):**
-| VM Type | Processors | Memory | Storage | Purpose |
+**Three Virtual Machines:**
+| VM Type | Processors(vCPU) | Memory | Storage | Purpose |
 |---------|-----------|--------|---------|---------|
 | **Main VM (WFM)** | 8 | 16GB | 100GB | Workload Fleet Manager |
-| **Device VM 1 (K3s)** | 8 | 16GB | 50GB | Kubernetes-based device |
-| **Device VM 2 (Docker)** | 8 | 16GB | 50GB | Docker-based device |
-
+| **Device VM 1 (Standalone Cluster)** | 4 | 4-8GB | 50GB | Kubernetes-based device |
+| **Device VM 2 (Standalone Device)** | 4 | 4-8GB | 50GB | Docker-based device |
 
 **Requirements:**
 - Ubuntu or Debian operating system (**ubuntu-24.04.3-desktop-amd64**)
+   - Virtual Machine Manager (4.1.0 tested)
 - Internet connection
-- GitHub account with access to MARGO repository
-- GitHub access token - [How to generate](../pipeline/README.md#-prerequisites)
+- GitHub account with access to sandbox repository
+- GitHub access token - [Generate PAT](#prerequisites)
 - All VMs must be able to talk to each other (same network with static IP addresses)
+---
+## Prerequisites
+
+### Generating Personal Access Token
+1. Login to Github account
+2. Select profile picture, then Settings
+3. Select 'Developer settings' (last selection in the list)
+4. Select 'Personal access tokens' then 'Tokens (classic)'
+5. Select 'Generate new token' --> 'Generate new token (classic)'
+6. Add Note to remember the token, Select 'repo' box
+7. Select Generate token button at bottom.
+8. Copy and store token **Ensure you copy at this stage as it won't be displayed again**
 
 ---
 
 ## Step 1: Get the Code
 
-You need to download the MARGO code to all three VMs. Follow these steps on **each VM**:
+You need to download the sandbox code to all three VMs. Follow these steps on **each VM**:
 
 1. **Open Terminal**
    - On your WFM VM, open the terminal/command line application
