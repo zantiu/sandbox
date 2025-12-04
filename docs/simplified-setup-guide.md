@@ -1,3 +1,4 @@
+##### [Back To Main](../README.md)
 # Setting Up the Code First Sandbox - Simple Guide
 
 ## What You'll Need
@@ -188,7 +189,7 @@ You need to copy a security file from the WFM VM to each Device VM.
 | Step | Docker Device VM | K3s Device VM |
 |------|------------------|---------------|
 | 1 | Open `ca-cert.pem` on WFM VM and copy contents | Open `ca-cert.pem` on WFM VM and copy contents |
-| 2 | Create file in `$HOME/dev-repo/docker-compose/config/` | Create file `ca-cert.pem` in `$HOME/certs/` |
+| 2 | Create file `ca-cert.pem` in `$HOME/certs/` | Create file `ca-cert.pem` in `$HOME/certs/` |
 | 3 | Paste contents and save | Paste contents and save |
   
 
@@ -664,7 +665,7 @@ To view the monitoring dashboards, you need your WFM VM's IP address.
    | **Logs (Loki)** | 1. Click **Open Menu**(top left) → **Explore**<br>2. Select **Loki** from data source dropdown<br>3. On **Label filters** select a label (e.g., `job`)<br>4. Select a label name (e.g., `default/custom-otel-helm`)<br>5. Click **Run query**(top right)
   
    
-
+   Detailed documentation for  [Observability verification](../pipeline/observability/README.md)
 ---
 
 ## Cleaning Up (Starting Fresh)
