@@ -36,7 +36,8 @@ The environment files are located here:
 _https://github.com/margo/sandbox/tree/testBranch-main/pipeline_
 
 **For wfm.sh and wfm-cli.sh script**
-Environment file path: - _https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env_
+Environment file path:-
+_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -49,7 +50,8 @@ export DEV_REPO_BRANCH=main
 ```
 
 **For device-agent.sh script**
-Environment file path: - _https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3s.env_
+Environment file path:-
+_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3s.env_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -61,7 +63,8 @@ export EXPOSED_HARBOR_IP=<wfm-machine-ip>
 ```
 
 **For device-agent.sh script**
-Environment file path - _https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env_
+Environment file path:-
+_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
