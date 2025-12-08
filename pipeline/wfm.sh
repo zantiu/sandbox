@@ -373,7 +373,7 @@ push_nextcloud_to_oci() {
   echo "📦 Pushing Nextcloud application package to OCI Registry..."
   
   local app_dir="$HOME/sandbox/poc/tests/artefacts/nextcloud-compose/margo-package"
-  local repository="${OCI_ORGANIZATION}/nextcloud-compose-app-package"
+  local repository="${OCI_ORGANIZATION}/nextcloud-compose-package"
   local tag="latest"
   
   cd "$app_dir" || { echo "❌ Nextcloud package dir missing"; return 1; }
@@ -1388,7 +1388,8 @@ install_prerequisites() {
   setup_harbor
   build_custom_otel_container_images
   
-  # NEW: Push application packages to OCI Registry instead of Git
+  # NEW: Push application packages to OCI Registry instead of Git 
+  #(These are default app packages in sandbox, any new packages/container images/helmcharts will be pushed through wfm-cli.sh)
   echo "📦 Pushing application packages to OCI Registry..."
   push_nextcloud_to_oci
   push_nginx_to_oci

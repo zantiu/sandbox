@@ -69,40 +69,61 @@ push_package_to_oci() {
   package_version="${package_version:-latest}"
   
   # Construct OCI reference
-  local oci_repo="${REGISTRY_URL}/${OCI_ORGANIZATION}/${package_id}-package"
-  local oci_ref="${oci_repo}:${package_version}"
+  local repository="${OCI_ORGANIZATION}/${package_id}-package"
+  local tag="$package_version"
   
   echo "📦 Package Directory: $package_dir"
-  echo "🏷️  OCI Reference: $oci_ref"
+  echo "🏷️  OCI Reference: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
   echo ""
   
   # Login to OCI registry
   echo "🔐 Logging into OCI registry..."
-  if command -v oras >/dev/null 2>&1; then
-    # Using ORAS (OCI Registry As Storage)
-    if ! oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
-         -u "${REGISTRY_USER}" \
-         -p "${REGISTRY_PASS}" \
-         --insecure 2>/dev/null; then
-      echo "⚠️  ORAS login failed, continuing anyway..."
-    fi
-    
-    # Push package contents to OCI
-    echo "📤 Pushing package to OCI registry..."
-    if oras push "$oci_ref" \
-         --config "$package_file:application/vnd.oci.image.config.v1+json" \
-         "$package_dir:application/vnd.oci.image.layer.v1.tar" \
-         --insecure; then
-      echo "✅ Successfully pushed to OCI registry"
-      return 0
-    else
-      echo "❌ Failed to push to OCI registry"
-      return 1
-    fi
+  if ! command -v oras >/dev/null 2>&1; then
+    echo "❌ ORAS CLI not found. Please install ORAS first."
+    return 1
+  fi
+  
+  echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+    -u "$REGISTRY_USER" --password-stdin --plain-http
+  
+  # Check if margo.yaml exists
+  if [ ! -f "$package_file" ]; then
+    echo "❌ margo.yaml not found: $package_file"
+    return 1
+  fi
+  
+  # Change to package directory to use relative paths
+  cd "$package_dir" || return 1
+  
+  # Build file list for ORAS - start with margo.yaml
+  local files=("margo.yaml:application/vnd.margo.app.description.v1+yaml")
+  
+  # Add resource files if directory exists and has files
+  if [ -d "resources" ] && [ "$(ls -A resources 2>/dev/null)" ]; then
+    while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        files+=("$file:application/octet-stream")
+      fi
+    done < <(find resources -type f 2>/dev/null)
+  fi
+  
+  # Push to OCI Registry with Margo-specific artifact type
+  echo "📤 Pushing files: ${files[@]}"
+  oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
+    --artifact-type "application/vnd.margo.app.v1+json" \
+    --plain-http \
+    "${files[@]}"
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Successfully pushed to OCI registry"
+    echo "📍 Location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}"
+    return 0
   else
-    echo "❌ Failed to push to OCI registry. oras command line tool is missing from the standard path of your system."
+    echo "❌ Failed to push to OCI registry"
+    return 1
   fi
 }
+
 
 # ----------------------------
 # Package Scanning Functions
@@ -190,7 +211,7 @@ display_scanned_packages() {
     # Use printf to convert index to letter (a=0, b=1, etc.)
     local letter=$(printf "\\$(printf '%03o' $((97 + index)))")
     echo "   $letter) ${package_name}"
-    ((index++))
+    ((index=index+1))
   done
   echo "   R) Reload the list"
 }
@@ -236,6 +257,9 @@ supplier_upload_package() {
   echo "===================="
   echo ""
   
+  # Define default apps that have templates in symphony/cli/templates
+  local DEFAULT_APPS=("custom-otel-helm-app" "nextcloud-compose")
+  
   while true; do
     echo "Scanned app packages [Place your Margo App Package in $PACKAGES_DIR to auto-list here]:"
     echo ""
@@ -248,6 +272,8 @@ supplier_upload_package() {
     fi
     
     display_scanned_packages
+    echo ""
+    echo "ℹ️  Note: Default apps use existing templates from $HOME/symphony/cli/templates"
     echo ""
     read -p "Choose to upload [a-z, R]: " choice
     
@@ -275,29 +301,107 @@ supplier_upload_package() {
     array_index=$((array_index - 97))
     local package_name="${SCANNED_PACKAGE_NAMES[$array_index]}"
     local package_id="${SCANNED_PACKAGE_IDS[$array_index]}"
+    local package_dir=$(dirname "$package_file")
+    local parent_dir=$(dirname "$package_dir")
+    
+    # Check if this is a default app
+    local is_default_app=false
+    for default_app in "${DEFAULT_APPS[@]}"; do
+      if [ "$package_id" = "$default_app" ]; then
+        is_default_app=true
+        break
+      fi
+    done
     
     echo ""
-    echo "✅ Pushing Margo app package to OCI repository..."
     
-    # Push to OCI registry
-    if push_package_to_oci "$package_file" "$package_id"; then
-      local oci_url="${REGISTRY_URL}/${OCI_ORGANIZATION}/${package_id}-package:latest"
-      echo "   OCI URL: $oci_url"
+    # Handle OCI push based on app type
+    if [ "$is_default_app" = false ]; then
+      # Custom app - push to OCI first
+      echo "✅ Pushing Margo app package to OCI repository..."
+      if ! push_package_to_oci "$package_file" "$package_id"; then
+        echo "❌ OCI push failed"
+        read -p "Press Enter to go back..."
+        continue
+      fi
       echo ""
+    else
+      # Default app - skip OCI push
+      echo "ℹ️  Default app detected: $package_id"
+      echo "⏭️  Skipping OCI push (already managed by wfm.sh)"
+      echo ""
+    fi
+    
+    # Determine which package.yaml to use for WFM upload
+    local wfm_package_file=""
+    
+    if [ "$is_default_app" = true ]; then
+      # Use existing template from symphony/cli/templates
+      case $package_id in
+        "custom-otel-helm-app")
+          wfm_package_file="$HOME/symphony/cli/templates/margo/custom-otel-helm/package.yaml.copy"
+          cp "$HOME/symphony/cli/templates/margo/custom-otel-helm/package.yaml" "$wfm_package_file"
+          ;;
+        "nextcloud-compose")
+          wfm_package_file="$HOME/symphony/cli/templates/margo/nextcloud-compose/package.yaml.copy"
+          cp "$HOME/symphony/cli/templates/margo/nextcloud-compose/package.yaml" "$wfm_package_file"
+          ;;
+        *)
+          echo "⚠️  No template found for default app: $package_id"
+          read -p "Press Enter to go back..."
+          continue
+          ;;
+      esac
+    else
+      # Custom app - look for package.yaml in parent directory
+      wfm_package_file="${parent_dir}/package.yaml"
+    fi
+    
+    # Verify package.yaml exists
+    if [ -z "$wfm_package_file" ] || [ ! -f "$wfm_package_file" ]; then
+      echo "⚠️  package.yaml not found"
+      echo "ℹ️  Expected location: $wfm_package_file"
+      echo "💡 Use the Package Creation Wizard to generate it"
+      echo ""
+      read -p "Press Enter to go back..."
+      continue
+    fi
+    
+    # Upload to WFM marketplace
+    echo "✅ Uploading to WFM marketplace..."
+    
+    # Substitute placeholders (matching template structure)
+    REGISTRY_HOST="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
+    sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$wfm_package_file"
+    sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/${package_id}-package|g" "$wfm_package_file"
+    sed -i "s|{{TAG}}|latest|g" "$wfm_package_file"
+    sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$wfm_package_file"
+    sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$wfm_package_file"
+    
+    if check_maestro_cli; then
+      # Capture both stdout and stderr
+      upload_output=$(${MAESTRO_CLI_PATH}/maestro wfm apply -f "$wfm_package_file" 2>&1)
+      upload_exit_code=$?
       
-      # Push to WFM marketplace
-      echo "✅ Pushing package details to WFM marketplace..."
-      if check_maestro_cli; then
-        if ${MAESTRO_CLI_PATH}/maestro wfm apply -f "$package_file"; then
-          echo "   Package ID: $package_id"
-          echo ""
-          echo "✅ Package uploaded successfully!"
-        else
-          echo "❌ Failed to upload package to WFM marketplace"
+      echo "$upload_output"
+      
+      # Check for actual success (no "failed" or "error" in output)
+      if [ $upload_exit_code -eq 0 ] && ! echo "$upload_output" | grep -qi "failed\|error"; then
+        echo ""
+        echo "   Package ID: $package_id"
+        echo "✅ Package uploaded to WFM marketplace successfully!"
+      else
+        echo ""
+        echo "❌ Failed to upload package to WFM marketplace"
+        if echo "$upload_output" | grep -q "unsupported kind"; then
+          echo "💡 Hint: Ensure package.yaml has kind: ApplicationPackage"
         fi
       fi
-    else
-      echo "❌ Upload process failed"
+      
+      # Clean up copy for default apps
+      if [ "$is_default_app" = true ]; then
+        rm -f "$wfm_package_file"
+      fi
     fi
     
     echo ""
@@ -305,6 +409,9 @@ supplier_upload_package() {
     return
   done
 }
+
+
+
 
 supplier_list_packages() {
   clear
@@ -651,7 +758,29 @@ EOF
       return
     fi
   fi
-  
+  # Also create package.yaml for WFM marketplace upload
+local package_yaml="${package_dir}/package.yaml"
+
+cat > "$package_yaml" << EOF
+apiVersion: margo.org/v1-alpha1
+kind: ApplicationPackage
+metadata:
+  name: ${app_id}
+  labels:
+    env: prod
+  annotations:
+    description: "${app_description}"
+spec:
+  sourceType: OCI_REPO
+  source:
+    registryUrl: "{{REGISTRY_URL}}"
+    repository: "{{REPOSITORY}}"
+    tag: "{{TAG}}"
+    authentication:
+      type: "basic"
+      username: "{{REGISTRY_USER}}"
+      password: "{{REGISTRY_PASS}}"
+EOF
   # Final confirmation
   echo ""
   echo "The package will be created in the directory: $package_dir"
@@ -667,12 +796,17 @@ EOF
   echo ""
   echo "✅ Package created successfully!"
   echo "   Path: $package_dir"
+  echo "   Files created:"
+  echo "     - margo.yaml (OCI catalog metadata)"
+  echo "     - package.yaml (WFM marketplace registration)"
   echo ""
-  echo "📝 Note: Please ignore the icon, license etc resource files."
-  echo "   As of now, this wizard is simple in nature."
+  echo "📝 Note: Resource files are placeholders - customize as needed"
   echo ""
-  echo "💡 If you want to upload this package then go back and select upload package option! :)"
+  echo "💡 Upload workflow:"
+  echo "   1. OCI push: Uses margo.yaml + resources/"
+  echo "   2. WFM upload: Uses package.yaml (references OCI location)"
   echo ""
+
   
   read -p "Press Enter to go back..."
 }
