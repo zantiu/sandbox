@@ -142,6 +142,14 @@ On each VM, you need to configure environment variables (settings that tell the 
    
    This adds tools to monitor your system's performance.
 
+### Check Everything is Working
+
+1. **Check the Workload Fleet Manager logs**
+   ```bash
+   sudo docker logs -f symphony-api-container
+   ```
+   You should see log messages indicating the service is running. Press `Ctrl+C` to exit.
+
 ### On Each Device VM:
 
 1. **Navigate to the pipeline folder**
@@ -250,18 +258,7 @@ sudo -E bash ./device-agent.sh
 - Choose: `Option 8: otel-collector-promtail-installation`
 
 ---
-
-## Step 5: Run and Use
-
 ### Check Everything is Working
-
-**On WFM VM:**
-
-1. **Check the Workload Fleet Manager logs**
-   ```bash
-   sudo docker logs -f symphony-api-container
-   ```
-   You should see log messages indicating the service is running. Press `Ctrl+C` to exit.
 
 **On Device VMs:**
 
@@ -294,6 +291,8 @@ sudo -E bash ./device-agent.sh
    docker logs -f device-agent
    ```
    Press `Ctrl+C` to exit the logs.
+
+## Step 5: Run and Use
 
 ### Use the EasyCLI
 
@@ -343,10 +342,13 @@ On the WFM VM:
 | **8** | Delete Instance | Prompts for deployment ID to delete | Remove deployment from device |
 | **9** | Exit | Closes the CLI | Exit the interface |
 
-#### Example Operations
+#### Sandbox WFM User Guide
 
 **Option 1: List App Packages**
 
+Select this option to display the app packages that were uploaded to the sandbox WFM. These are ready to deploy to an onboarded edge node. 
+
+> Note: Below is a example snippet showing the expected output of the selection.
 ```
 Enter choice [1-9]: 1
 📦 Listing all app packages from WFM...
@@ -375,6 +377,9 @@ Press Enter to continue...
 
 **Option 2: List Devices**
 
+Select this option to display the devices that have onboarded to the sandbox WFM.
+
+> Note: Below is a example snippet showing the expected output of the selection. 
 ```
 Enter choice [1-9]: 2
 🖥️  Listing all devices from WFM...
@@ -399,6 +404,9 @@ Press Enter to continue...
 
 **Option 3: List Deployments**
 
+Select this option to display the current app deployments configured in the sandbox WFM. 
+
+> Note: Below is a example snippet showing the expected output of the selection.
 ```
 
 Enter choice [1-9]: 3
@@ -424,10 +432,13 @@ Press Enter to continue...
 
 **Option 4: List All Resources**
 
-Shows combined view of packages, devices, and deployments (see individual examples above for format).
+Select this option to display the combined view of packages, devices, and deployments (see individual examples above for format).
 
 **Option 5: Upload App-Package**
 
+Select this option to upload an application package from the pre-configured harbor OCI registry. 
+
+> Note: Below is a example snippet showing the expected output of the selection.
 ```
 Enter choice [1-9]: 5
 📦 Upload App Package
@@ -445,6 +456,11 @@ Press Enter to continue...
 ```
 
 **Option 6: Delete App-Package**
+
+Select this option to delete previously uploaded application packages from the sandbox WFM. 
+
+> Note: Below is a example snippet showing the expected output of the selection.
+> Note: the id of the application package needs to be copied from the output shown below 'current packages'. 
 ```
 Enter choice [1-9]: 6
 🗑️  Delete App Package
@@ -489,6 +505,13 @@ Application Pkg ae011433-28ed-4f4e-a8af-474810810746 deleted successfully
 ```
 
 **Option 7: Deploy Instance**
+
+Select this option to deploy an instance of an uploaded application package within the sandbox WFM. 
+
+Configuration Notes: 
+- Below is a example snippet showing the expected output of the selection.
+- The id of the application package needs to be copied from the output shown below 'Available packages'. 
+- The id of the device needs to be copied from the output shown below 'Available devices'. 
 
 ```
 Enter choice [1-9]: 7
@@ -555,6 +578,12 @@ Application configuration applied successfully
 ```
 
 **Option 8: Delete Instance**
+
+Select this option to delete an application instance within the sandbox WFM. 
+
+Configuration Notes: 
+- Below is a example snippet showing the expected output of the selection.
+- The id of the application instance needs to be copied from the output shown below 'Current deployments'. 
 
 ```
 
