@@ -17,6 +17,8 @@
 - GitHub account with access to sandbox repository
 - GitHub access token - [Generate PAT](#prerequisites)
 - All VMs must be able to talk to each other (same network with static IP addresses)
+
+> Warning: If you are attempting to deploy this on corporate machines you will need to address any special networking requirements your coporation might have to enable internet communication (e.g, proxy configuration, certifiates, firewall configuration, etc.). This falls outside the of the scope of this documentation. This needs to be kept in mind for the machines running the WFM and device software as well as when the `wfm.sh` script builds the [container image](https://github.com/margo/symphony/blob/main/api/Dockerfile) used with this sandbox.
 ---
 ## Prerequisites
 
@@ -257,7 +259,7 @@ sudo -E bash ./device-agent.sh
 
 1. **Check the Workload Fleet Manager logs**
    ```bash
-   docker logs -f symphony-api-container
+   sudo docker logs -f symphony-api-container
    ```
    You should see log messages indicating the service is running. Press `Ctrl+C` to exit.
 
@@ -280,7 +282,7 @@ sudo -E bash ./device-agent.sh
    **For K3s Device VM:**
    ```bash
    # View the logs (replace <pod-name> with actual pod name from above using #7)
-   kubectl logs -f <pod-name> -n default
+   sudo kubectl logs -f <pod-name> -n default
    ```
    Example: `kubectl logs -f device-agent-deploy-7d8f9c5b6-xyz12 -n default`
    
