@@ -159,7 +159,7 @@ install_go() {
 # Repository Functions
 # ----------------------------
 clone_dev_repo() {
-  echo "Cloning sandbox on ($VM2_HOST)..."
+  echo "Cloning sandbox ..."
   cd $HOME
   sudo rm -rf sandbox
   git clone "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/margo/sandbox.git"
@@ -245,15 +245,31 @@ install_vim() {
 
 
 install_and_enable_ssh() {
+  echo "[INFO] Checking if OpenSSH Server is installed..."
+  
+  # Check if SSH is already installed
+  if command -v sshd >/dev/null 2>&1; then
+    echo "[INFO] OpenSSH Server is already installed."
+    
+    # Still ensure it's enabled and running
+    UNIT=$(systemctl list-unit-files | awk '/^ssh\.service/ {print "ssh"} /^sshd\.service/ {print "sshd"}' | head -n1)
+    
+    if [ -n "$UNIT" ]; then
+      sudo systemctl enable "$UNIT" 2>/dev/null
+      sudo systemctl start "$UNIT" 2>/dev/null
+      echo "[INFO] SSH service is enabled and running."
+    fi
+    
+    return 0
+  fi
+  
   echo "[INFO] Checking OS type..."
   
   # Detect package manager
   if command -v apt >/dev/null 2>&1; then
     OS="debian"
-    echo $OS
   elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
     OS="rhel"
-    echo $OS
   else
     echo "[ERROR] Unsupported OS. Only Debian/Ubuntu & RHEL/CentOS supported."
     return 1
@@ -279,7 +295,7 @@ install_and_enable_ssh() {
   sudo systemctl restart "$UNIT"
 
   echo "[INFO] Verifying SSH status:"
-  sudo sudo systemctl status ssh --no-pager || sudo systemctl status sshd
+  sudo systemctl status "$UNIT" --no-pager
   echo "[SUCCESS] SSH service installed and running."
 }
 
@@ -790,7 +806,6 @@ start_device_agent_kubernetes() {
 }
 
 stop_device_agent_docker() {
-  echo "Stopping device-agent on VM2 ($VM2_HOST)..."
   stop_device_agent_service_docker
   echo "Device Agent stopped"
 }

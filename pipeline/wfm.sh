@@ -224,26 +224,144 @@ clone_dev_repo() {
   echo "sandbox checkout to branch ${DEV_REPO_BRANCH} done"
 }
 
+create_harbor_systemd_service() {
+  echo "🔧 Creating systemd service for Harbor auto-start..."
+  
+  # Get the actual harbor directory path (not using $HOME variable)
+  local harbor_dir="$HOME/sandbox/pipeline/harbor"
+  
+  # Create systemd service file with absolute path
+  sudo tee /etc/systemd/system/harbor.service > /dev/null <<EOF
+[Unit]
+Description=Harbor Container Registry
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=${harbor_dir}
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Reload systemd and enable the service
+  sudo systemctl daemon-reload
+  sudo systemctl enable harbor.service
+  
+  echo "✅ Harbor systemd service created and enabled"
+  echo "📋 Service will start Harbor automatically on boot"
+  echo "📁 Working directory: ${harbor_dir}"
+}
+
+
+configure_harbor_restart_policy() {
+  local compose_file="$HOME/sandbox/pipeline/harbor/docker-compose.yml"
+  
+  if [ ! -f "$compose_file" ]; then
+    echo "⚠️ docker-compose.yml not found, will be generated during install"
+    return 0
+  fi
+  
+  echo "🔧 Replacing restart policies in docker-compose.yml..."
+  
+  # Backup original file
+  cp "$compose_file" "${compose_file}.backup.$(date +%s)"
+  
+  # Replace "restart: always" with "restart: unless-stopped"
+  sed -i 's/^\s*restart:\s*always/    restart: unless-stopped/g' "$compose_file"
+  
+  echo "✅ Restart policies replaced with unless-stopped"
+  
+  # Verify the changes - should show only one restart per service
+  echo "📋 Verifying restart policies in docker-compose.yml:"
+  grep "restart:" "$compose_file"
+}
+
+
+
 # ----------------------------
 # Service Setup Functions
 # ----------------------------
-
-
 setup_harbor() {
   if docker ps --format '{{.Names}}' | grep -q harbor; then
     echo 'Harbor is already running, skipping startup.'
   else
     cd "$HOME/sandbox/pipeline/harbor"
-    #Update harbor.yml with EXPOSED_HARBOR_IP
+    
+    # Update harbor.yml with EXPOSED_HARBOR_IP
     sudo sed -i "s|^hostname: .*|hostname: $EXPOSED_HARBOR_IP|" harbor.yml
-    echo 'Starting Harbor...'
+    
+    echo 'Preparing Harbor configuration...'
     sudo chmod +x install.sh prepare common.sh
-    sudo bash install.sh
+    
+    # Run prepare to generate docker-compose.yml
+    sudo ./prepare
+    
+    # Add restart policies to docker-compose.yml BEFORE starting
+    configure_harbor_restart_policy
+    
+    # Start Harbor - ensure clean state
+    echo 'Starting Harbor with restart policies...'
+    sudo docker compose down --remove-orphans 2>/dev/null || true
+    sudo docker compose up -d
+    
+    # Force update restart policies on all containers
+    echo '🔧 Applying restart policies to running containers...'
+    sleep 5
+    for container in nginx registry registryctl redis harbor-jobservice harbor-core harbor-db harbor-portal harbor-log; do
+      if docker ps -a --format "{{.Names}}" | grep -q "^${container}$"; then
+        docker update --restart=unless-stopped "$container" 2>/dev/null && echo "✅ Updated: $container"
+      fi
+    done
+    
+    echo 'Waiting for Harbor to initialize...'
+    sleep 15
+    
     docker ps
-    sleep 10
-    docker ps | grep harbor || echo 'Harbor did not start properly'
+    
+    # Verify all containers are running
+    echo ""
+    echo "📊 Harbor container status:"
+    docker ps --filter "name=harbor" --format "table {{.Names}}\t{{.Status}}"
+    
+    # Verify restart policies
+    echo ""
+    echo "📋 Verifying restart policies:"
+    for container in nginx registry registryctl redis $(docker ps -a --filter "name=harbor-" --format "{{.Names}}"); do
+      if docker ps -a --format "{{.Names}}" | grep -q "^${container}$"; then
+        docker inspect --format='{{.Name}}: {{.HostConfig.RestartPolicy.Name}}' "$container"
+      fi
+    done
+    
+    # Create systemd service for auto-start on boot
+    create_harbor_systemd_service
+    
+    # Final health check
+    echo ""
+    echo "⏳ Waiting for all containers to be healthy (this may take 1-2 minutes)..."
+    sleep 45
+    
+    healthy_count=$(docker ps --filter "name=harbor" --filter "health=healthy" --format "{{.Names}}" | wc -l)
+    total_count=$(docker ps --filter "name=harbor" --format "{{.Names}}" | wc -l)
+    
+    echo "✅ Harbor status: $healthy_count/$total_count containers healthy"
+    
+    if [ "$healthy_count" -eq "$total_count" ] && [ "$total_count" -eq 9 ]; then
+      echo "✅ All Harbor containers are running and healthy!"
+    else
+      echo "⚠️ Some containers may still be initializing. Check with: docker ps | grep harbor"
+    fi
   fi
 }
+
+
 
 
 
@@ -1551,17 +1669,32 @@ install_vim() {
   echo "[SUCCESS] Vim installed and ready to use."
 }
 
-
 install_and_enable_ssh() {
+  echo "[INFO] Checking if OpenSSH Server is installed..."
+  
+  # Check if SSH is already installed
+  if command -v sshd >/dev/null 2>&1; then
+    echo "[INFO] OpenSSH Server is already installed."
+    
+    # Still ensure it's enabled and running
+    UNIT=$(systemctl list-unit-files | awk '/^ssh\.service/ {print "ssh"} /^sshd\.service/ {print "sshd"}' | head -n1)
+    
+    if [ -n "$UNIT" ]; then
+      sudo systemctl enable "$UNIT" 2>/dev/null
+      sudo systemctl start "$UNIT" 2>/dev/null
+      echo "[INFO] SSH service is enabled and running."
+    fi
+    
+    return 0
+  fi
+  
   echo "[INFO] Checking OS type..."
   
   # Detect package manager
   if command -v apt >/dev/null 2>&1; then
     OS="debian"
-    echo $OS
   elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
     OS="rhel"
-    echo $OS
   else
     echo "[ERROR] Unsupported OS. Only Debian/Ubuntu & RHEL/CentOS supported."
     return 1
@@ -1587,9 +1720,10 @@ install_and_enable_ssh() {
   sudo systemctl restart "$UNIT"
 
   echo "[INFO] Verifying SSH status:"
-  sudo sudo systemctl status ssh --no-pager || sudo systemctl status sshd
+  sudo systemctl status "$UNIT" --no-pager
   echo "[SUCCESS] SSH service installed and running."
 }
+
 
 
 

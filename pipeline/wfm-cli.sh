@@ -23,7 +23,7 @@ OCI_ORGANIZATION="${OCI_ORGANIZATION:-library}"
 # Utility Functions
 # ----------------------------
 MAESTRO_CLI_PATH="${MAESTRO_CLI_PATH:-$HOME/symphony/cli}"
-PACKAGES_DIR="${PACKAGES_DIR:-$HOME/margo/sandbox/poc/tests/artefacts}"
+PACKAGES_DIR="${PACKAGES_DIR:-$HOME/sandbox/poc/tests/artefacts}"
 
 # ----------------------------
 # Global Package Cache
@@ -116,6 +116,9 @@ scan_app_packages() {
   SCANNED_PACKAGE_IDS=()
   SCANNED_PACKAGES_COUNT=0
   
+  # Define packages to exclude
+  local EXCLUDED_PACKAGES=("nginx-helm" "open-telemetry-demo-helm")
+  
   if [ ! -d "$packages_dir" ]; then
     echo "⚠️  Package directory not found: $packages_dir"
     echo "Creating directory..."
@@ -123,10 +126,10 @@ scan_app_packages() {
     return 1
   fi
   
-  # Find all package.yaml files and store in global array
+  # Find all margo.yaml files - increased maxdepth to 3
   while IFS= read -r -d '' file; do
     SCANNED_PACKAGE_FILES+=("$file")
-  done < <(find "$packages_dir" -maxdepth 2 -name "margo.yaml" -print0 2>/dev/null)
+  done < <(find "$packages_dir" -maxdepth 3 -name "margo.yaml" -print0 2>/dev/null)
   
   SCANNED_PACKAGES_COUNT=${#SCANNED_PACKAGE_FILES[@]}
   
@@ -137,35 +140,61 @@ scan_app_packages() {
   # Extract and store package names
   for package_file in "${SCANNED_PACKAGE_FILES[@]}"; do
     local package_dir=$(dirname "$package_file")
-    local dir_name=$(basename "$package_dir")
     
-    # Try to extract display name from package.yaml
-    local display_name="$dir_name"
-    if command -v grep >/dev/null 2>&1; then
-      local yaml_name=$(grep -E '^\s*name:\s*' "$package_file" | head -1 | sed 's/.*name:\s*//' | tr -d '"' | tr -d "'")
-      if [ -n "$yaml_name" ]; then
-        display_name="$yaml_name"
-      fi
+    # Get the parent directory name (the actual package name)
+    local parent_dir=$(dirname "$package_dir")
+    local dir_name=$(basename "$parent_dir")
+    
+    # If margo.yaml is directly in a directory (not in margo-package subdir)
+    if [ "$(basename "$package_dir")" != "margo-package" ]; then
+      dir_name=$(basename "$package_dir")
     fi
     
-    SCANNED_PACKAGE_NAMES+=("$display_name")
+    # Check if package should be excluded
+    local should_exclude=false
+    for excluded in "${EXCLUDED_PACKAGES[@]}"; do
+      if [ "$dir_name" = "$excluded" ]; then
+        should_exclude=true
+        break
+      fi
+    done
+    
+    # Skip excluded packages
+    if [ "$should_exclude" = true ]; then
+      continue
+    fi
+    
+    # Use directory name for display
+    SCANNED_PACKAGE_NAMES+=("$dir_name")
     SCANNED_PACKAGE_IDS+=("$dir_name")
   done
+  
+  # Update count after filtering
+  SCANNED_PACKAGES_COUNT=${#SCANNED_PACKAGE_NAMES[@]}
+  
+  if [ $SCANNED_PACKAGES_COUNT -eq 0 ]; then
+    return 1
+  fi
   
   return 0
 }
 
+
+
+
+
 display_scanned_packages() {
   local index=0
-  local letter='a'
   
   for package_name in "${SCANNED_PACKAGE_NAMES[@]}"; do
+    # Use printf to convert index to letter (a=0, b=1, etc.)
+    local letter=$(printf "\\$(printf '%03o' $((97 + index)))")
     echo "   $letter) ${package_name}"
-    letter=$(echo "$letter" | tr "a-y" "b-z")
     ((index++))
   done
   echo "   R) Reload the list"
 }
+
 
 get_scanned_package_file_path() {
   local choice="$1"
@@ -182,21 +211,21 @@ get_scanned_package_file_path() {
   
   local package_file="${SCANNED_PACKAGE_FILES[$array_index]}"
   local package_dir=$(dirname "$package_file")
-  local original_pkg_file="$package_file"
-    
+  
   # Use host:port only (strip http://)
   REGISTRY_HOST="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
   
-  # Substitute placeholders
-  sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$pkg_file" 2>/dev/null || true
-  sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/$(basename "$package_dir")-package|g" "$pkg_file" 2>/dev/null || true
-  sed -i "s|{{TAG}}|latest|g" "$pkg_file" 2>/dev/null || true
-  sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$pkg_file" 2>/dev/null || true
-  sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$pkg_file" 2>/dev/null || true
+  # Substitute placeholders (FIXED: was $pkg_file, now $package_file)
+  sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$package_file" 2>/dev/null || true
+  sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/$(basename "$package_dir")-package|g" "$package_file" 2>/dev/null || true
+  sed -i "s|{{TAG}}|latest|g" "$package_file" 2>/dev/null || true
+  sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$package_file" 2>/dev/null || true
+  sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$package_file" 2>/dev/null || true
   
-  echo "$pkg_file"
+  echo "$package_file"
   return 0
 }
+
 
 # ----------------------------
 # App Supplier Functions
@@ -1105,7 +1134,7 @@ else
       echo "  REGISTRY_PASS         Registry password (default: Harbor12345)"
       echo "  OCI_ORGANIZATION      OCI organization (default: library)"
       echo "  MAESTRO_CLI_PATH      Path to maestro CLI (default: \$HOME/symphony/cli)"
-      echo "  PACKAGES_DIR          App packages directory (default: \$HOME/margo/sandbox/poc/tests/artefacts)"
+      echo "  PACKAGES_DIR          App packages directory (default: \$HOME/sandbox/poc/tests/artefacts)"
       ;;
     
     *)
