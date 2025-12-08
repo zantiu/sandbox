@@ -65,7 +65,7 @@ You need to download the MARGO code to all three VMs. Follow these steps on **ea
 
 ## Step 2: Set Up Environment
 
-On each VM, you need to configure environment variables (settings that tell the system where things are).
+On each VM, user need to configure environment variables (settings that tell the system where things are).
 
 1. **Navigate to the pipeline folder**
    ```bash
