@@ -156,9 +156,8 @@ On each VM, you need to configure environment variables (settings that tell the 
 
 2. **Install Basic Tools**
    
-   Based on the device type, select **k3s** or **docker** while sourcing the environment variables.
+   Based on the device type, select **k3s** or **docker** while sourcing the environment variables. For example:
    ```bash
-   example - 
    source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - Type `1` and press Enter
