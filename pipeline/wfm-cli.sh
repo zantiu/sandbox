@@ -247,6 +247,85 @@ get_scanned_package_file_path() {
   return 0
 }
 
+# ----------------------------
+# Artifact Validation Helper
+# ----------------------------
+validate_package_artifacts() {
+  local package_file="$1"
+  local package_id="$2"
+  
+  echo "🔍 Validating artifacts for package: $package_id"
+  
+  # Extract deployment type from margo.yaml
+  if grep -q "type: helm.v3" "$package_file"; then
+    echo "📊 Detected Helm.v3 deployment type"
+    
+    # Extract repository URL
+    local helm_repo=$(grep -A10 "type: helm.v3" "$package_file" | grep "repository:" | head -1 | sed 's/.*repository:\s*//' | tr -d '"' | tr -d "'")
+    
+    # Check for unresolved placeholders
+    if [[ "$helm_repo" == *"{{HELM_REPOSITORY}}"* ]] || [[ "$helm_repo" == *"{{REPOSITORY}}"* ]]; then
+      echo "❌ Helm repository placeholder not replaced in margo.yaml"
+      echo "   Found: $helm_repo"
+      return 1
+    fi
+    
+    # Verify chart exists in Harbor
+    echo "🔎 Checking Helm chart in Harbor: $helm_repo"
+    local chart_version=$(grep -A10 "type: helm.v3" "$package_file" | grep "revision:" | head -1 | sed 's/.*revision:\s*//' | tr -d '"' | tr -d "'")
+    
+    if helm pull "$helm_repo" --version "${chart_version:-latest}" --plain-http 2>/dev/null; then
+      rm -f *.tgz 2>/dev/null
+      echo ""
+      echo "✅ Helm chart already exists in Harbor OCI registry"
+      echo "ℹ️  Chart: $helm_repo"
+      echo "ℹ️  Version: ${chart_version:-latest}"
+      echo ""
+      echo "⚠️  Skipping upload - chart already available"
+      echo ""
+    else
+      echo "❌ Helm chart not found in Harbor"
+      echo ""
+      echo "💡 To push your Helm chart to Harbor:"
+      echo "   1. Package: helm package <chart-directory>"
+      echo "   2. Push: helm push <chart>.tgz oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library --plain-http"
+      return 1
+    fi
+    
+  elif grep -q "type: compose" "$package_file"; then
+    echo "🐳 Detected Docker Compose deployment type"
+    
+    # Extract compose file URL
+    local compose_url=$(grep -A10 "type: compose" "$package_file" | grep "packageLocation:" | head -1 | sed 's/.*packageLocation:\s*//' | tr -d '"' | tr -d "'")
+    
+    # Check for unresolved placeholders
+    if [[ "$compose_url" == *"{{REPOSITORY}}"* ]] || [[ "$compose_url" == *"{{COMPOSE_URL}}"* ]]; then
+      echo "❌ Compose URL placeholder not replaced in margo.yaml"
+      echo "   Found: $compose_url"
+      return 1
+    fi
+    
+    # Verify URL is accessible
+    if [[ "$compose_url" == http* ]]; then
+      echo "🔎 Checking Compose file: $compose_url"
+      if curl -f -s -I "$compose_url" > /dev/null 2>&1; then
+        echo ""
+        echo "✅ Compose file already hosted and accessible"
+        echo "ℹ️  Location: $compose_url"
+        echo ""
+        echo "⚠️  Skipping upload - file already available"
+        echo ""
+      else
+        echo "❌ Compose file not accessible at: $compose_url"
+        return 1
+      fi
+    fi
+  fi
+  
+  echo "✅ All artifacts validated successfully"
+  return 0
+}
+
 
 # ----------------------------
 # App Supplier Functions
@@ -261,8 +340,11 @@ supplier_upload_package() {
   local DEFAULT_APPS=("custom-otel-helm-app" "nextcloud-compose")
   
   while true; do
-    echo -e "Scanned app packages \033[1;33m[ Place your already prepared Margo App Package in $PACKAGES_DIR to auto-list here ]\033[0m:"
-    echo -e "\033[1;33m[ OR If you want to create a new package, use the '4) Help in Creating a Package Locally' option in the Supplier Menu, press B for accessing that option]\033[0m"
+    echo -e "\033[1;33m[Place your already prepared Margo Application Package in $PACKAGES_DIR to auto-list here.]\033[0m:"
+    echo ""
+    echo -e "\033[1;33mOR\033[0m"
+    echo ""
+    echo -e "\033[1;33m[To create a new package, go back to previous menu and use '4) Help in Creating a Package Locally' option.]\033[0m"
     echo ""
     
     if ! scan_app_packages; then
@@ -271,19 +353,19 @@ supplier_upload_package() {
       read -p "Press Enter to go back..." 
       return
     fi
-    
+    echo -e "Scanned Application Packages:\n"
     display_scanned_packages
     echo ""
-    echo "   B) Go Back"  
+    echo "   Q) Go Back"  # ✅ Changed from B to Q
     echo ""
-    echo -e "\033[1;33m[ Note: a and b are Default apps pre-built with the Sandbox and use existing templates from $HOME/symphony/cli/templates ]\033[0m"
+    echo -e "\033[1;33m[Note: a and b are pre-existing Application Packages in the Sandbox.]\033[0m"
     echo ""
-    read -p "Choose to upload [a-z, R, B]: " choice  # Updated prompt
+    read -p "Choose to upload [a-z, R, Q]: " choice  # ✅ Updated prompt
     
     choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
     
-    # NEW: Handle go back option
-    if [ "$choice_lower" = "b" ]; then
+    # ✅ Changed from 'b' to 'q'
+    if [ "$choice_lower" = "q" ]; then
       return
     fi
     
@@ -326,7 +408,7 @@ supplier_upload_package() {
     # Handle OCI push based on app type
     if [ "$is_default_app" = false ]; then
       # Custom app - push to OCI first
-      echo "✅ Pushing Margo app package to OCI repository..."
+      echo "✅ Pushing Margo Application Package to OCI repository..."
       if ! push_package_to_oci "$package_file" "$package_id"; then
         echo "❌ OCI push failed"
         read -p "Press Enter to go back..."
@@ -335,7 +417,7 @@ supplier_upload_package() {
       echo ""
     else
       # Default app - skip OCI push
-      echo "ℹ️  Default app detected: $package_id"
+      echo "ℹ️  Pre-existing Application Package : $package_id"
       echo "⏭️  Skipping OCI push (already managed by wfm.sh)"
       echo ""
     fi
@@ -355,7 +437,7 @@ supplier_upload_package() {
           cp "$HOME/symphony/cli/templates/margo/nextcloud-compose/package.yaml" "$wfm_package_file"
           ;;
         *)
-          echo "⚠️  No template found for default app: $package_id"
+          echo "⚠️  No template found for default Application Package: $package_id"
           read -p "Press Enter to go back..."
           continue
           ;;
@@ -369,7 +451,7 @@ supplier_upload_package() {
     if [ -z "$wfm_package_file" ] || [ ! -f "$wfm_package_file" ]; then
       echo "⚠️  package.yaml not found"
       echo "ℹ️  Expected location: $wfm_package_file"
-      echo "💡 Use the Package Creation Wizard to generate it"
+      echo "💡 Use the Application Package Creation Wizard to generate it"
       echo ""
       read -p "Press Enter to go back..."
       continue
@@ -473,10 +555,10 @@ supplier_delete_package() {
     fi
   fi
   
-  echo "🗑️  Deleting package from OCI repository..."
+  #echo "🗑️  Deleting package from OCI repository..."
   # Add actual OCI deletion logic here
-  sleep 1
-  echo "✅ Done"
+  #sleep 1
+  #echo "✅ Done"
   
   echo ""
   read -p "Press Enter to go back..."
