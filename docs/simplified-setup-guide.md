@@ -142,9 +142,7 @@ On each VM, you need to configure environment variables (settings that tell the 
    
    This adds tools to monitor your system's performance.
 
-### Check Everything is Working
-
-1. **Check the Workload Fleet Manager logs**
+6. **Verify the Workload Fleet Manager Is Running Correctly**
    ```bash
    sudo docker logs -f symphony-api-container
    ```
