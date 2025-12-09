@@ -721,6 +721,40 @@ supplier_list_packages() {
   read -p "Press Enter to go back..."
 }
 
+# Helper function to get package name from UUID
+get_package_name_from_id() {
+  local pkg_id="$1"
+  
+  if ! check_maestro_cli; then
+    return 1
+  fi
+  
+  local app_packages=$(${MAESTRO_CLI_PATH}/maestro wfm list app-pkg -o json 2>/dev/null)
+  
+  if [ $? -ne 0 ] || [ -z "$app_packages" ]; then
+    return 1
+  fi
+  
+  if command -v jq >/dev/null 2>&1; then
+    local pkg_name=$(echo "$app_packages" | jq -r --arg id "$pkg_id" '
+      .Data[0].items[] | 
+      select(.metadata.id == $id) | 
+      .metadata.name
+    ')
+    
+    if [ -n "$pkg_name" ] && [ "$pkg_name" != "null" ]; then
+      echo "$pkg_name"
+      return 0
+    fi
+  fi
+  
+  return 1
+}
+
+
+# ----------------------------
+# supplier_delete_package function
+# ----------------------------
 supplier_delete_package() {
   clear
   echo "🗑️  Delete App Package"
@@ -732,8 +766,9 @@ supplier_delete_package() {
   fi
   
   echo ""
-  read -p "Enter the package ID to delete: " package_id
-  
+  echo "💡 Enter the package ID (UUID from first column, not the name)"
+  read -p "Package ID to delete: " package_id
+    
   if [ -z "$package_id" ]; then
     echo "❌ Package ID is required"
     sleep 2
@@ -741,9 +776,9 @@ supplier_delete_package() {
   fi
   
   echo ""
-  read -p "Are you sure you want to delete '$package_id'? (yes/no): " confirm
+  read -p "Are you sure you want to delete '$package_id'? (y/n): " confirm
   
-  if [ "$confirm" != "yes" ]; then
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Deletion cancelled"
     sleep 1
     return
@@ -760,7 +795,7 @@ supplier_delete_package() {
   fi
   
   echo "🗑️  Deleting package from OCI repository..."
-# Only delete from OCI for non pre-existing ones
+  # Only delete from OCI for non pre-existing ones
   local DEFAULT_APPS=("custom-otel-helm-app" "nextcloud-compose")
   local is_default_app=false
 
@@ -775,14 +810,32 @@ supplier_delete_package() {
     echo ""
     echo "🗑️  Deleting custom package from OCI repository..."
     
-    local oci_repo="${OCI_ORGANIZATION}/${package_id}-package"
+    # ✅ Resolve UUID to package name for OCI lookup
+    echo "🔍 Resolving package name from UUID..."
+    local package_name=$(get_package_name_from_id "$package_id")
     
-    echo "📍 Package location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}"
+    if [ -z "$package_name" ]; then
+      echo "⚠️  Could not resolve package name from UUID: $package_id"
+      echo "   Skipping OCI deletion (may require manual cleanup via Harbor UI)"
+      echo ""
+      read -p "Press Enter to go back..."
+      return
+    fi
+    
+    echo "✅ Resolved to package: $package_name"
+    
+    # Construct OCI repository path using package name
+    local oci_repo="${OCI_ORGANIZATION}/${package_name}"
+    if [[ ! "$package_name" =~ -package$ ]]; then
+      oci_repo="${oci_repo}-package"
+    fi
+    
+    echo "📍 OCI location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}"
     echo ""
     
-    read -p "Delete OCI artifacts? (yes/no): " delete_oci
+    read -p "Delete OCI artifacts? (y/n): " delete_oci
     
-    if [ "$delete_oci" = "yes" ]; then
+    if [[ "$delete_oci" =~ ^[Yy]$ ]]; then
       # Login to OCI registry
       echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
         -u "$REGISTRY_USER" --password-stdin --plain-http 2>/dev/null
@@ -792,7 +845,7 @@ supplier_delete_package() {
       local tags=$(oras repo tags "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}" --plain-http 2>/dev/null)
       
       if [ -z "$tags" ]; then
-        echo "⚠️  No OCI artifacts found for package: $package_id"
+        echo "⚠️  No OCI artifacts found for: $oci_repo"
       else
         echo "Found versions: $tags"
         echo ""
@@ -823,19 +876,31 @@ supplier_delete_package() {
     echo "   Skipping OCI deletion"
   fi
 
- 
   echo ""
   read -p "Press Enter to go back..."
 }
+
 
 supplier_package_creation_wizard() {
   clear
   echo "📦 App Package Creation Wizard"
   echo "=============================="
   echo ""
+  echo "This wizard helps you create a Margo Application Package step-by-step."
+  echo ""
   echo "Select Deployment Profile:"
+  echo ""
   echo "1) Helm.v3"
+  echo "   → Use this if your application is packaged as a Helm chart"
+  echo "   → ⚠️  Currently supports ONLY local Harbor registry"
+  echo "   → Charts must be pushed to: oci://172.19.59.148:8081/library/<chart-name>"
+  echo "   → Example: Kubernetes applications, microservices"
+  echo ""
   echo "2) Docker Compose"
+  echo "   → Use this if your application uses docker-compose.yaml"
+  echo "   → ⚠️  Compose file must be publicly accessible via HTTP/HTTPS"
+  echo "   → Example URL: https://raw.githubusercontent.com/docker/awesome-compose/refs/heads/master/nextcloud-redis-mariadb/compose.yaml"
+  echo "   → Example: Multi-container applications, development environments"
   echo ""
   
   read -p "Enter choice [1-2]: " profile_choice
@@ -847,13 +912,119 @@ supplier_package_creation_wizard() {
     1)
       deployment_type="helm.v3"
       echo ""
-      read -p "OCI URL of the helm chart (e.g., oci://registry.io/charts/app): " deployment_url
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📦 Helm Chart Configuration (Local Harbor Only)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "⚠️  IMPORTANT: Only local Harbor registry is currently supported!"
+      echo ""
+      echo "Your Helm chart OCI URL MUST use this format:"
+      echo "   oci://172.19.59.148:8081/library/<your-chart-name>"
+																			   
+																 
+      echo ""
+      echo "💡 Example:"
+      echo "   oci://172.19.59.148:8081/library/nginx-sample"
+      echo "   oci://172.19.59.148:8081/library/my-app"
+      echo ""
+      echo "📋 Before proceeding, ensure you have:"
+      echo "   1. Created your Helm chart: helm create <chart-name>"
+      echo "   2. Packaged it: helm package <chart-name>"
+      echo "   3. Pushed to Harbor: helm push <chart>.tgz oci://172.19.59.148:8081/library --plain-http"
+      echo ""
+      read -p "Enter OCI URL of your Helm chart: " deployment_url
+      
+      if [ -z "$deployment_url" ]; then
+        echo "❌ Helm chart URL is required"
+        sleep 2
+        return
+      fi
+      
+      # Validate it's using local Harbor
+      if [[ ! "$deployment_url" =~ ^oci://172\.19\.59\.148:8081/library/ ]]; then
+        echo ""
+        echo "❌ Invalid URL format!"
+        echo "   Expected: oci://172.19.59.148:8081/library/<chart-name>"
+        echo "   Got: $deployment_url"
+        echo ""
+        read -p "Continue anyway? (y/n): " continue_anyway
+        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+          return
+        fi
+      fi
       ;;
+      
     2)
       deployment_type="compose"
       echo ""
-      read -p "URL of the compose file: " deployment_url
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "🐳 Docker Compose Configuration (Public URL Required)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "⚠️  IMPORTANT: Compose file must be publicly accessible!"
+      echo ""
+      echo "Your compose file URL must:"
+      echo "   • Be accessible via HTTP/HTTPS without authentication"
+      echo "   • Return raw YAML content (not HTML)"
+      echo "   • Be reachable from the deployment device"
+      echo ""
+      echo "💡 Recommended hosting options:"
+      echo "   • GitHub raw: https://raw.githubusercontent.com/user/repo/main/compose.yaml"
+      echo "   • GitLab raw: https://gitlab.com/user/repo/-/raw/main/compose.yaml"
+      echo "   • Public web server: http://yourserver.com/apps/compose.yaml"
+      echo ""
+      echo "📋 Quick test your URL:"
+      echo "   curl -f <your-url> | head -5"
+      echo "   (Should show YAML content, not HTML)"
+      echo ""
+      read -p "Enter URL of your compose file: " deployment_url
+      
+      if [ -z "$deployment_url" ]; then
+        echo "❌ Compose file URL is required"
+        sleep 2
+        return
+      fi
+      
+      # Validate URL format
+      if [[ ! "$deployment_url" =~ ^https?:// ]]; then
+        echo "❌ URL must start with 'http://' or 'https://'"
+        sleep 2
+												
+        return
+      fi
+		
+      
+      # Test if URL is accessible
+      echo ""
+      echo "🔍 Testing URL accessibility..."
+      if curl -f -s -I "$deployment_url" > /dev/null 2>&1; then
+        echo "✅ URL is accessible"
+        
+        # Check if it returns YAML (not HTML)
+        local content_type=$(curl -f -s -I "$deployment_url" 2>/dev/null | grep -i "content-type" | head -1)
+        if [[ "$content_type" == *"text/html"* ]]; then
+          echo "⚠️  Warning: URL returns HTML, not YAML"
+          echo "   Make sure you're using the 'raw' file URL"
+          read -p "Continue anyway? (y/n): " continue_anyway
+          if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+            return
+          fi
+        fi
+      else
+        echo "❌ URL is not accessible!"
+        echo ""
+        echo "💡 Common issues:"
+        echo "   • URL requires authentication (not supported)"
+        echo "   • URL is not publicly accessible"
+        echo "   • Firewall blocking access"
+        echo ""
+        read -p "Continue anyway? (y/n): " continue_anyway
+        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+          return
+        fi
+      fi
       ;;
+      
     *)
       echo "❌ Invalid choice"
       sleep 2
@@ -861,15 +1032,16 @@ supplier_package_creation_wizard() {
       ;;
   esac
   
-  if [ -z "$deployment_url" ]; then
-    echo "❌ Deployment URL is required"
-    sleep 2
-    return
-  fi
+   # Rest of the wizard continues with metadata collection...
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📝 Application Metadata"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
   
   # Collect package metadata
-  echo ""
-  read -p "Enter application ID (e.g., com-vendor-app-name): " app_id
+  echo "💡 Application ID should be unique (e.g., com-vendor-app-name)"
+  read -p "Enter application ID: " app_id
   
   if [ -z "$app_id" ]; then
     echo "❌ Application ID is required"
@@ -878,7 +1050,8 @@ supplier_package_creation_wizard() {
   fi
   
   echo ""
-  read -p "Enter name of the application: " app_name
+  echo "💡 This is the display name users will see"
+  read -p "Enter application name: " app_name
   
   if [ -z "$app_name" ]; then
     echo "❌ Application name is required"
@@ -887,6 +1060,7 @@ supplier_package_creation_wizard() {
   fi
   
   echo ""
+  echo "💡 Brief description of what your application does"
   read -p "Enter description: " app_description
   
   if [ -z "$app_description" ]; then
@@ -896,27 +1070,31 @@ supplier_package_creation_wizard() {
   fi
   
   echo ""
+  echo "💡 Semantic version (e.g., 1.0.0, 2.1.3)"
   read -p "Enter version (default: 1.0.0): " app_version
   app_version="${app_version:-1.0.0}"
   
   echo ""
-  read -p "Enter tagline: " app_tagline
+  echo "💡 Short one-liner about your app (optional)"
+  read -p "Enter tagline (press Enter to use description): " app_tagline
   app_tagline="${app_tagline:-$app_description}"
   
   echo ""
-  read -p "Enter website URL (optional): " app_site
+  echo "💡 Website or documentation URL (optional)"
+  read -p "Enter website URL (default: https://example.com): " app_site
   app_site="${app_site:-https://example.com}"
   
   echo ""
-  read -p "Enter author name: " author_name
+  echo "💡 Author/maintainer information"
+  read -p "Enter author name (default: Development Team): " author_name
   author_name="${author_name:-Development Team}"
   
   echo ""
-  read -p "Enter author email: " author_email
+  read -p "Enter author email (default: dev@example.com): " author_email
   author_email="${author_email:-dev@example.com}"
   
   echo ""
-  read -p "Enter organization name: " org_name
+  read -p "Enter organization name (default: Example Organization): " org_name
   org_name="${org_name:-Example Organization}"
   
   # Create package directory
@@ -926,8 +1104,8 @@ supplier_package_creation_wizard() {
   if [ -d "$package_dir" ]; then
     echo ""
     echo "⚠️  Package directory already exists: $package_dir"
-    read -p "Overwrite? (yes/no): " overwrite
-    if [ "$overwrite" != "yes" ]; then
+    read -p "Overwrite? (y/n): " overwrite
+    if [[ ! "$overwrite" =~ ^[Yy]$ ]]; then
       echo "Wizard cancelled"
       sleep 1
       return
@@ -1093,16 +1271,7 @@ EOF
   EDITOR="${EDITOR:-${VISUAL:-vi}}"
   $EDITOR "$template_file"
   
-  # # Validation prompt
-  # echo ""
-  # read -p "Proceed to validation? (yes/no): " validate
-  
-  # if [ "$validate" != "yes" ]; then
-  #   echo "Wizard cancelled"
-  #   rm -rf "$package_dir"
-  #   sleep 1
-  #   return
-  # fi
+ 
   
   # Basic YAML validation
   if command -v grep >/dev/null 2>&1; then
@@ -1116,33 +1285,56 @@ EOF
   # Final confirmation
   echo ""
   echo "The package will be created in the directory: $package_dir"
-  read -p "Should proceed? (yes/no): " proceed
+  read -p "Should proceed? (y/n): " proceed
   
-  if [ "$proceed" != "yes" ]; then
+  if [[ ! "$proceed" =~ ^[Yy]$ ]]; then
     echo "Wizard cancelled"
     rm -rf "$package_dir"
     sleep 1
     return
   fi
   
-  echo ""
-  echo "✅ Package created successfully!"
-  echo "   Path: $package_dir"
-  echo "   Files created:"
-  echo "     - margo.yaml (OCI catalog metadata) and resoureces/"
-  echo ""
-  echo "📝 Note: Resource files are placeholders - customize as needed"
-  echo ""
-  echo "💡 Upload workflow:"
-  echo "   1. OCI push: Uses margo.yaml + resources/"
-  echo "   2. WFM upload: Uses package.yaml (references OCI location)"
-  echo ""
+    echo ""
+    echo "✅ Package created successfully!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "📁 Package Location:"
+    echo "   $package_dir"
+    echo ""
+    echo "📄 Files Created:"
+    echo "   ✓ margo.yaml (Application description)"
+    echo "   ✓ resources/ (Icon, docs, license)"
+    echo ""
+    echo "📝 Note: Resource files are placeholders - customize as needed"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Next Steps:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "1️⃣  Go back to the App Supplier Menu"
+    echo ""
+    echo "2️⃣  Select: 1) Upload App Package"
+    echo ""
+    echo "3️⃣  Verify your package appears in the scanned list:"
+    echo "   → Look for: ${app_name}"
+    echo "   → It should be listed with a letter (e.g., 'c) ${app_name}')"
+    echo ""
+    echo "4️⃣  Select your package letter to upload"
+    echo ""
+    echo "5️⃣  The system will:"
+    echo "   • Validate all artifacts (Helm charts, container images)"
+    echo "   • Push margo.yaml + resources to OCI registry"
+    echo "   • Register package with WFM marketplace"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+  
+  read -p "Press Enter to go back to App Supplier Menu..."
+
 
   
   read -p "Press Enter to go back..."
 }
-
-
 
 show_supplier_menu() {
   while true; do
@@ -1498,9 +1690,9 @@ enduser_deploy_instance() {
   $EDITOR "$deploy_file"
   
   echo ""
-  read -p "Want to finally deploy it? (yes/no): " confirm
+  read -p "Want to finally deploy it? (y/n): " confirm
   
-  if [ "$confirm" != "yes" ]; then
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Deployment cancelled"
     sleep 1
     return
@@ -1544,9 +1736,9 @@ enduser_delete_instance() {
   fi
   
   echo ""
-  read -p "Are you sure you want to delete instance '$instance_id'? (yes/no): " confirm
+  read -p "Are you sure you want to delete instance '$instance_id'? (y/n): " confirm
   
-  if [ "$confirm" != "yes" ]; then
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Deletion cancelled"
     sleep 1
     return
