@@ -37,7 +37,7 @@ _https://github.com/margo/sandbox/tree/testBranch-main/pipeline_
 
 **For wfm.sh and wfm-cli.sh script**
 Environment file path:-
-_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env_
+_[Environment variable files](https://github.com/margo/sandbox/tree/testBranch-main/pipeline)_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
