@@ -58,7 +58,7 @@ You need to download the sandbox code to all three VMs. Follow these steps on **
    git clone https://github.com/margo/sandbox.git
    ```
    
-   When prompted, enter:
+   If prompted, enter:
    - Your GitHub username
    - Your GitHub access token (not your password)
 
