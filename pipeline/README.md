@@ -39,6 +39,7 @@ _[Environment vairable(.env) files](https://github.com/margo/sandbox/tree/testBr
 
 Environment file path:-
 _[WFM Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env)_
+
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -54,6 +55,7 @@ export DEV_REPO_BRANCH=main
 
 Environment file path:-
 _[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3.env)_
+
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -68,6 +70,7 @@ export EXPOSED_HARBOR_IP=<wfm-machine-ip>
 
 Environment file path:-
 _[Device-Agent Docker-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env)_
+
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
