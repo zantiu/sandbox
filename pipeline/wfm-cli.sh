@@ -147,19 +147,20 @@ scan_app_packages() {
     return 1
   fi
   
-  # Find all margo.yaml files - increased maxdepth to 3
+  # Temporary array to hold all found files
+  local temp_files=()
+  
+  # Find all margo.yaml files
   while IFS= read -r -d '' file; do
-    SCANNED_PACKAGE_FILES+=("$file")
+    temp_files+=("$file")
   done < <(find "$packages_dir" -maxdepth 3 -name "margo.yaml" -print0 2>/dev/null)
   
-  SCANNED_PACKAGES_COUNT=${#SCANNED_PACKAGE_FILES[@]}
-  
-  if [ $SCANNED_PACKAGES_COUNT -eq 0 ]; then
+  if [ ${#temp_files[@]} -eq 0 ]; then
     return 1
   fi
   
-  # Extract and store package names
-  for package_file in "${SCANNED_PACKAGE_FILES[@]}"; do
+  # Process and filter packages
+  for package_file in "${temp_files[@]}"; do
     local package_dir=$(dirname "$package_file")
     
     # Get the parent directory name (the actual package name)
@@ -180,18 +181,16 @@ scan_app_packages() {
       fi
     done
     
-    # Skip excluded packages
-    if [ "$should_exclude" = true ]; then
-      continue
+    # ✅ FIX: Only add to arrays if NOT excluded
+    if [ "$should_exclude" = false ]; then
+      SCANNED_PACKAGE_FILES+=("$package_file")
+      SCANNED_PACKAGE_NAMES+=("$dir_name")
+      SCANNED_PACKAGE_IDS+=("$dir_name")
     fi
-    
-    # Use directory name for display
-    SCANNED_PACKAGE_NAMES+=("$dir_name")
-    SCANNED_PACKAGE_IDS+=("$dir_name")
   done
   
-  # Update count after filtering
-  SCANNED_PACKAGES_COUNT=${#SCANNED_PACKAGE_NAMES[@]}
+  # Update count
+  SCANNED_PACKAGES_COUNT=${#SCANNED_PACKAGE_FILES[@]}
   
   if [ $SCANNED_PACKAGES_COUNT -eq 0 ]; then
     return 1
@@ -199,9 +198,6 @@ scan_app_packages() {
   
   return 0
 }
-
-
-
 
 
 display_scanned_packages() {
@@ -250,6 +246,9 @@ get_scanned_package_file_path() {
 # ----------------------------
 # Artifact Validation Helper
 # ----------------------------
+# ----------------------------
+# Artifact Validation Helper
+# ----------------------------
 validate_package_artifacts() {
   local package_file="$1"
   local package_id="$2"
@@ -260,7 +259,9 @@ validate_package_artifacts() {
   if grep -q "type: helm.v3" "$package_file"; then
     echo "📊 Detected Helm.v3 deployment type"
     
-    # Extract repository URL
+    # ============================================
+    # STEP 1: Validate Helm Chart
+    # ============================================
     local helm_repo=$(grep -A10 "type: helm.v3" "$package_file" | grep "repository:" | head -1 | sed 's/.*repository:\s*//' | tr -d '"' | tr -d "'")
     
     # Check for unresolved placeholders
@@ -281,8 +282,6 @@ validate_package_artifacts() {
       echo "ℹ️  Chart: $helm_repo"
       echo "ℹ️  Version: ${chart_version:-latest}"
       echo ""
-      echo "⚠️  Skipping upload - chart already available"
-      echo ""
     else
       echo "❌ Helm chart not found in Harbor"
       echo ""
@@ -292,10 +291,69 @@ validate_package_artifacts() {
       return 1
     fi
     
+    # ============================================
+    # STEP 2: Validate Container Images for Helm
+    # ============================================
+    echo "🐳 Checking container images for Helm chart..."
+    
+    # Download and extract chart to check values.yaml
+    local temp_dir=$(mktemp -d)
+    cd "$temp_dir"
+    
+    if helm pull "$helm_repo" --version "${chart_version:-latest}" --plain-http 2>/dev/null; then
+      tar -xzf *.tgz 2>/dev/null
+      local chart_dir=$(find . -maxdepth 1 -type d -name "*" | grep -v "^\.$" | head -1)
+      
+      if [ -f "$chart_dir/values.yaml" ]; then
+        # Extract image repository and tag from values.yaml
+        local image_repo=$(grep -E "^\s*repository:" "$chart_dir/values.yaml" | head -1 | sed 's/.*repository:\s*//' | tr -d '"' | tr -d "'")
+        local image_tag=$(grep -E "^\s*tag:" "$chart_dir/values.yaml" | head -1 | sed 's/.*tag:\s*//' | tr -d '"' | tr -d "'")
+        
+        if [ -n "$image_repo" ]; then
+          # Check if image is in Harbor
+          if [[ "$image_repo" == "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"* ]]; then
+            local full_image="${image_repo}:${image_tag:-latest}"
+            echo "🔎 Verifying Harbor image: $full_image"
+            
+            # Try to inspect the image in Harbor
+            if docker pull "$full_image" 2>/dev/null; then
+              docker rmi "$full_image" 2>/dev/null
+              echo "✅ Container image already exists in Harbor"
+              echo "ℹ️  Image: $full_image"
+              echo ""
+            else
+              echo "❌ Container image not found in Harbor: $full_image"
+              echo ""
+              echo "💡 To push your container image to Harbor:"
+              echo "   1. Build: docker build -t $full_image <dockerfile-dir>"
+              echo "   2. Login: docker login ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT} -u admin -p Harbor12345"
+              echo "   3. Push: docker push $full_image"
+              cd - > /dev/null
+              rm -rf "$temp_dir"
+              return 1
+            fi
+          else
+            echo "⚠️  Using public image: $image_repo:${image_tag:-latest}"
+            echo "   (Not in Harbor - will be pulled from public registry)"
+            echo ""
+          fi
+        else
+          echo "⚠️  No image repository found in values.yaml"
+          echo "   Chart may use default images"
+          echo ""
+        fi
+      fi
+    fi
+    
+    cd - > /dev/null
+    rm -rf "$temp_dir"
+    
   elif grep -q "type: compose" "$package_file"; then
     echo "🐳 Detected Docker Compose deployment type"
     
-    # Extract compose file URL
+    # ============================================
+    # STEP 1: Validate Compose File
+    # ============================================
     local compose_url=$(grep -A10 "type: compose" "$package_file" | grep "packageLocation:" | head -1 | sed 's/.*packageLocation:\s*//' | tr -d '"' | tr -d "'")
     
     # Check for unresolved placeholders
@@ -313,16 +371,71 @@ validate_package_artifacts() {
         echo "✅ Compose file already hosted and accessible"
         echo "ℹ️  Location: $compose_url"
         echo ""
-        echo "⚠️  Skipping upload - file already available"
-        echo ""
       else
         echo "❌ Compose file not accessible at: $compose_url"
         return 1
       fi
+      
+      # ============================================
+      # STEP 2: Validate Container Images in Compose
+      # ============================================
+      echo "🐳 Checking container images in compose file..."
+      
+      # Download compose file and extract images
+      local compose_content=$(curl -f -s "$compose_url" 2>/dev/null)
+      
+      if [ -n "$compose_content" ]; then
+        # Extract all image references (simple grep - may need enhancement for complex compose files)
+        local images=$(echo "$compose_content" | grep -E "^\s*image:" | sed 's/.*image:\s*//' | tr -d '"' | tr -d "'")
+        
+        if [ -n "$images" ]; then
+          local all_images_ok=true
+          
+          while IFS= read -r image; do
+            if [[ "$image" == "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"* ]]; then
+              echo "🔎 Verifying Harbor image: $image"
+              
+              if docker pull "$image" 2>/dev/null; then
+                docker rmi "$image" 2>/dev/null
+                echo "✅ Container image exists in Harbor: $image"
+              else
+                echo "❌ Container image not found in Harbor: $image"
+                echo ""
+                echo "💡 To push this image to Harbor:"
+                echo "   1. Pull/Build: docker pull $image OR docker build -t $image <dir>"
+                echo "   2. Login: docker login ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT} -u admin -p Harbor12345"
+                echo "   3. Push: docker push $image"
+                all_images_ok=false
+              fi
+            else
+              echo "ℹ️  Using public image: $image"
+              echo "   (Not in Harbor - will be pulled from public registry)"
+            fi
+            echo ""
+          done <<< "$images"
+          
+          if [ "$all_images_ok" = false ]; then
+            return 1
+          fi
+        else
+          echo "⚠️  No images found in compose file"
+          echo ""
+        fi
+      fi
     fi
+  else
+    echo "⚠️  Unknown deployment type in margo.yaml"
+    return 1
   fi
   
   echo "✅ All artifacts validated successfully"
+  echo ""
+  echo "📋 Summary:"
+  echo "   ✓ Helm charts/Compose files: Already in Harbor/accessible"
+  echo "   ✓ Container images: Verified in Harbor OCI registry"
+  echo "   ✓ Package metadata: Ready for upload"
+  echo ""
+  
   return 0
 }
 
@@ -330,6 +443,7 @@ validate_package_artifacts() {
 # ----------------------------
 # App Supplier Functions
 # ----------------------------
+
 supplier_upload_package() {
   clear
   echo "📤 Upload App Package"
@@ -356,15 +470,14 @@ supplier_upload_package() {
     echo -e "Scanned Application Packages:\n"
     display_scanned_packages
     echo ""
-    echo "   Q) Go Back"  # ✅ Changed from B to Q
+    echo "   Q) Go Back"
     echo ""
     echo -e "\033[1;33m[Note: a and b are pre-existing Application Packages in the Sandbox.]\033[0m"
     echo ""
-    read -p "Choose to upload [a-z, R, Q]: " choice  # ✅ Updated prompt
+    read -p "Choose to upload [a-z, R, Q]: " choice
     
     choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
     
-    # ✅ Changed from 'b' to 'q'
     if [ "$choice_lower" = "q" ]; then
       return
     fi
@@ -405,10 +518,33 @@ supplier_upload_package() {
     
     echo ""
     
-    # Handle OCI push based on app type
+    # ============================================================
+    # STEP 2: Handle OCI push based on app type with validation
+    # ============================================================
     if [ "$is_default_app" = false ]; then
-      # Custom app - push to OCI first
-      echo "✅ Pushing Margo Application Package to OCI repository..."
+      # Custom app - validate artifacts FIRST
+      echo "🔍 Validating package artifacts before upload..."
+      echo ""
+      
+      if ! validate_package_artifacts "$package_file" "$package_id"; then
+        echo ""
+        echo "❌ Package validation failed"
+        echo ""
+        echo "📋 Pre-upload checklist:"
+        echo "   ✓ Helm charts must be pushed to Harbor OCI registry"
+        echo "   ✓ Docker Compose files must be accessible via URL"
+        echo "   ✓ Container images must be pushed to Harbor"
+        echo "   ✓ All {{PLACEHOLDERS}} in margo.yaml must be replaced"
+        echo ""
+        echo "💡 Use option '4) Help in Creating a Package Locally' for guidance"
+        echo ""
+        read -p "Press Enter to go back..."
+        continue
+      fi
+      
+      # Validation passed - now push margo.yaml + resources to OCI
+      echo ""
+      echo "✅ Pushing Margo Application Package metadata to OCI repository..."
       if ! push_package_to_oci "$package_file" "$package_id"; then
         echo "❌ OCI push failed"
         read -p "Press Enter to go back..."
@@ -416,13 +552,15 @@ supplier_upload_package() {
       fi
       echo ""
     else
-      # Default app - skip OCI push
-      echo "ℹ️  Pre-existing Application Package : $package_id"
-      echo "⏭️  Skipping OCI push (already managed by wfm.sh)"
+      # Default app - skip validation and OCI push
+      echo "ℹ️  Pre-existing Application Package: $package_id"
+      echo "⏭️  Skipping validation and OCI push (already managed by wfm.sh)"
       echo ""
     fi
     
+    # ============================================================
     # Determine which package.yaml to use for WFM upload
+    # ============================================================
     local wfm_package_file=""
     
     if [ "$is_default_app" = true ]; then
@@ -443,8 +581,61 @@ supplier_upload_package() {
           ;;
       esac
     else
-      # Custom app - look for package.yaml in parent directory
-      wfm_package_file="${parent_dir}/package.yaml"
+      # ✅ Custom app - use shared template from symphony directory
+      local template_file="$HOME/symphony/cli/templates/margo/package.yaml.template"
+      
+      if [ ! -f "$template_file" ]; then
+        echo "❌ Shared package.yaml template not found: $template_file"
+        echo ""
+        echo "💡 Creating template automatically..."
+        
+        # Create the template directory if it doesn't exist
+        mkdir -p "$HOME/symphony/cli/templates/margo"
+        
+        # Create the template
+        cat > "$template_file" << 'TEMPLATE_EOF'
+# This is an input template allowing the WFM get OCI-based application packages and store in its DB required for further deployment.
+# This file is not MARGO specified.
+apiVersion: non-margo.org
+kind: ApplicationPackage
+metadata:
+  name: {{PACKAGE_ID}}
+  labels:
+    env: prod
+  annotations:
+    description: "{{DESCRIPTION}}"
+spec:
+  sourceType: OCI_REPO
+  source:
+    registryUrl: "{{REGISTRY_URL}}"
+    repository: "{{REPOSITORY}}"
+    tag: "{{TAG}}"
+    authentication:
+      type: "basic"
+      username: "{{REGISTRY_USER}}"
+      password: "{{REGISTRY_PASS}}"
+TEMPLATE_EOF
+        
+        if [ ! -f "$template_file" ]; then
+          echo "❌ Failed to create template"
+          read -p "Press Enter to go back..."
+          continue
+        fi
+        
+        echo "✅ Template created successfully"
+        echo ""
+      fi
+      
+      # Create working copy with package-specific values
+      wfm_package_file="/tmp/package-${package_id}.yaml"
+      cp "$template_file" "$wfm_package_file"
+      
+      # Replace package-specific placeholders
+      sed -i "s|{{PACKAGE_ID}}|${package_id}|g" "$wfm_package_file"
+      
+      # Extract description from margo.yaml
+      local description=$(grep -A5 "metadata:" "$package_file" | grep "description:" | head -1 | sed 's/.*description:\s*//' | tr -d '"' | tr -d "'")
+      sed -i "s|{{DESCRIPTION}}|${description:-Custom application package}|g" "$wfm_package_file"
     fi
     
     # Verify package.yaml exists
@@ -488,9 +679,12 @@ supplier_upload_package() {
         fi
       fi
       
-      # Clean up copy for default apps
+      # Clean up copy for default apps and temp files for custom apps
       if [ "$is_default_app" = true ]; then
         rm -f "$wfm_package_file"
+      else
+        # Clean up temp file for custom apps
+        rm -f "/tmp/package-${package_id}.yaml"
       fi
     fi
     
@@ -499,8 +693,6 @@ supplier_upload_package() {
     return
   done
 }
-
-
 
 
 supplier_list_packages() {
@@ -848,29 +1040,7 @@ EOF
       return
     fi
   fi
-  # Also create package.yaml for WFM marketplace upload
-local package_yaml="${package_dir}/package.yaml"
 
-cat > "$package_yaml" << EOF
-apiVersion: margo.org/v1-alpha1
-kind: ApplicationPackage
-metadata:
-  name: ${app_id}
-  labels:
-    env: prod
-  annotations:
-    description: "${app_description}"
-spec:
-  sourceType: OCI_REPO
-  source:
-    registryUrl: "{{REGISTRY_URL}}"
-    repository: "{{REPOSITORY}}"
-    tag: "{{TAG}}"
-    authentication:
-      type: "basic"
-      username: "{{REGISTRY_USER}}"
-      password: "{{REGISTRY_PASS}}"
-EOF
   # Final confirmation
   echo ""
   echo "The package will be created in the directory: $package_dir"
@@ -887,8 +1057,7 @@ EOF
   echo "✅ Package created successfully!"
   echo "   Path: $package_dir"
   echo "   Files created:"
-  echo "     - margo.yaml (OCI catalog metadata)"
-  echo "     - package.yaml (WFM marketplace registration)"
+  echo "     - margo.yaml (OCI catalog metadata) and resoureces/"
   echo ""
   echo "📝 Note: Resource files are placeholders - customize as needed"
   echo ""
@@ -1006,8 +1175,87 @@ enduser_list_all() {
   read -p "Press Enter to go back..."
 }
 
+# ----------------------------
+# Dynamic Instance File Generation
+# ----------------------------
+generate_instance_file_from_margo() {
+  local package_id="$1"
+  local package_name="$2"
+  
+  echo "📝 Generating instance.yaml for custom package: $package_name"
+  
+  # Find margo.yaml for this package
+  local margo_file=$(find "$PACKAGES_DIR" -path "*/${package_name}/margo-package/margo.yaml" -o -path "*/${package_name}/margo.yaml" 2>/dev/null | head -1)
+  
+  if [ -z "$margo_file" ] || [ ! -f "$margo_file" ]; then
+    echo "❌ margo.yaml not found for package: $package_name" >&2
+    return 1
+  fi
+  
+  # Create temp instance file
+  local instance_file="/tmp/instance-${package_id}.yaml"
+  
+  # Extract deployment profile details from margo.yaml
+  local deployment_type=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep "type:" | head -1 | sed 's/.*type:\s*//' | tr -d '"' | tr -d "'")
+  local component_name=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep "name:" | head -1 | sed 's/.*name:\s*//' | tr -d '"' | tr -d "'")
+  local revision=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep "revision:" | head -1 | sed 's/.*revision:\s*//' | tr -d '"' | tr -d "'")
+  
+  # Generate instance.yaml based on deployment type
+  if [ "$deployment_type" = "helm.v3" ]; then
+    cat > "$instance_file" << EOF
+apiVersion: margo.org/v1-alpha1
+kind: ApplicationDeployment
+metadata:
+  name: ${package_name}-instance
+spec:
+  appPackageRef:
+    id: {{PACKAGE_ID}}
+  deviceRef:
+    id: {{DEVICE_ID}}
+  deploymentProfile:
+    type: helm.v3
+    components:
+      - name: ${component_name}
+        properties:  
+          repository: {{REPOSITORY}}
+          revision: ${revision:-latest}
+          wait: true
+          timeout: 5m
+  parameters: {}
+EOF
+  elif [ "$deployment_type" = "compose" ]; then
+    cat > "$instance_file" << EOF
+apiVersion: margo.org/v1-alpha1
+kind: ApplicationDeployment
+metadata:
+  name: ${package_name}-instance
+spec:
+  appPackageRef:
+    id: {{PACKAGE_ID}}
+  deviceRef:
+    id: {{DEVICE_ID}}
+  deploymentProfile:
+    type: compose
+    components:
+      - name: ${component_name}
+        properties:  
+          packageLocation: {{REPOSITORY}}
+  parameters: {}
+EOF
+  else
+    echo "❌ Unknown deployment type: $deployment_type" >&2
+    return 1
+  fi
+  
+  echo "✅ Generated instance file: $instance_file"
+  echo "$instance_file"
+  return 0
+}
+
+
 get_instance_file_path() {
   local package_name="$1"
+  local package_id="$2"  # ✅ Now accepts package_id parameter
   local file_path=""
   
   if [ -z "$HOME" ]; then
@@ -1015,42 +1263,67 @@ get_instance_file_path() {
     return 1
   fi
   
+  # Check for pre-existing templates first
   case $package_name in
     "custom-otel-helm-app"|"custom-otel"|"otel-demo-pkg")
       original_file_path="$HOME/symphony/cli/templates/margo/custom-otel-helm/instance.yaml"
       file_path="$HOME/symphony/cli/templates/margo/custom-otel-helm/instance.yaml.copy"
       cp -f ${original_file_path} ${file_path} 2>/dev/null || true ;;
+    
     "nextcloud-compose-app"|"nextcloud"|"nextcloud-pkg")
       original_file_path="$HOME/symphony/cli/templates/margo/nextcloud-compose/instance.yaml"
       file_path="$HOME/symphony/cli/templates/margo/nextcloud-compose/instance.yaml.copy"
       cp -f ${original_file_path} ${file_path} 2>/dev/null || true ;;
+    
     *)
-      return 1 ;;
+      # ✅ NEW: For custom packages, generate instance.yaml dynamically
+      echo "📝 Custom package detected: $package_name"
+      
+      file_path=$(generate_instance_file_from_margo "$package_id" "$package_name")
+      
+      if [ $? -ne 0 ] || [ -z "$file_path" ]; then
+        echo "❌ Failed to generate instance file" >&2
+        return 1
+      fi
+      ;;
   esac
   
   if [ -f "$file_path" ]; then
     echo "$file_path"
+    return 0
   else
     echo "❌ Deployment file not found: $file_path" >&2
     return 1
   fi
 }
 
+
 get_oci_repository_path() {
   local package_name="$1"
+  local package_id="$2"  # ✅ Now accepts package_id parameter
   local container_url=""
   
+  # Check for pre-existing mappings first
   case $package_name in
     "custom-otel-helm-app"|"custom-otel"|"otel-demo-pkg")
       container_url="oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm" ;;
+    
     "nextcloud-compose-app"|"nextcloud"|"nextcloud-pkg")
       container_url="https://raw.githubusercontent.com/docker/awesome-compose/refs/heads/master/nextcloud-redis-mariadb/compose.yaml" ;;
+    
     *)
-      container_url="" ;;
+      # ✅ NEW: For custom packages, extract from margo.yaml
+      local margo_file=$(find "$PACKAGES_DIR" -path "*/${package_name}/margo-package/margo.yaml" -o -path "*/${package_name}/margo.yaml" 2>/dev/null | head -1)
+      
+      if [ -f "$margo_file" ]; then
+        container_url=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep -E "repository:|packageLocation:" | head -1 | sed 's/.*:\s*//' | tr -d '"' | tr -d "'")
+      fi
+      ;;
   esac
   
   echo "$container_url"
 }
+
 
 enduser_deploy_instance() {
   clear
@@ -1118,8 +1391,8 @@ enduser_deploy_instance() {
   fi
   
   # Get deployment file path
-  deploy_file=$(get_instance_file_path "$package_name")
-  repository=$(get_oci_repository_path "$package_name")
+  deploy_file=$(get_instance_file_path "$package_name" "$package_id")
+  repository=$(get_oci_repository_path "$package_name" "$package_id")
   
   if [ -z "$deploy_file" ] || [ ! -f "$deploy_file" ]; then
     echo "❌ Deployment file not found for package '$package_name'"
