@@ -398,7 +398,7 @@ push_nextcloud_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    
+    --artifact-type "application/vnd.margo.app.v1+json" \
     --plain-http \
     "${files[@]}"
   
@@ -442,7 +442,7 @@ push_nginx_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    
+    --artifact-type "application/vnd.margo.app.v1+json" \
     --plain-http \
     "${files[@]}"
   
@@ -486,7 +486,7 @@ push_otel_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    
+    --artifact-type "application/vnd.margo.app.v1+json" \
     --plain-http \
     "${files[@]}"
   
@@ -534,7 +534,7 @@ push_custom_otel_to_oci() {
   # Push to OCI Registry with Margo-specific artifact type
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    
+    --artifact-type "application/vnd.margo.app.v1+json" \
     --plain-http \
     "${files[@]}"
   
