@@ -18,7 +18,7 @@
 - GitHub access token - [Generate PAT](#prerequisites)
 - All VMs must be able to talk to each other (same network with static IP addresses)
 
-> Warning: If you are attempting to deploy this on corporate machines you will need to address any special networking requirements your coporation might have to enable internet communication (e.g, proxy configuration, certifiates, firewall configuration, etc.). This falls outside the of the scope of this documentation. This needs to be kept in mind for the machines running the WFM and device software as well as when the `wfm.sh` script builds the [container image](https://github.com/margo/symphony/blob/main/api/Dockerfile) used with this sandbox.
+> Warning: If you are attempting to deploy this on corporate machines or within a corporate network, you will need to address any special networking requirements or access issues to enable internet communication (e.g, proxy configuration, certificates, firewall configuration, etc.). This falls outside the of the scope of this documentation. This warning applies to both the WFM and the Device VMs when running the setup scripts('wfm.sh' & 'device-agent.sh'). 
 ---
 ## Prerequisites
 
