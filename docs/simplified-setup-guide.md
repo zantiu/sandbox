@@ -227,10 +227,24 @@ You need to copy a security file from the WFM VM to each Device VM.
 
 2. **Start the device agent**
    ```bash
-   source device-agent_k3s.env && sudo -E bash device-agent.sh
+   source device-agent_docker.env && sudo -E bash device-agent.sh
    ```
    - Type `3` and press Enter
    - Choose: `Option 3: Device-agent-Start(docker-compose-device)`
+
+3. **Check device status**
+   ```bash
+   source device-agent_docker.env && sudo -E bash device-agent.sh
+   ```
+   - Type `7` and press Enter
+   - Choose: `Option 7: Device-agent-Status`
+
+4. **View device logs**
+   ```bash
+   # View the logs
+   docker logs -f device-agent
+   ```
+   You should see log messages indicating the service is running. Press `Ctrl+C` to exit the logs.
 
 **On K3s Device VM:**
 
@@ -246,6 +260,22 @@ You need to copy a security file from the WFM VM to each Device VM.
    - Type `5` and press Enter
    - Choose: `Option 5: Device-agent-Start(k3s-device)`
 
+3. **Check device status**
+   ```bash
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
+   ```
+   - Type `7` and press Enter
+   - Choose: `Option 7: Device-agent-Status`
+
+4. **View device logs**
+   ```bash
+   # View the logs (replace <pod-name> with actual pod name from above using #7)
+   sudo kubectl logs -f <pod-name> -n default
+   ```
+   Example: `kubectl logs -f device-agent-deploy-7d8f9c5b6-xyz12 -n default`
+   
+   You should see log messages indicating the service is running. Press `Ctrl+C` to exit the logs.
+
 ### Add Monitoring to Devices
 
 On each Device VM:
@@ -256,42 +286,7 @@ source device-agent_k3s.env && sudo -E bash device-agent.sh
 - Type `8` and press Enter
 - Choose: `Option 8: otel-collector-promtail-installation`
 
----
-### Check Everything is Working
-
-**On Device VMs:**
-
-1. **Navigate to the pipeline folder**
-   ```bash
-   cd $HOME/workspace/sandbox/pipeline
-   ```
-
-2. **Check device status**
-   ```bash
-   source device-agent_k3s.env && sudo -E bash device-agent.sh
-   ```
-   - Type `7` and press Enter
-   - Choose: `Option 7: Device-agent-Status`
-
-3. **View device logs**
-
-   **For K3s Device VM:**
-   ```bash
-   # View the logs (replace <pod-name> with actual pod name from above using #7)
-   sudo kubectl logs -f <pod-name> -n default
-   ```
-   Example: `kubectl logs -f device-agent-deploy-7d8f9c5b6-xyz12 -n default`
-   
-   Press `Ctrl+C` to exit the logs.
-
-   **For Docker Device VM:**
-   ```bash
-   # View the logs
-   docker logs -f device-agent
-   ```
-   Press `Ctrl+C` to exit the logs.
-
-## Step 5: Run and Use
+## Step 4: Run and Use
 
 ### Use the EasyCLI
 
