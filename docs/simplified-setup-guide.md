@@ -65,7 +65,7 @@ You need to download the MARGO code to all three VMs. Follow these steps on **ea
 
 ## Step 2: Set Up Environment
 
-On each VM, user need to configure environment variables (settings that tell the system where things are).
+On each VM, you need to configure environment variables (settings that tell the system where things are).
 
 1. **Navigate to the pipeline folder**
    ```bash
@@ -97,7 +97,7 @@ On each VM, user need to configure environment variables (settings that tell the
 
 2. **Install Basic Tools**
    ```bash
-   sudo -E bash ./wfm.sh
+   source wfm.env && sudo -E bash wfm.sh
    ```
    - A menu will appear
    - Type `1` and press Enter
@@ -112,7 +112,7 @@ On each VM, user need to configure environment variables (settings that tell the
 
 4. **Start the Workload Fleet Manager**
    ```bash
-   sudo -E bash ./wfm.sh
+   source wfm.env && sudo -E bash wfm.sh
    ```
    - Type `3` and press Enter
    - Choose: `Option 3: Symphony Start`
@@ -121,7 +121,7 @@ On each VM, user need to configure environment variables (settings that tell the
 
 5. **Add Monitoring Tools**
    ```bash
-   sudo -E bash ./wfm.sh
+   source wfm.env && sudo -E bash wfm.sh
    ```
    - Type `5` and press Enter
    - Choose: `Option 5: ObservabilityStack Start`
@@ -129,24 +129,25 @@ On each VM, user need to configure environment variables (settings that tell the
    This adds tools to monitor your system's performance.
 
 ### On Each Device VM:
-
 1. **Navigate to the pipeline folder**
    ```bash
    cd $HOME/workspace/sandbox/pipeline
    ```
 
 2. **Install Basic Tools**
+   
+   Based on the device type, select **k3s** or **docker** while sourcing the environment variables.
    ```bash
-   sudo -E bash ./device-agent.sh
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - Type `1` and press Enter
    - Choose: `Option 1: Install-prerequisites`
    
    This may take 10-15 minutes.
 
-3. **Create Security Certificates**
+4. **Create Security Certificates**
    ```bash
-   sudo -E bash device-agent.sh
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - First, type `11` and press Enter to choose: `Option 11: create_device_rsa_certs`
    - Then run the command again and type `12` and press Enter to choose: `Option 12: create_device_ecdsa_certs`
@@ -206,7 +207,7 @@ You need to copy a security file from the WFM VM to each Device VM.
 
 2. **Start the device agent**
    ```bash
-   sudo -E bash ./device-agent.sh
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - Type `3` and press Enter
    - Choose: `Option 3: Device-agent-Start(docker-compose-device)`
@@ -220,7 +221,7 @@ You need to copy a security file from the WFM VM to each Device VM.
 
 2. **Start the device agent**
    ```bash
-   sudo -E bash ./device-agent.sh
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - Type `5` and press Enter
    - Choose: `Option 5: Device-agent-Start(k3s-device)`
@@ -230,7 +231,7 @@ You need to copy a security file from the WFM VM to each Device VM.
 On each Device VM:
 ```bash
 cd $HOME/workspace/sandbox/pipeline
-sudo -E bash ./device-agent.sh
+source device-agent_k3s.env && sudo -E bash device-agent.sh
 ```
 - Type `8` and press Enter
 - Choose: `Option 8: otel-collector-promtail-installation`
@@ -258,7 +259,7 @@ sudo -E bash ./device-agent.sh
 
 2. **Check device status**
    ```bash
-   sudo -E bash ./device-agent.sh
+   source device-agent_k3s.env && sudo -E bash device-agent.sh
    ```
    - Type `7` and press Enter
    - Choose: `Option 7: Device-agent-Status`
@@ -293,7 +294,7 @@ On the WFM VM:
 2. **Make the script executable and run it**
    ```bash
    chmod +x wfm-cli.sh
-   sudo -E bash ./wfm-cli.sh
+   source wfm.env && sudo -E bash wfm-cli.sh
    ```
 
 3. **Interactive Menu Interface**
