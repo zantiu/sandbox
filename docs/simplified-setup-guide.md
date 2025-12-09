@@ -297,9 +297,8 @@ On the WFM VM:
    cd $HOME/workspace/sandbox/pipeline
    ```
 
-2. **Make the script executable and run it**
+2. **Run the Easy CLI script**
    ```bash
-   chmod +x wfm-cli.sh
    source wfm.env && sudo -E bash wfm-cli.sh
    ```
 
