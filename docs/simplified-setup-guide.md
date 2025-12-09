@@ -242,7 +242,7 @@ You need to copy a security file from the WFM VM to each Device VM.
 4. **View device logs**
    ```bash
    # View the logs
-   docker logs -f device-agent
+   sudo docker logs -f device-agent
    ```
    You should see log messages indicating the service is running. Press `Ctrl+C` to exit the logs.
 
