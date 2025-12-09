@@ -650,16 +650,26 @@ TEMPLATE_EOF
     
     # Upload to WFM marketplace
     echo "✅ Uploading to WFM marketplace..."
-    
+
     # Substitute placeholders (matching template structure)
     REGISTRY_HOST="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
     sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$wfm_package_file"
     sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/${package_id}-package|g" "$wfm_package_file"
-    local package_version=$(grep -E '^\s*version:\s*' "$package_file" | head -1 | sed 's/.*version:\s*//' | tr -d '"' | tr -d "'")
-    package_version="${package_version:-latest}"
-    sed -i "s|{{TAG}}|${package_version}|g" "$wfm_package_file"
+
+    # ✅ Conditional tag replacement based on app type
+    if [ "$is_default_app" = false ]; then
+      # Custom apps: Extract version from margo.yaml
+      local package_version=$(grep -E '^\s*version:\s*' "$package_file" | head -1 | sed 's/.*version:\s*//' | tr -d '"' | tr -d "'")
+      package_version="${package_version:-latest}"
+      sed -i "s|{{TAG}}|${package_version}|g" "$wfm_package_file"
+    else
+      # Pre-existing apps: Use "latest" (matches what wfm.sh pushes)
+      sed -i "s|{{TAG}}|latest|g" "$wfm_package_file"
+    fi
+
     sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$wfm_package_file"
     sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$wfm_package_file"
+
     
     if check_maestro_cli; then
       # Capture both stdout and stderr
@@ -1374,13 +1384,19 @@ get_oci_repository_path() {
       container_url="https://raw.githubusercontent.com/docker/awesome-compose/refs/heads/master/nextcloud-redis-mariadb/compose.yaml" ;;
     
     *)
-      # ✅ NEW: For custom packages, extract from margo.yaml
-      local margo_file=$(find "$PACKAGES_DIR" -path "*/${package_name}/margo-package/margo.yaml" -o -path "*/${package_name}/margo.yaml" 2>/dev/null | head -1)
+        # ✅ For custom packages, extract from margo.yaml
+    local margo_file=$(find "$PACKAGES_DIR" -path "*/${package_name}/margo-package/margo.yaml" -o -path "*/${package_name}/margo.yaml" 2>/dev/null | head -1)
+    
+    if [ -f "$margo_file" ]; then
+      # Extract repository value more carefully to preserve full OCI URL
+      container_url=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep -E "^\s*repository:" | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
       
-      if [ -f "$margo_file" ]; then
-        container_url=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep -E "repository:|packageLocation:" | head -1 | sed 's/.*:\s*//' | tr -d '"' | tr -d "'")
+      # If not found, try packageLocation for compose
+      if [ -z "$container_url" ]; then
+        container_url=$(grep -A20 "deploymentProfiles:" "$margo_file" | grep -E "^\s*packageLocation:" | head -1 | awk '{print $2}' | tr -d '"' | tr -d "'")
       fi
-      ;;
+    fi
+    ;;
   esac
   
   echo "$container_url"
@@ -1453,14 +1469,17 @@ enduser_deploy_instance() {
   fi
   
   # Get deployment file path
-  deploy_file=$(get_instance_file_path "$package_name" "$package_id")
+  echo "📝 Preparing deployment configuration..."
+  deploy_file=$(get_instance_file_path "$package_name" "$package_id" 2>&1 | tail -1)
   repository=$(get_oci_repository_path "$package_name" "$package_id")
-  
+
   if [ -z "$deploy_file" ] || [ ! -f "$deploy_file" ]; then
     echo "❌ Deployment file not found for package '$package_name'"
+    echo "   Expected: $deploy_file"
     sleep 2
     return
   fi
+  echo "✅ Using deployment file: $deploy_file"
   
   # Update deployment file with device and package info
   sed -i "s|{{DEVICE_ID}}|$device_id|g" "$deploy_file" 2>/dev/null || true
