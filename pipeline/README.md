@@ -33,11 +33,13 @@ The setup consists of three main components:
 
 Before running any script, make sure to update the environment variable files according to your system setup.
 The environment files are located here:
-_https://github.com/margo/sandbox/tree/testBranch-main/pipeline_
+
+_[Environment vairable(.env) files](https://github.com/margo/sandbox/tree/testBranch-main/pipeline)_
 
 **For wfm.sh and wfm-cli.sh script**
 Environment file path:-
-_[Environment variable files](https://github.com/margo/sandbox/tree/testBranch-main/pipeline)_
+
+_[WFM Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env)_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -51,7 +53,8 @@ export DEV_REPO_BRANCH=main
 
 **For device-agent.sh script**
 Environment file path:-
-_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3s.env_
+
+_[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3.env)_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
@@ -64,7 +67,8 @@ export EXPOSED_HARBOR_IP=<wfm-machine-ip>
 
 **For device-agent.sh script**
 Environment file path:-
-_https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env_
+
+_[Device-Agent Docker-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env)_
 Update the following variables:
 ```bash
 export GITHUB_USER=<your-github-username>
