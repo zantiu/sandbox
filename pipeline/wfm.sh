@@ -1392,8 +1392,8 @@ install_prerequisites() {
   #(These are default app packages in sandbox, any new packages/container images/helmcharts will be pushed through wfm-cli.sh)
   echo "📦 Pushing application packages to OCI Registry..."
   push_nextcloud_to_oci
-  push_nginx_to_oci
-  push_otel_to_oci
+  #push_nginx_to_oci
+  #push_otel_to_oci
   push_custom_otel_to_oci
   
   echo "✅ Setup completed - Application packages now in OCI Registry!"

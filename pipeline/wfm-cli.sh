@@ -655,7 +655,9 @@ TEMPLATE_EOF
     REGISTRY_HOST="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
     sed -i "s|{{REGISTRY_URL}}|${REGISTRY_HOST}|g" "$wfm_package_file"
     sed -i "s|{{REPOSITORY}}|${OCI_ORGANIZATION}/${package_id}-package|g" "$wfm_package_file"
-    sed -i "s|{{TAG}}|latest|g" "$wfm_package_file"
+    local package_version=$(grep -E '^\s*version:\s*' "$package_file" | head -1 | sed 's/.*version:\s*//' | tr -d '"' | tr -d "'")
+    package_version="${package_version:-latest}"
+    sed -i "s|{{TAG}}|${package_version}|g" "$wfm_package_file"
     sed -i "s|{{REGISTRY_USER}}|${REGISTRY_USER}|g" "$wfm_package_file"
     sed -i "s|{{REGISTRY_PASS}}|${REGISTRY_PASS}|g" "$wfm_package_file"
     
@@ -747,11 +749,71 @@ supplier_delete_package() {
     fi
   fi
   
-  #echo "🗑️  Deleting package from OCI repository..."
-  # Add actual OCI deletion logic here
-  #sleep 1
-  #echo "✅ Done"
-  
+  echo "🗑️  Deleting package from OCI repository..."
+# Only delete from OCI for non pre-existing ones
+  local DEFAULT_APPS=("custom-otel-helm-app" "nextcloud-compose")
+  local is_default_app=false
+
+  for default_app in "${DEFAULT_APPS[@]}"; do
+    if [ "$package_id" = "$default_app" ]; then
+      is_default_app=true
+      break
+    fi
+  done
+
+  if [ "$is_default_app" = false ]; then
+    echo ""
+    echo "🗑️  Deleting custom package from OCI repository..."
+    
+    local oci_repo="${OCI_ORGANIZATION}/${package_id}-package"
+    
+    echo "📍 Package location: ${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}"
+    echo ""
+    
+    read -p "Delete OCI artifacts? (yes/no): " delete_oci
+    
+    if [ "$delete_oci" = "yes" ]; then
+      # Login to OCI registry
+      echo "$REGISTRY_PASS" | oras login "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}" \
+        -u "$REGISTRY_USER" --password-stdin --plain-http 2>/dev/null
+      
+      # Get all tags for this repository
+      echo "📋 Finding package versions..."
+      local tags=$(oras repo tags "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}" --plain-http 2>/dev/null)
+      
+      if [ -z "$tags" ]; then
+        echo "⚠️  No OCI artifacts found for package: $package_id"
+      else
+        echo "Found versions: $tags"
+        echo ""
+        
+        # Delete each tag using ORAS
+        while IFS= read -r tag; do
+          if [ -n "$tag" ]; then
+            echo "🗑️  Deleting ${oci_repo}:${tag}..."
+            
+            # Use ORAS to delete the manifest
+            if oras manifest delete "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${oci_repo}:${tag}" --plain-http 2>/dev/null; then
+              echo "✅ Deleted version: $tag"
+            else
+              echo "⚠️  Could not delete version: $tag (may require manual cleanup)"
+            fi
+          fi
+        done <<< "$tags"
+        
+        echo ""
+        echo "✅ OCI package deletion completed"
+      fi
+    else
+      echo "ℹ️  OCI artifacts preserved in Harbor"
+    fi
+  else
+    echo ""
+    echo "ℹ️  Pre-existing Application Package - OCI artifacts managed by wfm.sh"
+    echo "   Skipping OCI deletion"
+  fi
+
+ 
   echo ""
   read -p "Press Enter to go back..."
 }
