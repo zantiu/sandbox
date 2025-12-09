@@ -54,7 +54,7 @@ export DEV_REPO_BRANCH=main
 **For device-agent.sh script**
 
 Environment file path:-
-_[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3.env)_
+_[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3s.env)_
 
 Update the following variables:
 ```bash
