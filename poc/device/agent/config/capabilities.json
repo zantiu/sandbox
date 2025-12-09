@@ -6,7 +6,7 @@
         "vendor": "Northstar Industrial Applications",
         "modelNumber": "332ANZE1-N1",
         "serialNumber": "PF45343-AA",
-        "roles": ["Standalone Cluster"],
+        "roles": ["Standalone Device"],
         "resources": {
             "cpu": {
                 "cores": 24

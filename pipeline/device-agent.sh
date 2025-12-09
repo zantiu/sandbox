@@ -361,23 +361,63 @@ build_device_agent_docker() {
 # ----------------------------
 # Device Agent Service Functions
 # ----------------------------
+create_device_agent_systemd_service() {
+  echo "🔧 Creating systemd service for device-agent auto-start..."
+  
+  # Get the actual docker-compose directory path
+  local compose_dir="$HOME/sandbox/docker-compose"
+  
+  # Create systemd service file
+  sudo tee /etc/systemd/system/device-agent.service > /dev/null <<EOF
+[Unit]
+Description=Margo Device Agent
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=${compose_dir}
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Reload systemd and enable the service
+  sudo systemctl daemon-reload
+  sudo systemctl enable device-agent.service
+  
+  echo "✅ Device-agent systemd service created and enabled"
+  echo "📋 Service will start device-agent automatically on boot"
+  echo "📁 Working directory: ${compose_dir}"
+}
+
 
 start_device_agent_docker_service() {
   echo 'Starting device-agent...'
   cd "$HOME/sandbox/docker-compose"
+  
+  # Clean up and recreate config directory
+  echo "Cleaning up config directory..."
+  rm -rf config
   mkdir -p config
   
- if [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ] && [ -f "$HOME/certs/device-ecdsa.crt" ] && [ -f "$HOME/certs/device-ecdsa.key" ] && [ -f "$HOME/certs/ca-cert.pem" ]; then
+  if [ -f "$HOME/certs/device-private.key" ] && [ -f "$HOME/certs/device-public.crt" ] && [ -f "$HOME/certs/device-ecdsa.crt" ] && [ -f "$HOME/certs/device-ecdsa.key" ] && [ -f "$HOME/certs/ca-cert.pem" ]; then
     echo "Creating TLS secrets..."
-    cp "$HOME/certs/device-private.key"  ./config
-    cp "$HOME/certs/device-public.crt"   ./config
-    cp "$HOME/certs/device-ecdsa.key"    ./config
-    cp "$HOME/certs/device-ecdsa.crt"    ./config
-    cp "$HOME/certs/ca-cert.pem"         ./config
+    cp "$HOME/certs/device-private.key"  ./config/
+    cp "$HOME/certs/device-public.crt"   ./config/
+    cp "$HOME/certs/device-ecdsa.key"    ./config/
+    cp "$HOME/certs/device-ecdsa.crt"    ./config/
+    cp "$HOME/certs/ca-cert.pem"         ./config/
     echo "Copied certs from \$HOME/certs to ./config"
-      else
-    echo "❌ device-start-failed: Required certificates missing in $HOME/certs (ca-cert.pem)"
-        return 1 
+  else
+    echo "❌ device-start-failed: ca-cert.pem certificates missing in $HOME/certs"
+    return 1 
   fi
   
   cp ../poc/device/agent/config/capabilities.json ./config/
@@ -386,13 +426,27 @@ start_device_agent_docker_service() {
   mkdir -p data
   enable_docker_runtime
   docker compose up -d
+  
+  # systemd service for auto-start if vm reboots
+  create_device_agent_systemd_service
 }
+
 
 
 stop_device_agent_service_docker() {
   echo "Stopping device-agent..."
   cd "$HOME/sandbox/docker-compose"
   docker compose down
+
+
+
+  if systemctl is-enabled device-agent.service >/dev/null 2>&1; then
+    echo "Disabling device-agent systemd service..."
+    sudo systemctl disable device-agent.service
+    sudo rm -f /etc/systemd/system/device-agent.service
+    sudo systemctl daemon-reload
+    echo "✅ Systemd service removed"
+  fi
   
   # Prompt user to delete /data folder
   echo ""

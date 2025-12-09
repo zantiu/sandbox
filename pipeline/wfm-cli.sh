@@ -261,7 +261,8 @@ supplier_upload_package() {
   local DEFAULT_APPS=("custom-otel-helm-app" "nextcloud-compose")
   
   while true; do
-    echo "Scanned app packages [Place your Margo App Package in $PACKAGES_DIR to auto-list here]:"
+    echo -e "Scanned app packages \033[1;33m[ Place your already prepared Margo App Package in $PACKAGES_DIR to auto-list here ]\033[0m:"
+    echo -e "\033[1;33m[ OR If you want to create a new package, use the '4) Help in Creating a Package Locally' option in the Supplier Menu, press B for accessing that option]\033[0m"
     echo ""
     
     if ! scan_app_packages; then
@@ -273,11 +274,18 @@ supplier_upload_package() {
     
     display_scanned_packages
     echo ""
-    echo "ℹ️  Note: Default apps use existing templates from $HOME/symphony/cli/templates"
+    echo "   B) Go Back"  
     echo ""
-    read -p "Choose to upload [a-z, R]: " choice
+    echo -e "\033[1;33m[ Note: a and b are Default apps pre-built with the Sandbox and use existing templates from $HOME/symphony/cli/templates ]\033[0m"
+    echo ""
+    read -p "Choose to upload [a-z, R, B]: " choice  # Updated prompt
     
     choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+    
+    # NEW: Handle go back option
+    if [ "$choice_lower" = "b" ]; then
+      return
+    fi
     
     if [ "$choice_lower" = "r" ]; then
       clear

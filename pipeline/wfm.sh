@@ -398,7 +398,7 @@ push_nextcloud_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    --artifact-type "application/vnd.margo.app.v1+json" \
+    
     --plain-http \
     "${files[@]}"
   
@@ -442,7 +442,7 @@ push_nginx_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    --artifact-type "application/vnd.margo.app.v1+json" \
+    
     --plain-http \
     "${files[@]}"
   
@@ -486,7 +486,7 @@ push_otel_to_oci() {
   
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    --artifact-type "application/vnd.margo.app.v1+json" \
+    
     --plain-http \
     "${files[@]}"
   
@@ -534,7 +534,7 @@ push_custom_otel_to_oci() {
   # Push to OCI Registry with Margo-specific artifact type
   echo "Pushing files: ${files[@]}"
   oras push "${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/${repository}:${tag}" \
-    --artifact-type "application/vnd.margo.app.v1+json" \
+    
     --plain-http \
     "${files[@]}"
   
@@ -1411,10 +1411,57 @@ start_symphony() {
   start_symphony_api_container
 }
 
-start_symphony_api_container(){
+create_symphony_api_systemd_service() {
+  echo "🔧 Creating systemd service for Symphony API auto-start..."
+  
+  # Get the actual symphony api directory path
+  local symphony_dir="$HOME/symphony/api"
+  
+  # Create systemd service file with absolute path
+  sudo tee /etc/systemd/system/symphony-api.service > /dev/null <<EOF
+[Unit]
+Description=Margo Symphony API Server
+Requires=docker.service redis-server.service
+After=docker.service redis-server.service network-online.target
+Wants=network-online.target
 
+[Service]
+Type=simple
+RemainAfterExit=yes
+WorkingDirectory=${symphony_dir}
+ExecStartPre=/bin/sleep 15
+ExecStartPre=-/usr/bin/docker stop symphony-api-container
+ExecStartPre=-/usr/bin/docker rm symphony-api-container
+ExecStart=/usr/bin/docker run --rm --name symphony-api-container \
+    --network host \
+    -p 8082:8082 \
+    -e LOG_LEVEL=Debug \
+    -v ${symphony_dir}/certificates:/certificates \
+    -v ${symphony_dir}:/configs \
+    -e CONFIG=symphony-api-margo.json \
+    margo-symphony-api:latest
+ExecStop=/usr/bin/docker stop symphony-api-container
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  # Reload systemd and enable the service
+  sudo systemctl daemon-reload
+  sudo systemctl enable symphony-api.service
+  
+  echo "✅ Symphony API systemd service created and enabled"
+  echo "📋 Service will start Symphony API automatically on boot"
+  echo "📁 Working directory: ${symphony_dir}"
+}
+
+
+start_symphony_api_container(){
     cd "$HOME/symphony/api"
-	  echo "Building Symphony API container..."																			   
+    echo "Building Symphony API container..."
     
     # Check for required environment variables
     if [ -z "$GITHUB_USER" ] || [ -z "$GITHUB_TOKEN" ]; then
@@ -1433,7 +1480,7 @@ start_symphony_api_container(){
     echo "Stopping and removing existing symphony-api-container if present..."
     docker stop symphony-api-container 2>/dev/null || true
     docker rm symphony-api-container 2>/dev/null || true
-	  pkill -f "symphony-api" 2>/dev/null || true										   
+    pkill -f "symphony-api" 2>/dev/null || true
     
     # Check if image already exists
     if docker image inspect margo-symphony-api:latest >/dev/null 2>&1; then
@@ -1460,7 +1507,6 @@ start_symphony_api_container(){
             return 1
         fi
         
-	   
         echo "✅ Symphony API container built successfully with tag: margo-symphony-api:latest"
     fi
     
@@ -1480,12 +1526,15 @@ start_symphony_api_container(){
         echo "✅ Symphony API container started successfully"
         echo "📡 Container is running on port 8082"
         echo "🏷️  Container name: symphony-api-container"
+        
+        # Create systemd service for auto-start on boot
+        create_symphony_api_systemd_service
     else
         echo "❌ Failed to start Symphony API container"
         return 1
     fi
- 
 }
+
 
 
 stop_symphony() {
@@ -1501,6 +1550,16 @@ stop_symphony() {
     docker rm symphony-api-container && echo '✅ Symphony API container removed'
   else
     echo 'ℹ️ Symphony API container not found'
+  fi
+  
+  # Disable and remove systemd service
+  if systemctl is-enabled symphony-api.service >/dev/null 2>&1; then
+    echo "Disabling Symphony API systemd service..."
+    sudo systemctl stop symphony-api.service 2>/dev/null || true
+    sudo systemctl disable symphony-api.service
+    sudo rm -f /etc/systemd/system/symphony-api.service
+    sudo systemctl daemon-reload
+    echo "✅ Systemd service removed"
   fi
   
   # Prompt user to delete Redis data
@@ -1520,6 +1579,7 @@ stop_symphony() {
     echo 'ℹ️ Redis data preserved'
   fi
 }
+
 
 
 
