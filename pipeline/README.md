@@ -33,12 +33,11 @@ The setup consists of three main components:
 
 Before running any script, make sure to update the environment variable files according to your system setup.
 The environment files are located here:
-
 _[Environment vairable(.env) files](https://github.com/margo/sandbox/tree/testBranch-main/pipeline)_
 
 **For wfm.sh and wfm-cli.sh script**
-Environment file path:-
 
+Environment file path:-
 _[WFM Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/wfm.env)_
 Update the following variables:
 ```bash
@@ -52,8 +51,8 @@ export DEV_REPO_BRANCH=main
 ```
 
 **For device-agent.sh script**
-Environment file path:-
 
+Environment file path:-
 _[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3.env)_
 Update the following variables:
 ```bash
@@ -66,8 +65,8 @@ export EXPOSED_HARBOR_IP=<wfm-machine-ip>
 ```
 
 **For device-agent.sh script**
-Environment file path:-
 
+Environment file path:-
 _[Device-Agent Docker-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env)_
 Update the following variables:
 ```bash
