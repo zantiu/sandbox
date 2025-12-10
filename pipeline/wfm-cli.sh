@@ -199,7 +199,8 @@ generate_instance_yaml_from_oci() {
   echo "📋 Final deployment type: $profile_type"
   
   # Get repository path
-  local repository=$(get_oci_repository_path "$package_name")
+  local repository=$(get_oci_repository_path "$package_name" "$temp_dir/margo.yaml")
+
   
   # Generate instance.yaml based on deployment type
   if [ "$profile_type" = "helm.v3" ]; then
@@ -335,7 +336,8 @@ EOF
 # Harbor OCI Discovery Functions
 # ----------------------------
 discover_app_packages_from_harbor() {
-  echo "🔍 Discovering app packages from Harbor OCI Registry..."
+  # Send discovery message to stderr so it doesn't get captured
+  echo "🔍 Discovering app packages from Harbor OCI Registry..." >&2
   
   local harbor_url="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
   local org="${OCI_ORGANIZATION}"
@@ -346,20 +348,26 @@ discover_app_packages_from_harbor() {
     jq -r '.[].name' 2>/dev/null)
   
   if [ -z "$repos" ]; then
-    echo "❌ No repositories found in Harbor"
+    echo "❌ No repositories found in Harbor" >&2
     return 1
   fi
   
-  # Filter for app-package repositories
+  # Filter for app-package repositories (must end with -app-package)
   local app_packages=$(echo "$repos" | grep -E "app-package$" | sed "s|${org}/||")
   
   if [ -z "$app_packages" ]; then
-    echo "❌ No app packages found"
+    echo "❌ No app packages found" >&2
+    echo "ℹ️  App packages must end with '-app-package' suffix" >&2
+    echo "ℹ️  Example: nginx-helm-app-package, wordpress-compose-app-package" >&2
     return 1
   fi
   
+  # Output package names to stdout
   echo "$app_packages"
 }
+
+
+
 
 get_package_metadata_from_oci() {
   local package_repo="$1"
@@ -599,9 +607,11 @@ get_instance_file_path() {
   fi
 }
 
+
 # Dynamic OCI repository path discovery
 get_oci_repository_path() {
   local package_name="$1"
+  local margo_file="$2"  # Accept margo.yaml file path
   local harbor_url="${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}"
   local container_url=""
   
@@ -614,50 +624,44 @@ get_oci_repository_path() {
       container_url="https://raw.githubusercontent.com/docker/awesome-compose/refs/heads/master/nextcloud-redis-mariadb/compose.yaml"
       ;;
     *)
-      # Dynamic discovery: pull margo.yaml from OCI to get repository info
-      local temp_dir=$(mktemp -d)
-      cd "$temp_dir"
-      
-      # Try to pull margo.yaml from the package
-      if oras pull "${harbor_url}/${OCI_ORGANIZATION}/${package_name}:latest" \
-          --plain-http \
-          -u "${REGISTRY_USER}:${REGISTRY_PASS}" \
-          margo.yaml 2>/dev/null; then
+      # Use the already-pulled margo.yaml file
+      if [ -f "$margo_file" ]; then
+        # Simple grep-based extraction for packageLocation (Compose)
+        local compose_location=$(grep "packageLocation:" "$margo_file" | \
+                                head -1 | \
+                                sed 's/.*packageLocation:\s*//' | \
+                                tr -d '"' | tr -d "'" | xargs)
         
-        # Extract repository from margo.yaml
-        # Look for helm.repository or compose.source fields
-        if [ -f "margo.yaml" ]; then
-          # Try to extract Helm repository
-          local helm_repo=$(grep -E "^\s*repository:" margo.yaml | head -1 | sed 's/.*repository:\s*//' | tr -d '"' | tr -d "'")
-          
-          # Try to extract Compose source
-          local compose_source=$(grep -E "^\s*source:" margo.yaml | head -1 | sed 's/.*source:\s*//' | tr -d '"' | tr -d "'")
-          
-          # Use whichever is found
-          if [ -n "$helm_repo" ]; then
-            container_url="$helm_repo"
-          elif [ -n "$compose_source" ]; then
-            container_url="$compose_source"
-          else
-            # Fallback: construct OCI path from package name
-            # Remove "-app-package" suffix and construct OCI URL
-            local chart_name="${package_name%-app-package}"
-            container_url="oci://${harbor_url}/library/${chart_name}"
-          fi
+        # Simple grep-based extraction for repository (Helm)
+        local helm_repo=$(grep "repository:" "$margo_file" | \
+                         grep -v "registryUrl" | \
+                         head -1 | \
+                         sed 's/.*repository:\s*//' | \
+                         tr -d '"' | tr -d "'" | xargs)
+        
+        # Use whichever is found
+        if [ -n "$compose_location" ]; then
+          container_url="$compose_location"
+        elif [ -n "$helm_repo" ]; then
+          container_url="$helm_repo"
+        else
+          # Fallback: construct OCI path from package name
+          local chart_name="${package_name%-app-package}"
+          container_url="oci://${harbor_url}/library/${chart_name}"
         fi
       else
-        # If pull fails, construct default OCI path
+        # If file doesn't exist, construct default OCI path
         local chart_name="${package_name%-app-package}"
         container_url="oci://${harbor_url}/library/${chart_name}"
       fi
-      
-      cd - >/dev/null
-      rm -rf "$temp_dir"
       ;;
   esac
   
   echo "$container_url"
 }
+
+
+
 
 # Enhanced deploy_instance with read-only protection and integrity check
 deploy_instance() {
