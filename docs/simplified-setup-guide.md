@@ -148,6 +148,8 @@ On each VM, you need to configure environment variables (settings that tell the 
    ```
    You should see log messages indicating the service is running. Press `Ctrl+C` to exit.
 
+> Note: Any service started using these scripts need to be restarted if the VM is restarted. They will not restart automatically on boot.
+
 ### On Each Device VM:
 1. **Navigate to the pipeline folder**
    ```bash
@@ -276,6 +278,8 @@ You need to copy a security file from the WFM VM to each Device VM.
    
    You should see log messages indicating the service is running. Press `Ctrl+C` to exit the logs.
 
+> Note: Any service started using these scripts need to be restarted if the VM is restarted. They will not restart automatically on boot.
+
 ### Add Monitoring to Devices
 
 On each Device VM:
@@ -285,6 +289,8 @@ source device-agent_k3s.env && sudo -E bash device-agent.sh
 ```
 - Type `8` and press Enter
 - Choose: `Option 8: otel-collector-promtail-installation`
+
+> Note: Any service started using these script need to be restarted if the VM is restarted. They will not restart automatically on boot.
 
 ## Step 4: Run and Use
 
