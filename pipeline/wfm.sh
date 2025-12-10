@@ -1273,8 +1273,8 @@ install_prerequisites() {
   # NEW: Push application packages to OCI Registry instead of Git
   echo "📦 Pushing application packages to OCI Registry..."
   push_nextcloud_to_oci
-  push_nginx_to_oci
-  push_otel_to_oci
+  #push_nginx_to_oci
+  #push_otel_to_oci
   push_custom_otel_to_oci
   
   echo "✅ Setup completed - Application packages now in OCI Registry!"
