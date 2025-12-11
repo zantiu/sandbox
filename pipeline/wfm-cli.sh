@@ -123,29 +123,27 @@ generate_instance_yaml_from_oci() {
   local temp_dir=$(mktemp -d)
   cd "$temp_dir"
   
-  echo "📥 Pulling package metadata from OCI..."
-  echo "🔍 Package: ${harbor_url}/${OCI_ORGANIZATION}/${package_name}:latest"
+  # echo "📥 Pulling package metadata from OCI..."  
+  # echo "🔍 Package: ${harbor_url}/${OCI_ORGANIZATION}/${package_name}:latest"  
   
-  # Pull entire package
+  # Pull entire package (suppress output)
   if ! oras pull "${harbor_url}/${OCI_ORGANIZATION}/${package_name}:latest" \
       --plain-http \
-      -u "${REGISTRY_USER}:${REGISTRY_PASS}" 2>/dev/null; then
-    echo "❌ Failed to pull package from OCI"
+      -u "${REGISTRY_USER}:${REGISTRY_PASS}" >/dev/null 2>&1; then
+    echo "❌ Failed to pull package from OCI" >&2
     cd - >/dev/null
     rm -rf "$temp_dir"
     return 1
   fi
   
   if [ ! -f "margo.yaml" ]; then
-    echo "❌ margo.yaml not found in package"
-    echo "📋 Contents of package:"
-    ls -la
+    echo "❌ margo.yaml not found in package" >&2
     cd - >/dev/null
     rm -rf "$temp_dir"
     return 1
   fi
   
-  echo "✅ Successfully pulled margo.yaml"
+  # echo "✅ Successfully pulled margo.yaml"  
   
   # Extract metadata from margo.yaml
   local app_name=$(grep -E "^\s*name:" margo.yaml | head -1 | sed 's/.*name:\s*//' | tr -d '"' | tr -d "'" | xargs)
@@ -170,7 +168,7 @@ generate_instance_yaml_from_oci() {
     fi
   fi
   
-  echo "🔍 Extracted deployment type: '$deployment_type'"
+  # echo "🔍 Extracted deployment type: '$deployment_type'"  
   
   # Determine deployment profile type
   local profile_type=""
@@ -182,21 +180,21 @@ generate_instance_yaml_from_oci() {
       profile_type="compose"
       ;;
     *)
-      echo "⚠️  Could not determine deployment type from margo.yaml"
-      echo "ℹ️  Inferring from package name..."
+      # echo "⚠️  Could not determine deployment type from margo.yaml" >&2  
+      # echo "ℹ️  Inferring from package name..." >&2  
       
       # Infer from package name as last resort
       if [[ "$package_name" =~ compose ]]; then
         profile_type="compose"
-        echo "📋 Inferred type: compose (from package name)"
+        # echo "📋 Inferred type: compose (from package name)" >&2  
       else
         profile_type="helm.v3"
-        echo "📋 Defaulting to: helm.v3"
+        # echo "📋 Defaulting to: helm.v3" >&2  
       fi
       ;;
   esac
   
-  echo "📋 Final deployment type: $profile_type"
+  # echo "📋 Final deployment type: $profile_type"  
   
   # Get repository path
   local repository=$(get_oci_repository_path "$package_name" "$temp_dir/margo.yaml")
@@ -208,7 +206,7 @@ generate_instance_yaml_from_oci() {
   elif [ "$profile_type" = "compose" ]; then
     generate_compose_instance "$app_name" "$package_id" "$device_id" "$repository" "$output_file" "$temp_dir/margo.yaml"
   else
-    echo "❌ Unsupported deployment type: $profile_type"
+    echo "❌ Unsupported deployment type: $profile_type" >&2
     cd - >/dev/null
     rm -rf "$temp_dir"
     return 1
@@ -217,9 +215,10 @@ generate_instance_yaml_from_oci() {
   cd - >/dev/null
   rm -rf "$temp_dir"
   
-  echo "✅ Generated instance file: $output_file"
+  # echo "✅ Generated instance file: $output_file"  
   return 0
 }
+
 
 
 
@@ -663,7 +662,8 @@ get_oci_repository_path() {
 
 
 
-# Enhanced deploy_instance with read-only protection and integrity check
+
+																		
 deploy_instance() {
   echo "🚀 Deploy Instance"
   echo "=================="
@@ -694,7 +694,7 @@ deploy_instance() {
   fi
 
   # Get app package details and extract metadata.name
-  echo "📋 Getting package details..."
+  # echo "📋 Getting package details..."  
   app_packages=$(${MAESTRO_CLI_PATH}/maestro wfm list app-pkg -o json 2>/dev/null)
   
   if [ $? -ne 0 ] || [ -z "$app_packages" ]; then
@@ -704,7 +704,7 @@ deploy_instance() {
   
   # Parse JSON to find the package and extract metadata.name
   if command -v jq >/dev/null 2>&1; then
-    echo "🔍 Searching for package: $package_id"
+    # echo "🔍 Searching for package: $package_id"  
     
     package_name=$(echo "$app_packages" | jq -r --arg pkg_id "$package_id" '
       .Data[0].items[] | 
@@ -723,15 +723,15 @@ deploy_instance() {
     return 1
   fi
   
-  echo "📦 Package name: $package_name"
+  # echo "📦 Package name: $package_name"  
   
   # Generate instance.yaml dynamically from OCI metadata
-  echo "🔧 Generating instance deployment configuration..."
+  # echo "🔧 Generating instance deployment configuration..."  
   local temp_instance_file=$(mktemp --suffix=.yaml)
   
-  if ! generate_instance_yaml_from_oci "$package_name" "$package_id" "$device_id" "$temp_instance_file"; then
-    echo "❌ Failed to generate instance configuration"
-    echo "ℹ️  Falling back to template-based approach..."
+  if ! generate_instance_yaml_from_oci "$package_name" "$package_id" "$device_id" "$temp_instance_file" 2>/dev/null; then
+    # echo "❌ Failed to generate instance configuration"  
+    # echo "ℹ️  Falling back to template-based approach..."  
     
     # Fallback to template discovery
     deploy_file=$(get_instance_file_path "$package_name")
@@ -748,7 +748,7 @@ deploy_instance() {
     sed -i "s|{{REPOSITORY}}|$repository|g" "$deploy_file" 2>/dev/null || true
   else
     deploy_file="$temp_instance_file"
-    echo "✅ Instance configuration generated successfully"
+    # echo "✅ Instance configuration generated successfully"  
   fi
   
   # ============================================
@@ -757,17 +757,17 @@ deploy_instance() {
   chmod 444 "$deploy_file"  # Read-only for everyone
   local file_checksum=$(sha256sum "$deploy_file" | awk '{print $1}')
   
-  echo "📄 Using deployment file: $deploy_file"
-  echo "🔒 File protection: Read-only mode enabled"
-  echo "🔐 Integrity hash: ${file_checksum:0:16}..."
+  # echo "📄 Using deployment file: $deploy_file"  
+  # echo "🔒 File protection: Read-only mode enabled"  
+  # echo "🔐 Integrity hash: ${file_checksum:0:16}..."  
   
   # Show generated configuration for review
-  echo ""
-  echo "📋 Generated Instance Configuration:"
-  echo "===================================="
-  cat "$deploy_file"
-  echo "===================================="
-  echo ""
+  #echo ""
+  #echo "📋 Generated Instance Configuration:"
+  #echo "===================================="
+  #cat "$deploy_file"
+  #echo "===================================="
+  #echo ""
   
   # ============================================
   # SECURITY: Verify file integrity before deployment
@@ -781,12 +781,13 @@ deploy_instance() {
     return 1
   fi
   
-  read -p "Proceed with deployment? (y/N): " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Deployment cancelled"
-    rm -f "$temp_instance_file"
-    return 0
-  fi
+										   
+  #read -p "Proceed with deployment? (y/N): " confirm
+  #if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  #  echo "Deployment cancelled"
+  #  rm -f "$temp_instance_file"
+  #  return 0
+  #fi
 
   # ============================================
   # SECURITY: Final integrity check before deployment
@@ -799,6 +800,7 @@ deploy_instance() {
     return 1
   fi
 
+  echo "" 		 
   echo "🚀 Deploying '$package_id' to device '$device_id'..."
   if check_maestro_cli; then
     if ${MAESTRO_CLI_PATH}/maestro wfm apply -f "$deploy_file"; then
@@ -818,7 +820,6 @@ deploy_instance() {
   echo ""
   read -p "Press Enter to continue..."
 }
-
 
 
 
