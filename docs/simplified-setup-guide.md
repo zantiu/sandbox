@@ -11,7 +11,7 @@
 | **Device VM 2 (Standalone Device)** | 4 | 4-8GB | 50GB | Docker-based device |
 
 **Requirements:**
-- Ubuntu or Debian operating system (**ubuntu-24.04.3-desktop-amd64**)
+- Ubuntu or Debian operating system (**ubuntu-24.04.3-desktop-amd64 or server**)
    - Virtual Machine Manager (4.1.0 tested)
 - Internet connection
 - GitHub account with access to sandbox repository
@@ -28,7 +28,7 @@
 3. Select 'Developer settings' (last selection in the list)
 4. Select 'Personal access tokens' then 'Tokens (classic)'
 5. Select 'Generate new token' --> 'Generate new token (classic)'
-6. Add Note to remember the token, Select 'repo' box
+6. Add Note to remember the token, Select all checkboxes in Select scopes section
 7. Select Generate token button at bottom.
 8. Copy and store token **Ensure you copy at this stage as it won't be displayed again**
 
@@ -435,20 +435,26 @@ Select this option to display the combined view of packages, devices, and deploy
 
 **Option 5: Upload App-Package**
 
-Select this option to upload an application package from the pre-configured harbor OCI registry. 
+Select this option to upload an application package from the pre-configured harbor OCI registry to WFM for deployment. Also user can upload new application packges to local harbor OCI registry which can be discovered here and listed as an option to upload to WFM. Refer [upload instructions.](./upload-package.md) 
 
 > Note: Below is a example snippet showing the expected output of the selection.
+
 ```
 Enter choice [1-9]: 5
 📦 Upload App Package
 ====================
+🔍 Discovering app packages from Harbor OCI Registry...
 Select one of the packages:
-1) Custom OTEL Helm App
-2) Nextcloud Compose App
-3) Exit
+1) nginx-helm-app-package
+2) wordpress-compose-app-package
+3) custom-otel-helm-app-package
+4) nextcloud-compose-app-package
+5) Exit
 
-Enter choice [1-3]: 1
-📤 Uploading Custom OTEL Helm App to WFM...
+
+Enter choice [1-6]: 3
+📤 Uploading custom-otel-helm-app-package to WFM...
+
 ✅ Custom OTEL Helm App uploaded successfully!
 
 Press Enter to continue...

@@ -5,7 +5,7 @@ Scripts to set up a complete WFM environment with Symphony API, device agents, a
 
 ## 📋 Prerequisites
 
-- Version ubuntu-24.04.3-desktop-amd64 [ Ubuntu/Debian-based VM requirements](../docs/deploy.md#vm-requirements) 
+- **Version: ubuntu-24.04.3-desktop-amd64 or server** [ Ubuntu/Debian-based VM requirements](../docs/deploy.md#vm-requirements) 
 - Internet connectivity.
 - GitHub account with access to [MARGO Development Repository](https://github.com/margo/sandbox) and [Forked Symphony Repository](https://github.com/margo/symphony) under margo organization.
 - GitHub personal access token (GITHUB_TOKEN).
@@ -51,7 +51,7 @@ export SYMPHONY_BRANCH=main
 export DEV_REPO_BRANCH=main
 ```
 
-**For device-agent.sh script**
+**For k3s device-agent.sh script**
 
 Environment file path:-
 _[Device-Agent k3s-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_k3s.env)_
@@ -66,7 +66,7 @@ export WFM_IP=<wfm-machine-ip>
 export EXPOSED_HARBOR_IP=<wfm-machine-ip>
 ```
 
-**For device-agent.sh script**
+**For docker device-agent.sh script**
 
 Environment file path:-
 _[Device-Agent Docker-Env file](https://github.com/margo/sandbox/tree/testBranch-main/pipeline/device-agent_docker.env)_
