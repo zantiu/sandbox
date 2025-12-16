@@ -1625,9 +1625,11 @@ install_and_enable_ssh() {
 }
 
 
-
-# Update the show_menu function to include uninstall option														   
-show_menu() {
+# ----------------------------
+# Main Script Execution
+# ----------------------------
+# Update the main script execution section
+if [[ -z "$1" ]]; then
   echo "Choose an option:"
   echo "1) PreRequisites: Setup"
   echo "2) PreRequisites: Cleanup"
@@ -1636,21 +1638,16 @@ show_menu() {
   echo "5) ObeservabiliyStack: Start"
   echo "6) ObeservabiliyStack: Stop"
   read -p "Enter choice [1-6]: " choice
-  case $choice in
-    1) install_prerequisites ;;
-    2) uninstall_prerequisites ;;
-    3) start_symphony ;;
-    4) stop_symphony ;;
-    5) observability_stack_install ;;
-    6) observability_stack_uninstall ;;
-    *) echo "⚠️ Invalid choice"; exit 1 ;;
-  esac
-}
-
-# ----------------------------
-# Main Script Execution
-# ----------------------------
-# Update the main script execution section
-if [[ -z "$1" ]]; then
-  show_menu
+else
+  choice=$1
 fi
+
+case $choice in
+  1) install_prerequisites ;;
+  2) uninstall_prerequisites ;;
+  3) start_symphony ;;
+  4) stop_symphony ;;
+  5) observability_stack_install ;;
+  6) observability_stack_uninstall ;;
+  *) echo "⚠️ Invalid choice"; exit 1 ;;
+esac
