@@ -1,0 +1,31 @@
+# OpenTelemetry demo service deployment
+# Deploys to K3s device using Helm
+
+apiVersion: gitops.margo.org/v1
+kind: Deployment
+
+name: otel-service-prod
+description: "OpenTelemetry demo service on K3s device"
+
+package:
+  name: custom-otel-helm-app-package
+
+device:
+  id: "${DEVICE_ID}"  # Set DEVICE_ID env var or replace with actual ID
+
+profile:
+  type: helm.v3
+  components:
+    - name: otel-app
+      properties:
+        repository: "oci://${EXPOSED_HARBOR_IP}:${EXPOSED_HARBOR_PORT}/library/custom-otel-helm"
+        revision: "0.1.0"
+        wait: true
+        timeout: 5m
+
+parameters:
+  otlpEndpoint:
+    value: "http://otel-collector-opentelemetry-collector.observability:4318"
+    targets:
+      - pointer: env.OTEL_EXPORTER_OTLP_ENDPOINT
+        components: ["otel-app"]

@@ -1,0 +1,33 @@
+# Nextcloud stack deployment
+# Deploys to Docker device using Compose
+
+apiVersion: gitops.margo.org/v1
+kind: Deployment
+
+name: nextcloud-prod
+description: "Nextcloud stack on Docker device"
+
+package:
+  name: nextcloud-compose-app-package
+
+device:
+  id: "${DOCKER_DEVICE_ID}"  # Set env var or replace with actual ID
+
+profile:
+  type: compose
+  components:
+    - name: nextcloud-stack
+      properties:
+        packageLocation: "https://raw.githubusercontent.com/docker/awesome-compose/master/nextcloud-redis-mariadb/compose.yaml"
+
+parameters:
+  mysqlDatabase:
+    value: "nextcloud"
+    targets:
+      - pointer: ENV.MYSQL_DATABASE
+        components: ["nextcloud-stack"]
+  mysqlPassword:
+    value: "${MYSQL_PASSWORD}"  # From environment variable
+    targets:
+      - pointer: ENV.MYSQL_PASSWORD
+        components: ["nextcloud-stack"]
